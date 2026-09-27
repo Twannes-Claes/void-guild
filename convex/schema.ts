@@ -24,8 +24,10 @@ export default defineSchema({
             borderColor: v.optional(v.string()),
             profileBorder: v.optional(v.string()),
             bgColor: v.optional(v.string()),
+            avatarUrl: v.optional(v.string()),
         })),
     }).index('by_userId', ['userId'])
+      .index('by_name', ['name'])
       .index('by_rank', ['rank']),
     sessions: defineTable({
         date: v.optional(v.number()),
@@ -187,6 +189,15 @@ export default defineSchema({
         discordUsername: v.optional(v.string()),
         apiKey: v.optional(v.string()),
         apiKeyLastUsed: v.optional(v.number()),
+        notificationPreferences: v.optional(v.object({
+            enabled: v.boolean(),
+            browserPush: v.optional(v.boolean()),
+            levelUp: v.optional(v.boolean()),
+            newSession: v.optional(v.boolean()),
+            newListing: v.optional(v.boolean()),
+            newBet: v.optional(v.boolean()),
+            betExpiring: v.optional(v.boolean()),
+        })),
     }).index('by_userId', ['userId'])
       .index('by_discordId', ['discordId'])
       .index('by_apiKey', ['apiKey']),

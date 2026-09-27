@@ -2,13 +2,15 @@
 
 import { useState } from 'react'
 import { UserButton } from '@clerk/nextjs'
-import { Trophy, Key } from 'lucide-react'
+import { Trophy, Key, Bell } from 'lucide-react'
 import AchievementsModal from '@/components/AchievementsModal'
 import { ApiKeyDialog } from '@/components/ApiKeyDialog'
+import { NotificationsDialog } from '@/components/NotificationsDialog'
 
 export default function CustomUserButton() {
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false)
   const [isApiDialogOpen, setIsApiDialogOpen] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
   return (
     <>
@@ -21,6 +23,11 @@ export default function CustomUserButton() {
       >
         <UserButton.MenuItems>
           <UserButton.Action
+            label="Notifications"
+            labelIcon={<Bell className="h-4 w-4 text-purple-400" />}
+            onClick={() => setIsNotificationsOpen(true)}
+          />
+          <UserButton.Action
             label="Achievements"
             labelIcon={<Trophy className="h-4 w-4 text-amber-500" />}
             onClick={() => setIsAchievementsOpen(true)}
@@ -32,6 +39,11 @@ export default function CustomUserButton() {
           />
         </UserButton.MenuItems>
       </UserButton>
+
+      <NotificationsDialog
+        open={isNotificationsOpen}
+        onOpenChange={setIsNotificationsOpen}
+      />
 
       <AchievementsModal
         open={isAchievementsOpen}

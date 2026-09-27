@@ -9,7 +9,7 @@ import SessionDialog from './SessionDialog'
 import Link from 'next/link'
 import { Book, Lock, ChevronLeft, ChevronRight, User, Shield, Filter, Sprout } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn, getLevelBadgeStyle, getDualLevelBadgeStyle, formatDate, formatTime, CharacterRankIcon } from '@/lib/utils'
+import { cn, getLevelBadgeStyle, getDualLevelBadgeStyle, formatDate, formatTime, CharacterRankIcon, getSessionWikiUrl } from '@/lib/utils'
 import './sessions.css'
 import type { Doc } from '@/convex/_generated/dataModel'
 import { UserItem } from './UserCharacterPreviewTooltip'
@@ -1087,7 +1087,7 @@ export default function Sessions({ filters }: { filters?: { pf: boolean, dnd: bo
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   recordWikiVisit().then(() => syncAndGetAchievements()).catch(console.error);
-                                  window.open(`https://void.tarragon.be/Session-Reports/${new Date(session.date!).toISOString().slice(0, 10)}-${session.worldName.replace(/\s+/g, '-')}`, '_blank');
+                                  window.open(getSessionWikiUrl(session.date, session.worldName), '_blank');
                                 }}
                                 title="Open Wiki Session Report"
                               >

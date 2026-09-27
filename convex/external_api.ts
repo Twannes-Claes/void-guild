@@ -585,10 +585,24 @@ export const createCharacter = mutation({
     },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx, args.apiKey)
-        const { apiKey, ...charData } = args
+        const trimmedName = args.name.trim()
+        if (!trimmedName) {
+            throw new Error('Character name cannot be empty.')
+        }
+
+        const allCharacters = await ctx.db.query('characters').collect()
+        const exists = allCharacters.some(
+            (c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase()
+        )
+        if (exists) {
+            throw new Error(`A character named "${trimmedName}" already exists. Please choose a unique name.`)
+        }
+
+        const { apiKey, name, ...charData } = args
 
         return await ctx.db.insert('characters', {
             ...charData,
+            name: trimmedName,
             lvl: 1,
             xp: 0,
             userId: user.userId,
@@ -618,8 +632,28 @@ export const updateCharacter = mutation({
             throw new Error('Unauthorized: You do not own this character')
         }
 
-        const { apiKey, characterId, ...patch } = args
-        await ctx.db.patch(cId, patch)
+        let trimmedName: string | undefined = undefined
+        if (args.name !== undefined) {
+            trimmedName = args.name.trim()
+            if (!trimmedName) {
+                throw new Error('Character name cannot be empty.')
+            }
+            if (trimmedName.toLowerCase() !== char.name.trim().toLowerCase()) {
+                const allCharacters = await ctx.db.query('characters').collect()
+                const exists = allCharacters.some(
+                    (c) => c._id !== cId && c.name.trim().toLowerCase() === trimmedName!.toLowerCase()
+                )
+                if (exists) {
+                    throw new Error(`A character named "${trimmedName}" already exists. Please choose a unique name.`)
+                }
+            }
+        }
+
+        const { apiKey, characterId, name, ...patch } = args
+        await ctx.db.patch(cId, {
+            ...patch,
+            ...(trimmedName !== undefined ? { name: trimmedName } : {}),
+        })
         return { success: true }
     },
 })

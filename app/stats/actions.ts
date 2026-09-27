@@ -5,4 +5,5 @@ export interface UserMetadata {
   imageUrl?: string;
   extraSessionsPlayed?: number;
   extraSessionsRan?: number;
+  isMember?: boolean;
 }

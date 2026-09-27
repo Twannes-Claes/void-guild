@@ -23,7 +23,7 @@ import {
     ExternalLink,
     Moon as MoonIcon
 } from 'lucide-react'
-import { cn, formatInGameYear } from '@/lib/utils'
+import { cn, formatInGameYear, getSessionWikiUrl } from '@/lib/utils'
 import { Id } from '@/convex/_generated/dataModel'
 import {
     Dialog,
@@ -993,7 +993,7 @@ export default function WorldCalendar({
                                                                 </Link>
                                                                 <div className="px-2 pb-2 flex justify-end">
                                                                     <a 
-                                                                        href={`https://void.tarragon.be/Session-Reports/${s.date ? new Date(s.date).toISOString().slice(0, 10) : 'TBD'}-${worldName.replace(/\s+/g, '-')}`} 
+                                                                        href={getSessionWikiUrl(s.date, worldName)} 
                                                                         target="_blank" 
                                                                         rel="noopener noreferrer"
                                                                         className="flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter text-muted-foreground hover:text-purple-500 transition-colors py-1 px-2 bg-background/50 rounded-full border border-border/50"

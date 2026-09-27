@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Doc, Id } from '@/convex/_generated/dataModel'
-import { cn, getLevelBadgeStyle, CharacterRankIcon } from '@/lib/utils'
+import { cn, getLevelBadgeStyle, CharacterRankIcon, getCharacterWikiUrl } from '@/lib/utils'
 import { UserMetadata } from '@/app/stats/actions'
 import { useQuery, useMutation, useAction } from 'convex/react'
 import { useUser } from '@clerk/nextjs'
@@ -28,6 +28,7 @@ import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
+import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import CharacterDetailsDialog from '@/components/characters/CharacterDetailsDialog'
 
 interface CharacterRelationship {
@@ -507,7 +508,7 @@ export default function AttendingCharactersList({
                     title={`View ${char.name}'s Profile`}
                   >
                     <ProfileAvatarWithBadge
-                      imageUrl={metadata?.imageUrl}
+                      imageUrl={Boolean((char as any).isMember || metadata?.isMember) && char.cosmetics?.avatarUrl ? char.cosmetics.avatarUrl : metadata?.imageUrl}
                       name={char.name}
                       cosmetics={char.cosmetics}
                       profileRingClassName={cosmeticsStyles.profileRingClassName}
@@ -528,10 +529,11 @@ export default function AttendingCharactersList({
                           {cosmeticsStyles.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
                           {char.name}
                         </button>
+                        {Boolean((char as any).isMember || metadata?.isMember) && <MembershipBadge />}
                         {isUserCharacter && <span className="text-[10px] bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">You</span>}
                         {/* Book Icon */}
                         <a
-                            href={`https://void.tarragon.be/Player-Characters/${char.name.replace(/\s+/g, '-')}`}
+                            href={getCharacterWikiUrl(char.name)}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => {

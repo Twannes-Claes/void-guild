@@ -30,13 +30,14 @@ import CreateCharacter from './CreateCharacter'
 import AdminCharacterList from './AdminCharacterList'
 import AdminUserList from './AdminUserList'
 import CharacterDetailsDialog from './CharacterDetailsDialog'
+import { MembershipBadge } from './MembershipBadge'
 import InSyncPlasmaEffect from './InSyncPlasmaEffect'
 import BlazeTextParticles from './BlazeTextParticles'
 import VoidNebulaEffect from './VoidNebulaEffect'
 import InfernoFireEffect from './InfernoFireEffect'
 import TintParticlesEffect from './TintParticlesEffect'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getLevelBadgeStyle, CharacterRankIcon, getXPBarStyles, cn } from '@/lib/utils'
+import { getLevelBadgeStyle, CharacterRankIcon, getXPBarStyles, cn, getCharacterWikiUrl } from '@/lib/utils'
 import { track } from '@vercel/analytics'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -182,8 +183,9 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                               {cosmetics.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
                               {character.name}
                             </span>
+                            {Boolean((character as any).isMember) && <MembershipBadge />}
                             <a
-                              href={`https://void.tarragon.be/Player-Characters/${character.name.replace(/\s+/g, '-')}`}
+                              href={getCharacterWikiUrl(character.name)}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => {

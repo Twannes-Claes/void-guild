@@ -18,6 +18,7 @@ import { FormEvent, useMemo, useState } from 'react'
 import { Doc } from '@/convex/_generated/dataModel'
 import { Search, Shield, User } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 
 export default function AdminCharacterList() {
   // All hooks must be called unconditionally at the top level
@@ -28,6 +29,7 @@ export default function AdminCharacterList() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCharacter, setSelectedCharacter] = useState<Doc<'characters'> | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [errors, setErrors] = useState<{ name?: string }>({})
   const [editData, setEditData] = useState({
     name: '',
     title: '',
@@ -85,6 +87,7 @@ export default function AdminCharacterList() {
 
   function openEditDialog(character: Doc<'characters'>) {
     setSelectedCharacter(character)
+    setErrors({})
     setEditData({
       name: character.name,
       title: character.title ?? '',
@@ -103,11 +106,24 @@ export default function AdminCharacterList() {
     event.preventDefault()
     if (!selectedCharacter) return
 
-    await adminUpdateCharacter({
-      characterId: selectedCharacter._id,
-      ...editData,
-    })
-    setIsEditDialogOpen(false)
+    if (!editData.name.trim()) {
+      setErrors({ name: 'Character name is required' })
+      return
+    }
+
+    try {
+      await adminUpdateCharacter({
+        characterId: selectedCharacter._id,
+        ...editData,
+      })
+      toast.success('Character updated successfully')
+      setIsEditDialogOpen(false)
+      setErrors({})
+    } catch (err: any) {
+      const message = err.message || 'Failed to update character'
+      setErrors({ name: message })
+      toast.error(message)
+    }
   }
 
   return (
@@ -186,13 +202,21 @@ export default function AdminCharacterList() {
                 <DialogTitle>Edit Character: {selectedCharacter.name}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleAdminUpdate} className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <label className="text-right text-sm">Name</label>
-                  <Input
-                    className="col-span-3"
-                    value={editData.name}
-                    onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                  />
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <label className="text-right text-sm pt-2">Name</label>
+                  <div className="col-span-3 space-y-1">
+                    <Input
+                      className={errors.name ? 'border-destructive focus-visible:ring-destructive' : ''}
+                      value={editData.name}
+                      onChange={(e) => {
+                        setEditData({ ...editData, name: e.target.value })
+                        if (errors.name) setErrors({ ...errors, name: undefined })
+                      }}
+                    />
+                    {errors.name && (
+                      <p className="text-[11px] text-destructive font-medium">{errors.name}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label className="text-right text-sm">Title</label>

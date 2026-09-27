@@ -11,7 +11,7 @@ import {
   Plus, Settings, Pencil, Map
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn, formatDate, formatTime, getLevelBadgeStyle, getDualLevelBadgeStyle } from '@/lib/utils'
+import { cn, formatDate, formatTime, getLevelBadgeStyle, getDualLevelBadgeStyle, getWorldWikiUrl } from '@/lib/utils'
 import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Id } from '@/convex/_generated/dataModel'
@@ -346,7 +346,7 @@ export default function WorldClient() {
                             <span className="break-words max-w-full">{world.name}</span>
                             <div className="flex items-center gap-2 shrink-0">
                                 <a 
-                                    href={`https://void.tarragon.be/World-Notes/${world.name.replace(/\s+/g, '-')}`} 
+                                    href={getWorldWikiUrl(world.name)} 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
                                     className="hover:text-primary transition-colors shrink-0"

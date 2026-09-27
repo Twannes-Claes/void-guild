@@ -36,6 +36,10 @@ import {
   Pencil,
   Info,
   ChevronRight,
+  User,
+  Crown,
+  Shield,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { track } from '@vercel/analytics'
@@ -44,6 +48,7 @@ import { cn, getLevelBadgeStyle, getXPBarStyles, formatDate, CharacterRankIcon }
 import { CharacterCosmetics } from '@/lib/cosmetics'
 import CharacterCallingCard from './CharacterCallingCard'
 import CharacterCosmeticsTab from './CharacterCosmeticsTab'
+import { MembershipBadge } from './MembershipBadge'
 
 interface CharacterDetailsDialogProps {
   characterId: Id<'characters'> | null
@@ -70,6 +75,7 @@ export default function CharacterDetailsDialog({
 
   const [activeTab, setActiveTab] = useState<'general' | 'edit' | 'cosmetics'>('general')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<{ name?: string }>({})
 
   // Edit form state
   const [editedData, setEditedData] = useState({
@@ -116,6 +122,7 @@ export default function CharacterDetailsDialog({
         profileBorder: char.cosmetics?.profileBorder || 'default',
         bgColor: char.cosmetics?.bgColor || 'default',
       })
+      setErrors({})
     }
   }, [profile?.character])
 
@@ -123,6 +130,7 @@ export default function CharacterDetailsDialog({
   useEffect(() => {
     if (isOpen) {
       setActiveTab('general')
+      setErrors({})
     }
   }, [isOpen, characterId])
 
@@ -135,18 +143,35 @@ export default function CharacterDetailsDialog({
   async function handleUpdate(e: FormEvent) {
     e.preventDefault()
     if (!char) return
+
+    const newErrors: { name?: string } = {}
+    if (!editedData.name.trim()) {
+      newErrors.name = "Character name cannot be empty"
+    } else if (editedData.name.trim().length < 2) {
+      newErrors.name = "Name must be at least 2 characters"
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+
+    setErrors({})
     setIsSubmitting(true)
     try {
       await updateCharacter({
         characterId: char._id,
         ...editedData,
+        name: editedData.name.trim(),
         cosmetics: editedCosmetics,
       })
-      track('character_updated', { name: editedData.name })
+      track('character_updated', { name: editedData.name.trim() })
       toast.success('Character updated successfully!')
       onClose()
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update character')
+      const msg = err.message || 'Failed to update character'
+      setErrors({ name: msg })
+      toast.error(msg)
     } finally {
       setIsSubmitting(false)
     }
@@ -272,6 +297,7 @@ export default function CharacterDetailsDialog({
                   cosmetics={char.cosmetics}
                   rankNumber={rankNumber}
                   streak={profile.streaks?.attendanceStreak}
+                  isMember={profile.owner?.isMember ?? profile.character?.isMember ?? false}
                   isYou={profile.isOwner}
                   onWikiClick={() => {
                     recordWikiVisit()
@@ -279,6 +305,85 @@ export default function CharacterDetailsDialog({
                       .catch(console.error)
                   }}
                 />
+              </div>
+
+              {/* Player Information Card */}
+              <div className="p-3.5 rounded-lg bg-card/60 border border-border/70 space-y-2.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-purple-400" /> Player Information
+                  </span>
+                  {profile.owner?.isMember && (
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      <MembershipBadge size="sm" className="h-3.5 w-3.5" />
+                      Member
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-full overflow-hidden bg-muted/60 border border-border/70 shrink-0 flex items-center justify-center">
+                      {profile.owner?.imageUrl ? (
+                        <img
+                          src={profile.owner.imageUrl}
+                          alt={profile.owner.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-sm text-foreground truncate">
+                          {profile.owner?.name}
+                        </span>
+                        {profile.owner?.isMember && <MembershipBadge size="sm" />}
+                        {profile.owner?.isGM && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                            <Crown className="h-3 w-3" /> GM
+                          </span>
+                        )}
+                        {profile.owner?.isAdmin && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                            <Shield className="h-3 w-3" /> Admin
+                          </span>
+                        )}
+                      </div>
+                      {profile.owner?.discordUsername && (
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <span className="opacity-70">Discord:</span>
+                          <span className="text-foreground/80 font-medium">@{profile.owner.discordUsername}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Player Quick Stats */}
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <div className="px-2.5 py-1 rounded-md bg-muted/40 border border-border/40 text-center">
+                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">Played</div>
+                      <div className="font-bold text-foreground">
+                        {profile.owner?.totalSessionsPlayed ?? 0} <span className="text-[10px] font-normal text-muted-foreground">sessions</span>
+                      </div>
+                    </div>
+                    {(profile.owner?.isGM || (profile.owner?.totalSessionsRan ?? 0) > 0) && (
+                      <div className="px-2.5 py-1 rounded-md bg-muted/40 border border-border/40 text-center">
+                        <div className="text-[10px] text-muted-foreground uppercase font-semibold">Ran (GM)</div>
+                        <div className="font-bold text-amber-400">
+                          {profile.owner?.totalSessionsRan ?? 0} <span className="text-[10px] font-normal text-muted-foreground">sessions</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="px-2.5 py-1 rounded-md bg-muted/40 border border-border/40 text-center">
+                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">Heroes</div>
+                      <div className="font-bold text-purple-300">
+                        {profile.owner?.totalCharacters ?? 1} <span className="text-[10px] font-normal text-muted-foreground">chars</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* 2. Level & XP Progress Bar */}
@@ -513,14 +618,19 @@ export default function CharacterDetailsDialog({
                 </select>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium">Character Name</label>
                 <Input
                   value={editedData.name}
-                  onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
+                  onChange={(e) => {
+                    setEditedData({ ...editedData, name: e.target.value })
+                    if (errors.name) setErrors({ ...errors, name: undefined })
+                  }}
                   placeholder="Character Name"
+                  className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                   required
                 />
+                {errors.name && <p className="text-[10px] text-destructive font-medium px-1">{errors.name}</p>}
               </div>
 
               {char.title && (
@@ -583,6 +693,7 @@ export default function CharacterDetailsDialog({
               onChangeCosmetics={setEditedCosmetics}
               unlockedAchievementIds={unlockedAchievementIds}
               isAdmin={Boolean(profile.isAdmin)}
+              isMember={profile.owner?.isMember ?? profile.character?.isMember ?? false}
             />
           ) : null}
         </div>
@@ -591,8 +702,9 @@ export default function CharacterDetailsDialog({
         <DialogFooter className="p-4 border-t border-border/50 bg-muted/20 shrink-0 flex items-center justify-between sm:justify-between">
           {activeTab === 'general' ? (
             <div className="flex items-center justify-between w-full">
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                 Player: <strong className="text-foreground">{profile?.owner?.name}</strong>
+                {profile?.owner?.isMember && <MembershipBadge size="sm" />}
               </span>
               <Button type="button" variant="outline" onClick={onClose}>
                 Close

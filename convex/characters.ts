@@ -1,8 +1,9 @@
-import { query, mutation, QueryCtx } from './_generated/server'
+import { query, mutation, QueryCtx, MutationCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { Id } from './_generated/dataModel'
 import { isAdmin } from './roles'
+import { formatUserDisplayName } from './users'
 
 export const listCharacters = query({
   args: {},
@@ -11,24 +12,41 @@ export const listCharacters = query({
     if (!user) {
       return null
     }
+
+    const userRecord = await ctx.db
+      .query('users')
+      .withIndex('by_userId', (q) => q.eq('userId', user.subject))
+      .first()
+    const isMember = Boolean(userRecord?.isMember)
+
     const characters = await ctx.db
       .query('characters')
       .filter((q) => q.eq(q.field('userId'), user.subject))
       .collect()
     
-    return characters.sort((a, b) => (b.lvl * 1000 + b.xp) - (a.lvl * 1000 + a.xp))
+    return characters
+      .map((c) => ({ ...c, isMember }))
+      .sort((a, b) => (b.lvl * 1000 + b.xp) - (a.lvl * 1000 + a.xp))
   },
 })
 
 export const listCharactersByUserId = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
+    const userRecord = await ctx.db
+      .query('users')
+      .withIndex('by_userId', (q) => q.eq('userId', args.userId))
+      .first()
+    const isMember = Boolean(userRecord?.isMember)
+
     const characters = await ctx.db
       .query('characters')
       .withIndex('by_userId', (q) => q.eq('userId', args.userId))
       .collect()
     
-    return characters.sort((a, b) => (b.lvl * 1000 + b.xp) - (a.lvl * 1000 + a.xp))
+    return characters
+      .map((c) => ({ ...c, isMember }))
+      .sort((a, b) => (b.lvl * 1000 + b.xp) - (a.lvl * 1000 + a.xp))
   },
 })
 
@@ -62,6 +80,7 @@ export const listAllCharacters = query({
         ownerName,
         ownerUsername: owner?.username || null,
         ownerEmail: owner?.email || null,
+        isMember: Boolean(owner?.isMember),
       }
     })
 
@@ -105,7 +124,24 @@ export const getCharactersByIds = query({
   args: { ids: v.array(v.id('characters')) },
   handler: async (ctx, args) => {
     const characters = await Promise.all(args.ids.map((id) => ctx.db.get(id)))
-    return characters.filter((c) => c !== null)
+    const validChars = characters.filter((c) => c !== null)
+
+    const userIds = Array.from(new Set(validChars.map((c) => c.userId)))
+    const userMap = new Map<string, boolean>()
+    await Promise.all(
+      userIds.map(async (uId) => {
+        const u = await ctx.db
+          .query('users')
+          .withIndex('by_userId', (q) => q.eq('userId', uId))
+          .first()
+        userMap.set(uId, Boolean(u?.isMember))
+      })
+    )
+
+    return validChars.map((c) => ({
+      ...c,
+      isMember: userMap.get(c.userId) ?? false,
+    }))
   },
 })
 
@@ -134,6 +170,26 @@ export const getCharacterPerceptions = query({
   },
 })
 
+async function assertUniqueCharacterName(
+  ctx: MutationCtx,
+  name: string,
+  excludeCharacterId?: Id<'characters'>
+) {
+  const trimmed = name.trim()
+  if (!trimmed) {
+    throw new Error('Character name cannot be empty.')
+  }
+  const allCharacters = await ctx.db.query('characters').collect()
+  const exists = allCharacters.some(
+    (c) =>
+      (!excludeCharacterId || c._id !== excludeCharacterId) &&
+      c.name.trim().toLowerCase() === trimmed.toLowerCase()
+  )
+  if (exists) {
+    throw new Error(`A character named "${trimmed}" already exists. Please choose a unique name.`)
+  }
+}
+
 export const createCharacter = mutation({
   args: {
     name: v.string(),
@@ -147,10 +203,13 @@ export const createCharacter = mutation({
     if (!user) {
       throw new Error('Not authenticated')
     }
+    const trimmedName = args.name.trim()
+    await assertUniqueCharacterName(ctx, trimmedName)
+
     const system = args.system || 'PF'
     const lvl = system === 'DnD' ? 3 : 1
     const characterId = await ctx.db.insert('characters', {
-      name: args.name,
+      name: trimmedName,
       ancestry: args.ancestry,
       class: args.class,
       websiteLink: args.websiteLink,
@@ -163,9 +222,9 @@ export const createCharacter = mutation({
 
     await ctx.scheduler.runAfter(0, internal.activity.logActivity, {
         type: 'character_created',
-        message: `{user} created a new character: ${args.name}!`,
+        message: `{user} created a new character: ${trimmedName}!`,
         userId: user.subject,
-        metadata: { characterId, name: args.name }
+        metadata: { characterId, name: trimmedName }
     })
   },
 })
@@ -200,8 +259,14 @@ export const updateCharacter = mutation({
     if (!character || character.userId !== user.subject) {
       throw new Error('Character not found or you do not have permission to edit it.')
     }
+
+    const trimmedName = args.name !== undefined ? args.name.trim() : undefined
+    if (trimmedName !== undefined && trimmedName.toLowerCase() !== character.name.trim().toLowerCase()) {
+      await assertUniqueCharacterName(ctx, trimmedName, args.characterId)
+    }
+
     await ctx.db.patch(args.characterId, {
-      name: args.name,
+      name: trimmedName !== undefined ? trimmedName : character.name,
       ancestry: args.ancestry,
       class: args.class,
       websiteLink: args.websiteLink,
@@ -231,9 +296,13 @@ export const adminUpdateCharacter = mutation({
     }
 
     const oldCharacter = await ctx.db.get(args.characterId)
+    const trimmedName = args.name.trim()
+    if (!oldCharacter || trimmedName.toLowerCase() !== oldCharacter.name.trim().toLowerCase()) {
+      await assertUniqueCharacterName(ctx, trimmedName, args.characterId)
+    }
 
     await ctx.db.patch(args.characterId, {
-      name: args.name,
+      name: trimmedName,
       lvl: args.lvl,
       xp: args.xp,
       ancestry: args.ancestry,
@@ -516,12 +585,42 @@ export const getCharacterProfile = query({
 
     sessionsWithContext.sort((a, b) => (b.date || 0) - (a.date || 0))
 
+    const ownerDisplayName = formatUserDisplayName(owner?.name, owner?.username, character.userId)
+
+    const ownerCharacters = await ctx.db
+      .query('characters')
+      .withIndex('by_userId', (q) => q.eq('userId', character.userId))
+      .collect()
+
+    const ownerCharIdSet = new Set(ownerCharacters.map((c) => c._id))
+    const totalSessionsPlayed =
+      (owner?.extraSessionsPlayed || 0) +
+      allSessions.filter(
+        (s) => Boolean(s.locked) && s.characters.some((cid) => ownerCharIdSet.has(cid))
+      ).length
+
+    const totalSessionsRan =
+      (owner?.extraSessionsRan || 0) +
+      allSessions.filter((s) => Boolean(s.locked) && s.owner === character.userId).length
+
     return {
-      character,
+      character: {
+        ...character,
+        isMember: Boolean(owner?.isMember),
+      },
       owner: {
         userId: character.userId,
         imageUrl: owner?.imageUrl,
-        name: owner?.name || owner?.username || 'Unknown Adventurer',
+        name: ownerDisplayName,
+        rawName: owner?.name || owner?.username || null,
+        username: owner?.username || null,
+        discordUsername: owner?.discordUsername || null,
+        isMember: Boolean(owner?.isMember),
+        isGM: Boolean(owner?.isGM),
+        isAdmin: Boolean(owner?.isAdmin),
+        totalSessionsPlayed,
+        totalSessionsRan,
+        totalCharacters: ownerCharacters.length,
       },
       isOwner,
       isAdmin: isAdminUser,

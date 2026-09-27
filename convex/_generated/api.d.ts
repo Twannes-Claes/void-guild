@@ -23,6 +23,7 @@ import type * as external_api from "../external_api.js";
 import type * as http from "../http.js";
 import type * as maps from "../maps.js";
 import type * as migrations from "../migrations.js";
+import type * as notifications from "../notifications.js";
 import type * as planning from "../planning.js";
 import type * as quests from "../quests.js";
 import type * as quotes from "../quotes.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   maps: typeof maps;
   migrations: typeof migrations;
+  notifications: typeof notifications;
   planning: typeof planning;
   quests: typeof quests;
   quotes: typeof quotes;

@@ -8,7 +8,7 @@ import ConvexClientProvider from '@/components/ConvexClientProvider'
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Toaster } from 'sonner'
-import LevelUpListener from '@/components/LevelUpListener'
+import NotificationListener from '@/components/NotificationListener'
 import SessionClosedListener from '@/components/SessionClosedListener'
 import AchievementListener from '@/components/AchievementListener'
 import UserSync from '@/components/UserSync'
@@ -180,7 +180,7 @@ export default function RootLayout({
                     },
                   }}
                 />
-                <LevelUpListener />
+                <NotificationListener />
                 <SessionClosedListener />
                 <AchievementListener />
                 <UserSync />

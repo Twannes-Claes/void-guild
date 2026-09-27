@@ -15,6 +15,7 @@ import {
 import { FormEvent, useState } from 'react'
 import { fireVoidParticles } from '@/lib/particles'
 import { track } from '@vercel/analytics'
+import { toast } from 'sonner'
 
 export default function CreateCharacter() {
   const createCharacter = useMutation(api.characters.createCharacter)
@@ -36,7 +37,7 @@ export default function CreateCharacter() {
     const newErrors: { name?: string } = {}
     if (!newCharacterData.name.trim()) {
       newErrors.name = "Character name is required"
-    } else if (newCharacterData.name.length < 2) {
+    } else if (newCharacterData.name.trim().length < 2) {
       newErrors.name = "Name must be at least 2 characters"
     }
 
@@ -58,6 +59,11 @@ export default function CreateCharacter() {
       track('character_created', { name: newCharacterData.name, system: newCharacterData.system })
       setNewCharacterData({ name: '', ancestry: '', class: '', websiteLink: '', system: 'PF' })
       setIsOpen(false)
+      toast.success('Character created successfully!')
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to create character'
+      setErrors({ name: msg })
+      toast.error(msg)
     } finally {
       setIsSubmitting(false)
     }

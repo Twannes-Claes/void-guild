@@ -10,6 +10,9 @@ import {
   Paintbrush,
   Circle,
   Shield,
+  Upload,
+  ImageIcon,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUser } from '@clerk/nextjs'
@@ -22,6 +25,7 @@ import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
+import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import {
   resolveCosmeticsStyles,
   FONT_OPTIONS,
@@ -46,6 +50,7 @@ interface CharacterCosmeticsTabProps {
   onChangeCosmetics: (updater: (prev: CharacterCosmetics) => CharacterCosmetics) => void
   unlockedAchievementIds: string[]
   isAdmin?: boolean
+  isMember?: boolean
 }
 
 export default function CharacterCosmeticsTab({
@@ -60,12 +65,75 @@ export default function CharacterCosmeticsTab({
   onChangeCosmetics,
   unlockedAchievementIds,
   isAdmin = false,
+  isMember = false,
 }: CharacterCosmeticsTabProps) {
   const { user } = useUser()
   const profileImageUrl = user?.imageUrl
+  const effectiveAvatarUrl = (isMember && cosmetics.avatarUrl) ? cosmetics.avatarUrl : profileImageUrl
   const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
   const rankNumber = (characterId ? characterRanks?.[characterId] : undefined) ?? 1
   const [adminView, setAdminView] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!isMember) {
+      toast.error('Custom character portraits are an exclusive Void Guild Member benefit!')
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, WEBP, etc.)')
+      return
+    }
+
+    // Max 10MB file check before sending
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be less than 10MB')
+      return
+    }
+
+    setIsUploadingAvatar(true)
+    const toastId = toast.loading('Uploading character portrait to Void Wiki...')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload-avatar', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to upload avatar')
+      }
+
+      const fullUrl = data.fullUrl || `https://void.tarragon.be${data.url}`
+      onChangeCosmetics((prev) => ({
+        ...prev,
+        avatarUrl: fullUrl,
+      }))
+      toast.success('Character portrait updated successfully!', { id: toastId })
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message || 'Error uploading image', { id: toastId })
+    } finally {
+      setIsUploadingAvatar(false)
+      // reset file input
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveAvatar = () => {
+    onChangeCosmetics((prev) => ({
+      ...prev,
+      avatarUrl: undefined,
+    }))
+    toast.info('Custom portrait removed. Defaulting to your profile avatar.')
+  }
 
   const isEffectiveAdmin = Boolean(isAdmin && adminView)
 
@@ -258,7 +326,7 @@ export default function CharacterCosmeticsTab({
           )}
           <div className="flex items-center gap-3 min-w-0 relative z-10">
             <ProfileAvatarWithBadge
-              imageUrl={profileImageUrl}
+              imageUrl={effectiveAvatarUrl}
               name={characterName}
               cosmetics={cosmetics}
               profileRingClassName={previewStyles.profileRingClassName}
@@ -271,6 +339,7 @@ export default function CharacterCosmeticsTab({
                   {previewStyles.nameClassName.includes('blaze-fire-text') && <BlazeTextParticles />}
                   {characterName || 'Character Name'}
                 </span>
+                {isMember && <MembershipBadge />}
                 <span className="text-[10px] bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">
                   You
                 </span>
@@ -610,7 +679,7 @@ export default function CharacterCosmeticsTab({
                 )}
               >
                 <ProfileAvatarWithBadge
-                  imageUrl={profileImageUrl}
+                  imageUrl={effectiveAvatarUrl}
                   name={characterName}
                   cosmetics={{ profileBorder: opt.id }}
                   profileRingClassName={opt.value}
@@ -622,6 +691,84 @@ export default function CharacterCosmeticsTab({
             )
           })}
         </div>
+      </div>
+
+      {/* 7. Custom Character Portrait (Member Benefit) */}
+      <div className="flex flex-col gap-3 p-3.5 rounded-lg bg-card/50 border border-border/60">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+            <ImageIcon className="h-3.5 w-3.5" />
+            Character Portrait
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
+            <MembershipBadge size="sm" />
+            Member Perk
+          </span>
+        </div>
+
+        {isMember ? (
+          <div className="flex flex-col sm:flex-row items-center gap-4 bg-muted/20 p-3 rounded-lg border border-border/40">
+            <div className="shrink-0 relative">
+              <ProfileAvatarWithBadge
+                imageUrl={effectiveAvatarUrl}
+                name={characterName}
+                cosmetics={cosmetics}
+                profileRingClassName={previewStyles.profileRingClassName}
+                rankNumber={rankNumber}
+                size="lg"
+              />
+            </div>
+
+            <div className="flex-1 min-w-0 space-y-2 text-center sm:text-left">
+              <p className="text-xs text-muted-foreground">
+                Upload a custom portrait for this character to be used in attending character lists and cards. Uploads are hosted on the Void Wiki and automatically optimized as WebP.
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                <label className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white cursor-pointer transition-colors shadow-sm",
+                  isUploadingAvatar && "opacity-50 pointer-events-none"
+                )}>
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>{isUploadingAvatar ? 'Uploading...' : cosmetics.avatarUrl ? 'Change Portrait' : 'Upload Portrait'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploadingAvatar}
+                    onChange={handleAvatarFileChange}
+                  />
+                </label>
+
+                {cosmetics.avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={isUploadingAvatar}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/30 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Remove Portrait</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-3.5 rounded-lg bg-muted/20 border border-border/40 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                <Lock className="h-4 w-4 text-amber-500" />
+              </div>
+              <div>
+                <span className="font-semibold text-foreground">Custom Character Portraits</span>
+                <p className="text-[11px] text-muted-foreground">
+                  Void Guild Members can upload unique character portraits hosted on the Void Wiki.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

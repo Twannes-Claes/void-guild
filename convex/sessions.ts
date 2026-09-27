@@ -477,6 +477,24 @@ export const getSession = query({
       hasMap = !!firstMap
     }
 
+    const validCharacterDocs = characterDocs.filter((c): c is Doc<'characters'> => c !== null)
+    const userIds = Array.from(new Set(validCharacterDocs.map((c) => c.userId)))
+    const userMap = new Map<string, boolean>()
+    await Promise.all(
+      userIds.map(async (uId) => {
+        const u = await ctx.db
+          .query('users')
+          .withIndex('by_userId', (q) => q.eq('userId', uId))
+          .first()
+        userMap.set(uId, Boolean(u?.isMember))
+      })
+    )
+
+    const attendingCharacters = validCharacterDocs.map((c) => ({
+      ...c,
+      isMember: userMap.get(c.userId) ?? false,
+    }))
+
     return {
       ...session,
       level: computeEffectiveLevel(session, quest),
@@ -485,7 +503,7 @@ export const getSession = query({
       gmCharacter: canManage ? session.gmCharacter : undefined,
       gmCharacterData: gmCharacterData,
       guildmasterCutCharacterData,
-      attendingCharacters: characterDocs.filter((c): c is Doc<'characters'> => c !== null),
+      attendingCharacters,
       isOwner,
       canManage,
       interestedPlayers: session.interestedPlayers || [], // Include interested players

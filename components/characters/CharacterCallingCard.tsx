@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { cn, getLevelBadgeStyle, CharacterRankIcon } from '@/lib/utils'
+import { cn, getLevelBadgeStyle, CharacterRankIcon, getCharacterWikiUrl } from '@/lib/utils'
 import { resolveCosmeticsStyles, CharacterCosmetics } from '@/lib/cosmetics'
 import ProfileAvatarWithBadge from '@/components/characters/ProfileAvatarWithBadge'
 import InSyncPlasmaEffect from '@/components/characters/InSyncPlasmaEffect'
@@ -9,6 +9,7 @@ import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
+import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import { Book } from 'lucide-react'
 
 export interface CharacterCallingCardProps {
@@ -24,6 +25,7 @@ export interface CharacterCallingCardProps {
   cosmetics?: CharacterCosmetics | null
   rankNumber?: number
   streak?: number
+  isMember?: boolean
   isYou?: boolean
   className?: string
   onWikiClick?: () => void
@@ -42,6 +44,7 @@ export default function CharacterCallingCard({
   cosmetics,
   rankNumber,
   streak,
+  isMember = false,
   isYou = false,
   className,
   onWikiClick,
@@ -74,7 +77,7 @@ export default function CharacterCallingCard({
       {/* Left: Avatar & Info */}
       <div className="flex items-center gap-3 min-w-0 relative z-10">
         <ProfileAvatarWithBadge
-          imageUrl={imageUrl}
+          imageUrl={isMember && cosmetics?.avatarUrl ? cosmetics.avatarUrl : imageUrl}
           name={name}
           cosmetics={cosmetics}
           profileRingClassName={styles.profileRingClassName}
@@ -91,13 +94,14 @@ export default function CharacterCallingCard({
               {styles.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
               {name}
             </span>
+            {isMember && <MembershipBadge />}
             {isYou && (
               <span className="text-[10px] bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">
                 You
               </span>
             )}
             <a
-              href={`https://void.tarragon.be/Player-Characters/${name.replace(/\s+/g, '-')}`}
+              href={getCharacterWikiUrl(name)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => {

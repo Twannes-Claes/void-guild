@@ -434,6 +434,7 @@ export interface CharacterCosmetics {
   borderColor?: string
   profileBorder?: string
   bgColor?: string
+  avatarUrl?: string
 }
 
 export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {

@@ -9,7 +9,7 @@ import { ChevronLeft, Crown, Shield, Swords, Book } from 'lucide-react'
 import { useState, useMemo, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@clerk/nextjs'
-import { cn, formatDisplayName } from '@/lib/utils'
+import { cn, formatDisplayName, getCharacterWikiUrl } from '@/lib/utils'
 import { Id } from '@/convex/_generated/dataModel'
 import CharacterDetailsDialog from '@/components/characters/CharacterDetailsDialog'
 
@@ -85,7 +85,7 @@ export default function StatsPage() {
                               <span className="text-[8px] bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">You</span>
                             )}
                             <a 
-                                href={`https://void.tarragon.be/Player-Characters/${char.name.replace(/\s+/g, '-')}`} 
+                                href={getCharacterWikiUrl(char.name)} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="text-muted-foreground hover:text-purple-500 shrink-0"
