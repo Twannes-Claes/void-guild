@@ -68,8 +68,14 @@ export default function CharacterCosmeticsTab({
   isMember = false,
 }: CharacterCosmeticsTabProps) {
   const { user } = useUser()
+  const clerkMember = Boolean(
+    user?.publicMetadata?.isMember === true ||
+    String(user?.publicMetadata?.isMember).toLowerCase() === 'true'
+  )
+  const isEffectiveMember = Boolean(isMember || clerkMember)
+
   const profileImageUrl = user?.imageUrl
-  const effectiveAvatarUrl = (isMember && cosmetics.avatarUrl) ? cosmetics.avatarUrl : profileImageUrl
+  const effectiveAvatarUrl = (isEffectiveMember && cosmetics.avatarUrl) ? cosmetics.avatarUrl : profileImageUrl
   const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
   const rankNumber = (characterId ? characterRanks?.[characterId] : undefined) ?? 1
   const [adminView, setAdminView] = useState(false)
@@ -79,7 +85,7 @@ export default function CharacterCosmeticsTab({
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!isMember) {
+    if (!isEffectiveMember) {
       toast.error('Custom character portraits are an exclusive Void Guild Member benefit!')
       return
     }
@@ -706,7 +712,7 @@ export default function CharacterCosmeticsTab({
           </span>
         </div>
 
-        {isMember ? (
+        {isEffectiveMember ? (
           <div className="flex flex-col sm:flex-row items-center gap-4 bg-muted/20 p-3 rounded-lg border border-border/40">
             <div className="shrink-0 relative">
               <ProfileAvatarWithBadge
