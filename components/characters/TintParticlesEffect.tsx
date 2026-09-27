@@ -28,10 +28,11 @@ export default function TintParticlesEffect({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
     let animationFrameId: number
+    let isVisible = true
     let width = 0
     let height = 0
     let particles: TintParticle[] = []
@@ -40,12 +41,12 @@ export default function TintParticlesEffect({
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
-      canvas.width = width * dpr
-      canvas.height = height * dpr
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
 
@@ -54,16 +55,16 @@ export default function TintParticlesEffect({
 
       // Initialize initial motes
       if (width > 0 && height > 0 && particles.length === 0) {
-        particles = Array.from({ length: 14 }, () => ({
+        particles = Array.from({ length: 10 }, () => ({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.25,
-          vy: -0.15 - Math.random() * 0.3,
+          vx: (Math.random() - 0.5) * 0.2,
+          vy: -0.15 - Math.random() * 0.25,
           life: Math.random() * 50,
           maxLife: 60 + Math.random() * 60,
-          size: 0.8 + Math.random() * 1.5,
-          baseAlpha: 0.35 + Math.random() * 0.35,
-          pulseSpeed: 1.2 + Math.random() * 2.0,
+          size: 0.8 + Math.random() * 1.3,
+          baseAlpha: 0.35 + Math.random() * 0.3,
+          pulseSpeed: 1.2 + Math.random() * 1.8,
           pulseOffset: Math.random() * Math.PI * 2,
         }))
       }
@@ -76,17 +77,28 @@ export default function TintParticlesEffect({
     if (canvas.parentElement) {
       ro.observe(canvas.parentElement)
     }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting
+      },
+      { threshold: 0.05 }
+    )
+    io.observe(canvas)
+
     resize()
 
     let startTime = performance.now()
 
     const render = (now: number) => {
+      animationFrameId = requestAnimationFrame(render)
+      if (!isVisible) return
+
       const elapsed = (now - startTime) * 0.001
 
       ctx.clearRect(0, 0, width, height)
 
       if (width <= 0 || height <= 0) {
-        animationFrameId = requestAnimationFrame(render)
         return
       }
 
@@ -94,17 +106,17 @@ export default function TintParticlesEffect({
       ctx.globalCompositeOperation = 'screen'
 
       // Spawn new subtle motes
-      if (particles.length < 16 && Math.random() < 0.3) {
+      if (particles.length < 10 && Math.random() < 0.25) {
         particles.push({
           x: Math.random() * width,
           y: height + 2,
-          vx: (Math.random() - 0.5) * 0.25,
-          vy: -0.15 - Math.random() * 0.3,
+          vx: (Math.random() - 0.5) * 0.2,
+          vy: -0.15 - Math.random() * 0.25,
           life: 0,
           maxLife: 60 + Math.random() * 60,
-          size: 0.8 + Math.random() * 1.5,
-          baseAlpha: 0.35 + Math.random() * 0.35,
-          pulseSpeed: 1.2 + Math.random() * 2.0,
+          size: 0.8 + Math.random() * 1.3,
+          baseAlpha: 0.35 + Math.random() * 0.3,
+          pulseSpeed: 1.2 + Math.random() * 1.8,
           pulseOffset: Math.random() * Math.PI * 2,
         })
       }
@@ -112,7 +124,7 @@ export default function TintParticlesEffect({
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i]
         p.life++
-        p.x += p.vx + Math.sin(p.life * 0.08) * 0.12
+        p.x += p.vx + Math.sin(p.life * 0.08) * 0.1
         p.y += p.vy
 
         // Wrap or respawn
@@ -127,24 +139,17 @@ export default function TintParticlesEffect({
         const alpha = p.baseAlpha * fadeInOut * (0.6 + pulse * 0.4)
 
         if (variant === 'cyan') {
-          // Cyan ethereal motes
           ctx.fillStyle = `rgba(103, 232, 249, ${alpha})`
-          ctx.shadowColor = `rgba(6, 182, 212, ${alpha * 0.9})`
         } else {
-          // Crimson flame motes
           ctx.fillStyle = `rgba(252, 165, 165, ${alpha})`
-          ctx.shadowColor = `rgba(239, 68, 68, ${alpha * 0.9})`
         }
 
-        ctx.shadowBlur = 4
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size * (0.85 + pulse * 0.25), 0, Math.PI * 2)
         ctx.fill()
       }
 
       ctx.restore()
-
-      animationFrameId = requestAnimationFrame(render)
     }
 
     animationFrameId = requestAnimationFrame(render)
@@ -152,6 +157,7 @@ export default function TintParticlesEffect({
     return () => {
       cancelAnimationFrame(animationFrameId)
       ro.disconnect()
+      io.disconnect()
     }
   }, [variant])
 

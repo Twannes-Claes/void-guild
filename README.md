@@ -29,6 +29,8 @@
 * **Character Website Links:** Characters can have an associated website link, editable by the owner and visible to all in session details.
 * **Interactive World Map & Editor:** Full-screen responsive map canvas supporting multi-map hierarchies with unique URLs (`/world/[worldname]/map/[mapSlug]`), smooth touch pinch/wheel zoom, interactive icon/text pins that can link to other maps, transparent overlay layers with player visibility toggling, polygon area drawing with customizable opacity, hexagonal or square exploration grids with fog of war reveal tools, and player/GM grid cell notes.
 * **Self-Hosted Map Image & Tile Serving:** High-resolution map images and DeepZoom WebP tile sets are served with CORS enabled from a self-hosted Docker + Nginx processor at `https://maps.tarragon.be` to completely bypass database size limits.
+* **Member Perks & Custom Character Portraits:** Users with active memberships display an exclusive dragon head badge next to their character names and can upload custom character portraits (processed and served as optimized WebP via `void.tarragon.be`), which override default profile avatars in session attending lists.
+* **Notification Preferences:** Configurable notification alerts for character level-ups, newly posted sessions, Black Void auction house listings, and open or expiring character bets.
 * **Technologies Used**
 
 * **Next.js:** React framework for building server-rendered and static web applications.
@@ -48,7 +50,9 @@ To ensure scalable, cost-effective database usage and zero-latency real-time upd
 - **Transaction Read/Write Limits**: Max 32,768 read documents (16 MB) and 8,192 written documents (16 MB) per transaction.
 - **Mandatory Indexing**: Queries must use `.withIndex(...)` composite indexes (e.g. `by_userId_achievementId`). Full collection scans (`.collect()`) on unindexed queries are forbidden.
 - **Event-Driven Architecture**: Continuous background `setInterval` polling loops are completely removed. Achievements and user syncs are evaluated strictly on login and triggered immediately upon user interactions.
+- **Batch Query Hydration (No N+1)**: List queries (e.g. `sessions.listSessions`, `sessions.publicListSessions`) collect distinct foreign IDs across all records and batch-fetch parent/child entities via single aggregated `Promise.all` passes, resolving relations in-memory via Maps instead of $O(N)$ repeated roundtrips.
 - **Client-Side Throttling**: Heavy user sync functions (`users.syncUser`) are throttled using a 5-minute `sessionStorage` guard (`void_user_synced_<userId>`) to eliminate redundant calls during SPA route changes.
+- **Canvas & Particle Render Throttling**: Interactive character cosmetics (`InSyncPlasma`, `InfernoFire`, `VoidNebula`, `TintParticles`, `BlazeTextParticles`) use `IntersectionObserver` to automatically halt animation loops when off-screen, cap canvas DPR to 1.5, and remove costly per-particle `shadowBlur` operations to preserve 60 FPS scrolling.
 
 ### Clerk Authentication Limits & Rules
 - **Rate Limit**: Clerk REST APIs enforce a limit of 20 requests/second per IP/instance.

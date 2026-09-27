@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Book, Trash2, Loader2, Sparkles, Flame, Trophy, Star, Users, ExternalLink, Globe, Medal, Crown, Quote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -114,6 +114,15 @@ export default function AttendingCharactersList({
   const logQuoteAction = useAction(api.quotes.logQuote)
   const deleteQuoteMutation = useMutation(api.quotes.deleteQuote)
 
+  const quotesCountByCharacter = useMemo(() => {
+    const map = new Map<string, number>()
+    if (!sessionQuotes) return map
+    for (const q of sessionQuotes) {
+      map.set(q.characterId, (map.get(q.characterId) || 0) + 1)
+    }
+    return map
+  }, [sessionQuotes])
+
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
   const [selectedCharForQuote, setSelectedCharForQuote] = useState<Doc<'characters'> | null>(null)
   const [characterDetailsId, setCharacterDetailsId] = useState<Id<'characters'> | null>(null)
@@ -211,9 +220,9 @@ export default function AttendingCharactersList({
               >
                 <Quote className="h-3 w-3 text-muted-foreground" />
                 <span>Quote</span>
-                {(sessionQuotes?.filter((q) => q.characterId === char._id).length ?? 0) > 0 && (
+                {(quotesCountByCharacter.get(char._id) ?? 0) > 0 && (
                   <span className="ml-0.5 px-1.5 py-0.2 bg-primary/20 text-primary rounded-full text-[8px]">
-                    {sessionQuotes?.filter((q) => q.characterId === char._id).length}
+                    {quotesCountByCharacter.get(char._id)}
                   </span>
                 )}
               </button>

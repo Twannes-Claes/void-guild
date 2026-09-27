@@ -115,27 +115,45 @@ export const listSessions = query({
       return false
     })
 
-    const sessionsWithDetails = await Promise.all(
-      sessions.map(async (session) => {
-        const characterDocs = await Promise.all(
-          (session.characters || []).map((id) => ctx.db.get(id))
-        )
-        const worldDoc = session.world ? await ctx.db.get(session.world as Id<'worlds'>) : null
-        let questDoc = session.questId && !session.isIntro ? await ctx.db.get(session.questId) : null
-        const isWorldOwner = worldDoc && user.subject === worldDoc.owner
-        if (questDoc?.isHidden && !isWorldOwner && !isAdminUser) {
-          questDoc = null
-        }
-        return {
-          ...session,
-          level: computeEffectiveLevel(session, questDoc),
-          worldName: worldDoc ? (worldDoc as Doc<'worlds'>).name : 'Unknown World',
-          characterNames: characterDocs.filter((c): c is Doc<'characters'> => c !== null).map((c) => c.name),
-          isOwner: user.subject === session.owner,
-          quest: questDoc,
-        }
-      })
-    )
+    // Batch-fetch all referenced characters, worlds, and quests to prevent N+1 document reads
+    const allCharIds = Array.from(new Set(sessions.flatMap((s) => s.characters || [])))
+    const allWorldIds = Array.from(new Set(sessions.map((s) => s.world).filter((w): w is Id<'worlds'> => Boolean(w))))
+    const allQuestIds = Array.from(new Set(sessions.map((s) => s.questId).filter((q): q is Id<'quests'> => Boolean(q))))
+
+    const [charDocs, worldDocs, questDocs] = await Promise.all([
+      Promise.all(allCharIds.map((id) => ctx.db.get(id))),
+      Promise.all(allWorldIds.map((id) => ctx.db.get(id))),
+      Promise.all(allQuestIds.map((id) => ctx.db.get(id))),
+    ])
+
+    const charMap = new Map<string, Doc<'characters'>>()
+    charDocs.forEach((c) => { if (c) charMap.set(c._id, c) })
+
+    const worldMap = new Map<string, Doc<'worlds'>>()
+    worldDocs.forEach((w) => { if (w) worldMap.set(w._id, w) })
+
+    const questMap = new Map<string, Doc<'quests'>>()
+    questDocs.forEach((q) => { if (q) questMap.set(q._id, q) })
+
+    const sessionsWithDetails = sessions.map((session) => {
+      const characterDocs = (session.characters || [])
+        .map((id) => charMap.get(id))
+        .filter((c): c is Doc<'characters'> => Boolean(c))
+      const worldDoc = session.world ? worldMap.get(session.world) ?? null : null
+      let questDoc = session.questId && !session.isIntro ? questMap.get(session.questId) ?? null : null
+      const isWorldOwner = worldDoc && user.subject === worldDoc.owner
+      if (questDoc?.isHidden && !isWorldOwner && !isAdminUser) {
+        questDoc = null
+      }
+      return {
+        ...session,
+        level: computeEffectiveLevel(session, questDoc),
+        worldName: worldDoc ? worldDoc.name : 'Unknown World',
+        characterNames: characterDocs.map((c) => c.name),
+        isOwner: user.subject === session.owner,
+        quest: questDoc,
+      }
+    })
 
     return sessionsWithDetails.sort((a, b) => {
       if (args.past) {
@@ -166,26 +184,44 @@ export const publicListSessions = query({
     // Public list strictly excludes private sessions
     const sessions = allSessions.filter(s => !s.isPrivate)
 
-    const sessionsWithDetails = await Promise.all(
-      sessions.map(async (session) => {
-        const characterDocs = await Promise.all(
-          (session.characters || []).map((id) => ctx.db.get(id))
-        )
-        const worldDoc = session.world ? await ctx.db.get(session.world as Id<'worlds'>) : null
-        let questDoc = session.questId && !session.isIntro ? await ctx.db.get(session.questId) : null
-        if (questDoc?.isHidden) {
-          questDoc = null
-        }
-        return {
-          ...session,
-          level: computeEffectiveLevel(session, questDoc),
-          worldName: worldDoc ? (worldDoc as Doc<'worlds'>).name : 'Unknown World',
-          characterNames: characterDocs.filter((c): c is Doc<'characters'> => c !== null).map((c) => c.name),
-          isOwner: false,
-          quest: questDoc,
-        }
-      })
-    )
+    // Batch-fetch all referenced characters, worlds, and quests to prevent N+1 document reads
+    const allCharIds = Array.from(new Set(sessions.flatMap((s) => s.characters || [])))
+    const allWorldIds = Array.from(new Set(sessions.map((s) => s.world).filter((w): w is Id<'worlds'> => Boolean(w))))
+    const allQuestIds = Array.from(new Set(sessions.map((s) => s.questId).filter((q): q is Id<'quests'> => Boolean(q))))
+
+    const [charDocs, worldDocs, questDocs] = await Promise.all([
+      Promise.all(allCharIds.map((id) => ctx.db.get(id))),
+      Promise.all(allWorldIds.map((id) => ctx.db.get(id))),
+      Promise.all(allQuestIds.map((id) => ctx.db.get(id))),
+    ])
+
+    const charMap = new Map<string, Doc<'characters'>>()
+    charDocs.forEach((c) => { if (c) charMap.set(c._id, c) })
+
+    const worldMap = new Map<string, Doc<'worlds'>>()
+    worldDocs.forEach((w) => { if (w) worldMap.set(w._id, w) })
+
+    const questMap = new Map<string, Doc<'quests'>>()
+    questDocs.forEach((q) => { if (q) questMap.set(q._id, q) })
+
+    const sessionsWithDetails = sessions.map((session) => {
+      const characterDocs = (session.characters || [])
+        .map((id) => charMap.get(id))
+        .filter((c): c is Doc<'characters'> => Boolean(c))
+      const worldDoc = session.world ? worldMap.get(session.world) ?? null : null
+      let questDoc = session.questId && !session.isIntro ? questMap.get(session.questId) ?? null : null
+      if (questDoc?.isHidden) {
+        questDoc = null
+      }
+      return {
+        ...session,
+        level: computeEffectiveLevel(session, questDoc),
+        worldName: worldDoc ? worldDoc.name : 'Unknown World',
+        characterNames: characterDocs.map((c) => c.name),
+        isOwner: false,
+        quest: questDoc,
+      }
+    })
 
     return sessionsWithDetails.sort((a, b) => {
         if (args.past) {

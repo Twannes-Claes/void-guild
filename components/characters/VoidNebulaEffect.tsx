@@ -21,10 +21,11 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
     let animationFrameId: number
+    let isVisible = true
     let width = 0
     let height = 0
     let motes: StarMote[] = []
@@ -33,12 +34,12 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
-      canvas.width = width * dpr
-      canvas.height = height * dpr
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
 
@@ -47,16 +48,16 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
 
       // Initialize cosmic dust motes
       if (width > 0 && height > 0 && motes.length === 0) {
-        motes = Array.from({ length: 18 }, () => ({
+        motes = Array.from({ length: 12 }, () => ({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: 0.05 + Math.random() * 0.15,
-          vy: -0.05 - Math.random() * 0.12,
-          size: 0.7 + Math.random() * 1.5,
-          baseAlpha: 0.3 + Math.random() * 0.45,
-          pulseSpeed: 1.5 + Math.random() * 2.5,
+          vx: 0.05 + Math.random() * 0.12,
+          vy: -0.05 - Math.random() * 0.1,
+          size: 0.7 + Math.random() * 1.3,
+          baseAlpha: 0.3 + Math.random() * 0.4,
+          pulseSpeed: 1.5 + Math.random() * 2.0,
           pulseOffset: Math.random() * Math.PI * 2,
-          hue: 270 + Math.random() * 35, // Purple to magenta
+          hue: 270 + Math.random() * 35,
         }))
       }
     }
@@ -68,17 +69,28 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
     if (canvas.parentElement) {
       ro.observe(canvas.parentElement)
     }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting
+      },
+      { threshold: 0.05 }
+    )
+    io.observe(canvas)
+
     resize()
 
     let startTime = performance.now()
 
     const render = (now: number) => {
+      animationFrameId = requestAnimationFrame(render)
+      if (!isVisible) return
+
       const elapsed = (now - startTime) * 0.001
 
       ctx.clearRect(0, 0, width, height)
 
       if (width <= 0 || height <= 0) {
-        animationFrameId = requestAnimationFrame(render)
         return
       }
 
@@ -133,16 +145,12 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
         const alpha = m.baseAlpha * (0.4 + pulse * 0.6)
 
         ctx.fillStyle = `hsla(${m.hue}, 90%, 75%, ${alpha})`
-        ctx.shadowColor = `hsla(${m.hue}, 100%, 80%, ${alpha})`
-        ctx.shadowBlur = 4
         ctx.beginPath()
         ctx.arc(m.x, m.y, m.size * (0.8 + pulse * 0.3), 0, Math.PI * 2)
         ctx.fill()
       }
 
       ctx.restore()
-
-      animationFrameId = requestAnimationFrame(render)
     }
 
     animationFrameId = requestAnimationFrame(render)
@@ -150,6 +158,7 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
     return () => {
       cancelAnimationFrame(animationFrameId)
       ro.disconnect()
+      io.disconnect()
     }
   }, [])
 

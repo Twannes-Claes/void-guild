@@ -21,10 +21,11 @@ export default function InfernoFireEffect({ className }: { className?: string })
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
     let animationFrameId: number
+    let isVisible = true
     let width = 0
     let height = 0
     let particles: FireParticle[] = []
@@ -33,12 +34,12 @@ export default function InfernoFireEffect({ className }: { className?: string })
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
-      canvas.width = width * dpr
-      canvas.height = height * dpr
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
 
@@ -53,6 +54,15 @@ export default function InfernoFireEffect({ className }: { className?: string })
     if (canvas.parentElement) {
       ro.observe(canvas.parentElement)
     }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting
+      },
+      { threshold: 0.05 }
+    )
+    io.observe(canvas)
+
     resize()
 
     let startTime = performance.now()
@@ -66,7 +76,7 @@ export default function InfernoFireEffect({ className }: { className?: string })
       frequency: number,
       colorGrad: CanvasGradient
     ) => {
-      const columns = 28
+      const columns = 16 // Optimized from 28
       const colW = width / columns
 
       ctx.beginPath()
@@ -79,8 +89,7 @@ export default function InfernoFireEffect({ className }: { className?: string })
         // Harmonic flame tongue calculation
         const noise =
           Math.sin(u * Math.PI * frequency + elapsed * speed) * amplitude +
-          Math.cos(u * Math.PI * (frequency * 1.7) - elapsed * (speed * 1.3)) * (amplitude * 0.6) +
-          Math.sin(u * Math.PI * (frequency * 3.1) + elapsed * (speed * 2.2)) * (amplitude * 0.35)
+          Math.cos(u * Math.PI * (frequency * 1.7) - elapsed * (speed * 1.3)) * (amplitude * 0.6)
 
         const y = height - (baseH + noise)
         if (i === 0) {
@@ -99,12 +108,14 @@ export default function InfernoFireEffect({ className }: { className?: string })
     }
 
     const render = (now: number) => {
+      animationFrameId = requestAnimationFrame(render)
+      if (!isVisible) return
+
       const elapsed = (now - startTime) * 0.001
 
       ctx.clearRect(0, 0, width, height)
 
       if (width <= 0 || height <= 0) {
-        animationFrameId = requestAnimationFrame(render)
         return
       }
 
@@ -119,21 +130,21 @@ export default function InfernoFireEffect({ className }: { className?: string })
       ctx.fillStyle = bgGrad
       ctx.fillRect(0, 0, width, height)
 
-      // 2. Outer Crimson Flame Tongues (Tallest, ~75% card height)
+      // 2. Outer Crimson Flame Tongues
       const gradCrimson = ctx.createLinearGradient(0, height * 0.25, 0, height)
       gradCrimson.addColorStop(0, 'rgba(185, 28, 28, 0.35)')
       gradCrimson.addColorStop(0.6, 'rgba(220, 38, 38, 0.25)')
       gradCrimson.addColorStop(1, 'rgba(239, 68, 68, 0)')
       drawFlameLayer(elapsed, 2.6, height * 0.6, height * 0.18, 4.5, gradCrimson)
 
-      // 3. Middle Blazing Orange Flames (~50% card height)
+      // 3. Middle Blazing Orange Flames
       const gradOrange = ctx.createLinearGradient(0, height * 0.45, 0, height)
       gradOrange.addColorStop(0, 'rgba(249, 115, 22, 0.45)')
       gradOrange.addColorStop(0.6, 'rgba(234, 88, 12, 0.35)')
       gradOrange.addColorStop(1, 'rgba(180, 40, 0, 0.1)')
       drawFlameLayer(elapsed, 3.4, height * 0.42, height * 0.14, 6.0, gradOrange)
 
-      // 4. Core Hot White-Yellow Flame Tongue Filament (~30% card height)
+      // 4. Core Hot White-Yellow Flame Tongue Filament
       const gradCore = ctx.createLinearGradient(0, height * 0.65, 0, height)
       gradCore.addColorStop(0, 'rgba(255, 250, 200, 0.65)')
       gradCore.addColorStop(0.4, 'rgba(253, 224, 71, 0.45)')
@@ -141,24 +152,24 @@ export default function InfernoFireEffect({ className }: { className?: string })
       drawFlameLayer(elapsed, 4.2, height * 0.25, height * 0.09, 7.5, gradCore)
 
       // 5. Rising Ember Particles
-      if (particles.length < 24 && Math.random() < 0.75) {
+      if (particles.length < 12 && Math.random() < 0.5) {
         particles.push({
           x: Math.random() * width,
           y: height - Math.random() * (height * 0.25),
-          vx: (Math.random() - 0.5) * 0.5,
-          vy: -0.6 - Math.random() * 0.9,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.6 - Math.random() * 0.8,
           life: 0,
-          maxLife: 30 + Math.random() * 35,
-          size: 0.9 + Math.random() * 2.0,
+          maxLife: 25 + Math.random() * 30,
+          size: 0.9 + Math.random() * 1.8,
           baseAlpha: 0.6 + Math.random() * 0.35,
-          hue: 15 + Math.random() * 28, // Fiery orange to gold
+          hue: 15 + Math.random() * 28,
         })
       }
 
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i]
         p.life++
-        p.x += p.vx + Math.sin(p.life * 0.15) * 0.25
+        p.x += p.vx + Math.sin(p.life * 0.15) * 0.2
         p.y += p.vy
         p.size *= 0.98
 
@@ -170,16 +181,12 @@ export default function InfernoFireEffect({ className }: { className?: string })
 
         const alpha = p.baseAlpha * (1 - progress)
         ctx.fillStyle = `hsla(${p.hue}, 95%, 60%, ${alpha})`
-        ctx.shadowColor = `hsla(${p.hue}, 100%, 70%, ${alpha})`
-        ctx.shadowBlur = 5
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
         ctx.fill()
       }
 
       ctx.restore()
-
-      animationFrameId = requestAnimationFrame(render)
     }
 
     animationFrameId = requestAnimationFrame(render)
@@ -187,6 +194,7 @@ export default function InfernoFireEffect({ className }: { className?: string })
     return () => {
       cancelAnimationFrame(animationFrameId)
       ro.disconnect()
+      io.disconnect()
     }
   }, [])
 
