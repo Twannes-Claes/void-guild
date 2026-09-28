@@ -23,6 +23,7 @@ import { useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { getLevelBadgeStyle, CharacterRankIcon, cn } from '@/lib/utils'
 import ProfileAvatarWithBadge from '@/components/characters/ProfileAvatarWithBadge'
+import { renderCosmeticLetters } from '@/components/characters/CosmeticText'
 import InSyncPlasmaEffect from '@/components/characters/InSyncPlasmaEffect'
 import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
@@ -373,7 +374,7 @@ export default function CharacterCosmeticsTab({
               <div className="font-bold flex items-center gap-2">
                 <span className={cn('break-words relative', previewStyles.nameClassName)} style={previewStyles.nameStyle}>
                   {previewStyles.nameClassName.includes('blaze-fire-text') && <BlazeTextParticles />}
-                  {characterName || 'Character Name'}
+                  {renderCosmeticLetters(characterName || 'Character Name', previewStyles.nameClassName)}
                 </span>
                 {isMember && <MembershipBadge />}
                 <span className="text-[10px] bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">
@@ -383,18 +384,19 @@ export default function CharacterCosmeticsTab({
               {title ? (
                 <div className={cn('relative', previewStyles.titleClassName)} style={previewStyles.titleStyle}>
                   {previewStyles.titleClassName.includes('blaze-fire-text') && <BlazeTextParticles />}
-                  {title}
+                  {renderCosmeticLetters(title, previewStyles.titleClassName)}
                 </div>
               ) : (
                 <div className={cn('relative', previewStyles.titleClassName)} style={previewStyles.titleStyle}>
                   {previewStyles.titleClassName.includes('blaze-fire-text') && <BlazeTextParticles />}
-                  The Wanderer <span className="text-[9px] opacity-60 font-normal tracking-tight">(Sample Title)</span>
+                  {renderCosmeticLetters('The Wanderer', previewStyles.titleClassName)}{' '}
+                  <span className="text-[9px] opacity-60 font-normal tracking-tight">(Sample Title)</span>
                 </div>
               )}
               <div className="text-[10px] text-muted-foreground mt-0.5">
                 <span className={cn('relative', previewStyles.subtitleClassName)} style={previewStyles.subtitleStyle}>
                   {previewStyles.subtitleClassName.includes('blaze-fire-text') && <BlazeTextParticles />}
-                  {ancestry || 'Ancestry'} {characterClass || 'Class'}
+                  {renderCosmeticLetters(`${ancestry || 'Ancestry'} ${characterClass || 'Class'}`, previewStyles.subtitleClassName)}
                 </span>
               </div>
             </div>

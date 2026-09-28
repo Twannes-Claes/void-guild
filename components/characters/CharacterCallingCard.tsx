@@ -3,6 +3,7 @@
 import React from 'react'
 import { cn, getLevelBadgeStyle, CharacterRankIcon, getCharacterWikiUrl } from '@/lib/utils'
 import { resolveCosmeticsStyles, CharacterCosmetics } from '@/lib/cosmetics'
+import { renderCosmeticLetters } from '@/components/characters/CosmeticText'
 import ProfileAvatarWithBadge from '@/components/characters/ProfileAvatarWithBadge'
 import InSyncPlasmaEffect from '@/components/characters/InSyncPlasmaEffect'
 import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
@@ -96,7 +97,7 @@ export default function CharacterCallingCard({
               style={styles.nameStyle}
             >
               {styles.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-              {name}
+              {renderCosmeticLetters(name, styles.nameClassName)}
             </span>
             {isMember && <MembershipBadge />}
             {isYou && (
@@ -125,7 +126,7 @@ export default function CharacterCallingCard({
               style={styles.titleStyle}
             >
               {styles.titleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-              {title}
+              {renderCosmeticLetters(title, styles.titleClassName)}
             </div>
           )}
 
@@ -135,7 +136,7 @@ export default function CharacterCallingCard({
               style={styles.subtitleStyle}
             >
               {styles.subtitleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-              {[ancestry, characterClass].filter(Boolean).join(' ')}
+              {renderCosmeticLetters([ancestry, characterClass].filter(Boolean).join(' '), styles.subtitleClassName)}
             </div>
           )}
 

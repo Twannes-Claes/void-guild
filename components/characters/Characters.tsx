@@ -32,6 +32,7 @@ import AdminCharacterList from './AdminCharacterList'
 import AdminUserList from './AdminUserList'
 import CharacterDetailsDialog from './CharacterDetailsDialog'
 import ProfileAvatarWithBadge from './ProfileAvatarWithBadge'
+import { renderCosmeticLetters } from './CosmeticText'
 import { MembershipBadge } from './MembershipBadge'
 import InSyncPlasmaEffect from './InSyncPlasmaEffect'
 import BlazeTextParticles from './BlazeTextParticles'
@@ -212,7 +213,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                                 style={cosmetics.nameStyle}
                               >
                                 {cosmetics.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                                {character.name}
+                                {renderCosmeticLetters(character.name, cosmetics.nameClassName)}
                               </span>
                               {isCharMember && <MembershipBadge />}
                               <a
@@ -231,7 +232,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                             {character.title && (
                               <span className={cn('relative truncate text-xs', cosmetics.titleClassName)} style={cosmetics.titleStyle}>
                                 {cosmetics.titleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                                {character.title}
+                                {renderCosmeticLetters(character.title, cosmetics.titleClassName)}
                               </span>
                             )}
                             <span
@@ -239,7 +240,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                               style={cosmetics.subtitleStyle}
                             >
                               {cosmetics.subtitleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                              {character.ancestry} {character.class}
+                              {renderCosmeticLetters(`${character.ancestry || ''} ${character.class || ''}`.trim(), cosmetics.subtitleClassName)}
                             </span>
                             {character.websiteLink && (
                               <a

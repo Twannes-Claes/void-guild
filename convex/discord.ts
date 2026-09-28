@@ -246,6 +246,18 @@ export const syncSessionToDiscord = internalAction({
             embeds: [embed] 
           }),
         });
+
+        // Ensure root message is pinned in the forum thread
+        try {
+          await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}/pins/${session.discordThreadId}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bot ${botToken}`,
+            },
+          });
+        } catch (pinErr) {
+          console.warn("Could not pin root message on thread update:", pinErr);
+        }
       } catch (e) {
         console.error("Failed to update Discord thread:", e);
       }
@@ -308,6 +320,18 @@ export const syncSessionToDiscord = internalAction({
             sessionId: args.sessionId,
             threadId: thread.id,
           });
+
+          // Pin the root/first message in the forum thread (message ID is thread.id)
+          try {
+            await fetch(`${DISCORD_API_BASE}/channels/${thread.id}/pins/${thread.id}`, {
+              method: "PUT",
+              headers: {
+                Authorization: `Bot ${botToken}`,
+              },
+            });
+          } catch (pinErr) {
+            console.error("Failed to pin root message in newly created forum thread:", pinErr);
+          }
         } else {
           const err = await response.text();
           console.error("Discord API error:", err);

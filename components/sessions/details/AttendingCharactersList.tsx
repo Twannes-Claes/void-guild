@@ -22,6 +22,7 @@ import { useUser } from '@clerk/nextjs'
 import { api } from '@/convex/_generated/api'
 import { toast } from 'sonner'
 import { resolveCosmeticsStyles } from '@/lib/cosmetics'
+import { renderCosmeticLetters } from '@/components/characters/CosmeticText'
 import ProfileAvatarWithBadge from '@/components/characters/ProfileAvatarWithBadge'
 import InSyncPlasmaEffect from '@/components/characters/InSyncPlasmaEffect'
 import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
@@ -540,7 +541,7 @@ export default function AttendingCharactersList({
                           title={`View ${char.name}'s Profile`}
                         >
                           {cosmeticsStyles.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                          {char.name}
+                          {renderCosmeticLetters(char.name, cosmeticsStyles.nameClassName)}
                         </button>
                         {Boolean((char as any).isMember || metadata?.isMember) && <MembershipBadge />}
                         {isUserCharacter && <span className="text-[10px] bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">You</span>}
@@ -561,13 +562,13 @@ export default function AttendingCharactersList({
                     {char.title && (
                       <div className={cn("relative", cosmeticsStyles.titleClassName)} style={cosmeticsStyles.titleStyle}>
                         {cosmeticsStyles.titleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                        {char.title}
+                        {renderCosmeticLetters(char.title, cosmeticsStyles.titleClassName)}
                       </div>
                     )}
                     <div className="text-[10px] text-muted-foreground mt-1 whitespace-normal flex items-center flex-wrap gap-1.5">
                       <span className={cn("relative", cosmeticsStyles.subtitleClassName)} style={cosmeticsStyles.subtitleStyle}>
                         {cosmeticsStyles.subtitleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                        {char.ancestry} {char.class}
+                        {renderCosmeticLetters(`${char.ancestry || ''} ${char.class || ''}`.trim(), cosmeticsStyles.subtitleClassName)}
                       </span>
 
                       {hasUserSignedUp && rel && (

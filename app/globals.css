@@ -146,28 +146,31 @@
 .font-kobold {
   font-family: var(--font-unifraktur), var(--font-medieval-sharp), cursive, serif !important;
   font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
-  display: inline-block;
-  filter: url(#kobold-letter-shift);
-  animation: kobold-smooth-drift 5s ease-in-out infinite alternate !important;
-  will-change: transform, filter;
+  letter-spacing: 0.05em !important;
 }
 
-@keyframes kobold-smooth-drift {
+.kobold-letter {
+  display: inline-block !important;
+  animation: kobold-letter-float 3.6s ease-in-out infinite alternate !important;
+  will-change: transform;
+  filter: url(#kobold-letter-shift);
+}
+
+@keyframes kobold-letter-float {
   0% {
-    transform: translateY(0px) rotate(0deg) skewX(0deg);
+    transform: translateY(0px) rotate(0deg) scale(1);
   }
   25% {
-    transform: translateY(-0.75px) rotate(0.35deg) skewX(0.2deg);
+    transform: translateY(-2px) rotate(1.4deg) scale(1.02);
   }
   50% {
-    transform: translateY(0.5px) rotate(-0.25deg) skewX(-0.3deg);
+    transform: translateY(1.2px) rotate(-1.2deg) scale(0.99);
   }
   75% {
-    transform: translateY(-0.5px) rotate(-0.35deg) skewX(0.25deg);
+    transform: translateY(-1.5px) rotate(-1.8deg) scale(1.01);
   }
   100% {
-    transform: translateY(0.75px) rotate(0.25deg) skewX(-0.2deg);
+    transform: translateY(1.8px) rotate(1.2deg) scale(0.98);
   }
 }
 

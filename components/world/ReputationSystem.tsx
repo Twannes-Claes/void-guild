@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { resolveCosmeticsStyles } from '@/lib/cosmetics'
+import { renderCosmeticLetters } from '@/components/characters/CosmeticText'
 import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 
 interface ReputationCellProps {
@@ -866,7 +867,7 @@ export default function ReputationSystem({
                                                  <div className="flex items-center flex-wrap gap-2 min-w-0">
                                                      <span className={cn("font-bold text-sm tracking-tight break-words relative", cosmetics.nameClassName)} style={cosmetics.nameStyle}>
                                                          {cosmetics.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                                                         {char.name}
+                                                         {renderCosmeticLetters(char.name, cosmetics.nameClassName)}
                                                      </span>
                                                      <span
                                                          className="inline-flex items-center justify-center rounded-full w-4 h-4 text-[8px] font-bold shrink-0"
@@ -878,12 +879,12 @@ export default function ReputationSystem({
                                                  {char.title && (
                                                      <span className={cn("text-[9px] whitespace-normal relative", cosmetics.titleClassName)} style={cosmetics.titleStyle}>
                                                          {cosmetics.titleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                                                         {char.title}
+                                                         {renderCosmeticLetters(char.title, cosmetics.titleClassName)}
                                                      </span>
                                                  )}
                                                  <span className={cn("text-[9px] text-muted-foreground uppercase tracking-widest font-medium whitespace-normal relative", cosmetics.subtitleClassName)} style={cosmetics.subtitleStyle}>
                                                      {cosmetics.subtitleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                                                     {char.class}
+                                                     {renderCosmeticLetters(char.class, cosmetics.subtitleClassName)}
                                                  </span>
                                              </div>
                                          </td>
