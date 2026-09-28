@@ -24,7 +24,15 @@ export async function POST(req: NextRequest) {
     const uploadFormData = new FormData()
     uploadFormData.append('file', file, file.name)
 
-    const apiKey = process.env.VOID_WIKI_API_KEY || '4ad0c9f9390ac19aad574367e6fbcf026210fc99a137b984'
+    const apiKey = process.env.VOID_WIKI_API_KEY
+    if (!apiKey) {
+      console.error('VOID_WIKI_API_KEY environment variable is not configured')
+      return NextResponse.json(
+        { error: 'Server configuration error: Upload service is not configured' },
+        { status: 500 }
+      )
+    }
+
     const response = await fetch('https://void.tarragon.be/api/upload', {
       method: 'POST',
       headers: {
