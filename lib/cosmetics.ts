@@ -186,6 +186,22 @@ export const COLOR_OPTIONS: CosmeticOption[] = [
     value: 'blaze-fire-text',
     previewClass: 'blaze-fire-text font-extrabold',
   },
+  {
+    id: 'platinum_text',
+    name: 'Lustrous Platinum Gradient',
+    unlockedByDefault: false,
+    requiredAchievementId: 'black_void_bet_create',
+    value: 'platinum-text',
+    previewClass: 'platinum-text font-extrabold',
+  },
+  {
+    id: 'velvet_violet_text',
+    name: 'Velvet Red-Purple Gradient',
+    unlockedByDefault: false,
+    requiredAchievementId: 'black_void_bet_accept',
+    value: 'velvet-violet-text',
+    previewClass: 'velvet-violet-text font-extrabold',
+  },
 ]
 
 export const BORDER_SHAPE_OPTIONS: CosmeticOption[] = [
@@ -253,6 +269,14 @@ export const BORDER_SHAPE_OPTIONS: CosmeticOption[] = [
     requiredAchievementId: 'create_character_quest',
     value: 'rounded-lg quest-beacon-border',
     previewClass: 'quest-beacon-border rounded-lg p-1',
+  },
+  {
+    id: 'jackpot_border',
+    name: 'Lucky Jackpot Neon Border 🎰',
+    unlockedByDefault: false,
+    requiredAchievementId: 'black_void_bet_win',
+    value: 'rounded-lg jackpot-card-border',
+    previewClass: 'jackpot-card-border rounded-lg p-1',
   },
 ]
 
@@ -455,6 +479,13 @@ export const BG_COLOR_OPTIONS: CosmeticOption[] = [
     requiredAchievementId: 'black_void_service_listing',
     value: 'arcane-runes-bg',
   },
+  {
+    id: 'phantom_smoke_bg',
+    name: 'Phantom Cold Smoke Tint',
+    unlockedByDefault: false,
+    requiredAchievementId: 'black_void_bet_lose',
+    value: 'phantom-smoke-bg',
+  },
 ]
 
 export interface CharacterCosmetics {
@@ -520,7 +551,8 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     cardClassName.includes('bronze-card-border') ||
     cardClassName.includes('purple-card-border') ||
     cardClassName.includes('in-sync-card-border') ||
-    cardClassName.includes('quest-beacon-border')
+    cardClassName.includes('quest-beacon-border') ||
+    cardClassName.includes('jackpot-card-border')
 
   if (bgObj?.value === 'gold-bg-tint' || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') {
     if (isGradientBorder) {
@@ -598,6 +630,15 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     } else {
       cardClassName = cardClassName ? `${cardClassName} arcane-runes-bg` : 'arcane-runes-bg'
     }
+  } else if (bgObj?.value === 'phantom-smoke-bg' || cosmetics.bgColor === 'phantom_smoke_bg' || cosmetics.bgColor === 'phantom-smoke-bg') {
+    if (isGradientBorder) {
+      const smokePaddingLayer =
+        'radial-gradient(ellipse at 50% 100%, rgba(15, 23, 42, 0.45) 0%, rgba(30, 41, 59, 0.2) 65%, transparent 100%), linear-gradient(var(--card), var(--card))'
+      cardBgStyle = { '--card-bg': smokePaddingLayer } as React.CSSProperties
+      cardClassName = cardClassName ? `${cardClassName} phantom-smoke-bg` : 'phantom-smoke-bg'
+    } else {
+      cardClassName = cardClassName ? `${cardClassName} phantom-smoke-bg` : 'phantom-smoke-bg'
+    }
   } else if (bgObj && bgObj.value) {
     if (isGradientBorder) {
       const tintPaddingLayer = `linear-gradient(${bgObj.value}, ${bgObj.value}), linear-gradient(var(--card), var(--card))`
@@ -639,6 +680,12 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
   } else if (colorObj?.value === 'blaze-fire-text' || cosmetics.nameColor === 'blaze_text' || cosmetics.nameColor === 'blaze-fire-text') {
     nameClassName = nameClassName ? `${nameClassName} blaze-fire-text font-extrabold` : 'blaze-fire-text font-extrabold'
     nameStyle = {}
+  } else if (colorObj?.value === 'platinum-text' || cosmetics.nameColor === 'platinum_text' || cosmetics.nameColor === 'platinum-text') {
+    nameClassName = nameClassName ? `${nameClassName} platinum-text font-extrabold` : 'platinum-text font-extrabold'
+    nameStyle = {}
+  } else if (colorObj?.value === 'velvet-violet-text' || cosmetics.nameColor === 'velvet_violet_text' || cosmetics.nameColor === 'velvet-violet-text') {
+    nameClassName = nameClassName ? `${nameClassName} velvet-violet-text font-extrabold` : 'velvet-violet-text font-extrabold'
+    nameStyle = {}
   } else if (colorObj?.value) {
     nameStyle = { color: colorObj.value }
   } else if (cosmetics.nameColor) {
@@ -660,6 +707,12 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     titleStyle = {}
   } else if (titleColorObj?.value === 'blaze-fire-text' || cosmetics.titleColor === 'blaze_text' || cosmetics.titleColor === 'blaze-fire-text') {
     titleClassName = `${titleClassName} blaze-fire-text font-bold`
+    titleStyle = {}
+  } else if (titleColorObj?.value === 'platinum-text' || cosmetics.titleColor === 'platinum_text' || cosmetics.titleColor === 'platinum-text') {
+    titleClassName = `${titleClassName} platinum-text font-bold`
+    titleStyle = {}
+  } else if (titleColorObj?.value === 'velvet-violet-text' || cosmetics.titleColor === 'velvet_violet_text' || cosmetics.titleColor === 'velvet-violet-text') {
+    titleClassName = `${titleClassName} velvet-violet-text font-bold`
     titleStyle = {}
   } else if (titleColorObj && titleColorObj.id !== 'default' && titleColorObj.value) {
     titleStyle = { color: titleColorObj.value }
@@ -685,6 +738,12 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     subtitleStyle = {}
   } else if (subColorObj?.value === 'blaze-fire-text' || cosmetics.subtitleColor === 'blaze_text' || cosmetics.subtitleColor === 'blaze-fire-text') {
     subtitleClassName = `${subtitleClassName} blaze-fire-text font-semibold`
+    subtitleStyle = {}
+  } else if (subColorObj?.value === 'platinum-text' || cosmetics.subtitleColor === 'platinum_text' || cosmetics.subtitleColor === 'platinum-text') {
+    subtitleClassName = `${subtitleClassName} platinum-text font-semibold`
+    subtitleStyle = {}
+  } else if (subColorObj?.value === 'velvet-violet-text' || cosmetics.subtitleColor === 'velvet_violet_text' || cosmetics.subtitleColor === 'velvet-violet-text') {
+    subtitleClassName = `${subtitleClassName} velvet-violet-text font-semibold`
     subtitleStyle = {}
   } else if (subColorObj && subColorObj.id !== 'default' && subColorObj.value) {
     subtitleStyle = { color: subColorObj.value, opacity: 0.8 }

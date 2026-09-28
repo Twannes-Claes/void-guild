@@ -519,7 +519,7 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     title: 'High Roller',
     description: 'Created a Deathroll wager in The Black Void with your character.',
     category: 'hidden',
-    reward: '',
+    reward: 'Lustrous Platinum Gradient Text Color Cosmetic',
     checkEligibility: (data) => data.hasCreatedBet,
   },
   {
@@ -527,7 +527,7 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     title: 'Challenge Accepted',
     description: 'Accepted a Deathroll wager in The Black Void with your character.',
     category: 'hidden',
-    reward: '',
+    reward: 'Velvet Red-Purple Gradient Text Color Cosmetic',
     checkEligibility: (data) => data.hasAcceptedBet,
   },
   {
@@ -535,7 +535,7 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     title: "Fortune's Favor",
     description: 'Won a Deathroll bet in The Black Void with your character.',
     category: 'hidden',
-    reward: '',
+    reward: 'Lucky Jackpot Neon Card Border Cosmetic',
     checkEligibility: (data) => data.hasWonBet,
   },
   {
@@ -543,7 +543,7 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     title: 'Snake Eyes',
     description: 'Lost a Deathroll bet in The Black Void with your character.',
     category: 'hidden',
-    reward: '',
+    reward: 'Phantom Cold Smoke Background Tint Cosmetic',
     checkEligibility: (data) => data.hasLostBet,
   },
 ]

@@ -31,6 +31,7 @@ import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
 import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
 import ArcaneRunesEffect from '@/components/characters/ArcaneRunesEffect'
+import PhantomSmokeEffect from '@/components/characters/PhantomSmokeEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import CharacterDetailsDialog from '@/components/characters/CharacterDetailsDialog'
 
@@ -516,6 +517,9 @@ export default function AttendingCharactersList({
               )}
               {(cosmeticsStyles.cardClassName.includes('arcane-runes') || char.cosmetics?.bgColor === 'arcane_runes_bg' || char.cosmetics?.bgColor === 'arcane-runes-bg') && (
                 <ArcaneRunesEffect />
+              )}
+              {(cosmeticsStyles.cardClassName.includes('phantom-smoke') || char.cosmetics?.bgColor === 'phantom_smoke_bg' || char.cosmetics?.bgColor === 'phantom-smoke-bg') && (
+                <PhantomSmokeEffect />
               )}
               <div className="flex items-start sm:items-center justify-between gap-3 min-w-0 relative z-10 w-full sm:w-auto">
                 <div className="flex items-center gap-3 min-w-0">

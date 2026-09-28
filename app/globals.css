@@ -664,6 +664,124 @@
   }
 }
 
+/* Lustrous Platinum Gradient Text (High Roller - black_void_bet_create) */
+.platinum-text {
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 30%, #f8fafc 55%, #94a3b8 80%, #ffffff 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  font-weight: 800 !important;
+  filter: drop-shadow(0 1px 3px rgba(148, 163, 184, 0.45)) drop-shadow(0 0 8px rgba(248, 250, 252, 0.35)) !important;
+  animation: platinum-shine 4s ease-in-out infinite alternate !important;
+}
+
+@keyframes platinum-shine {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Velvet Red-Purple Gradient Text (Challenge Accepted - black_void_bet_accept) */
+.velvet-violet-text {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 25%, #c026d3 60%, #9333ea 85%, #f43f5e 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  font-weight: 800 !important;
+  filter: drop-shadow(0 1px 3px rgba(225, 29, 72, 0.5)) drop-shadow(0 0 8px rgba(192, 38, 211, 0.4)) !important;
+  animation: velvet-violet-pulse 3.5s ease-in-out infinite alternate !important;
+}
+
+@keyframes velvet-violet-pulse {
+  0% { background-position: 0% 50%; filter: drop-shadow(0 1px 2px rgba(225, 29, 72, 0.4)) drop-shadow(0 0 6px rgba(192, 38, 211, 0.3)); }
+  100% { background-position: 100% 50%; filter: drop-shadow(0 1px 4px rgba(225, 29, 72, 0.7)) drop-shadow(0 0 12px rgba(192, 38, 211, 0.6)); }
+}
+
+/* Lucky Jackpot Neon Card Border (Fortune's Favor - black_void_bet_win) */
+@property --jackpot-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.jackpot-card-border {
+  position: relative !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4), inset 0 0 8px rgba(5, 150, 105, 0.2) !important;
+  animation: jackpot-glow-pulse 2.8s ease-in-out infinite alternate !important;
+}
+
+.jackpot-card-border::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: -2.5px !important;
+  border-radius: inherit !important;
+  padding: 2.5px !important;
+  background: conic-gradient(
+    from var(--jackpot-angle, 0deg),
+    #064e3b 0%,
+    #059669 20%,
+    #10b981 35%,
+    #6ee7b7 48%,
+    #ffffff 50%,
+    #fef08a 54%,
+    #10b981 65%,
+    #059669 85%,
+    #064e3b 100%
+  ) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  animation: jackpot-rotate 3.2s linear infinite !important;
+  will-change: --jackpot-angle !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.85)) drop-shadow(0 0 16px rgba(52, 211, 153, 0.6)) !important;
+}
+
+/* Sparkling 4-point diamond star corner glints */
+.jackpot-card-border::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: -4px !important;
+  border-radius: inherit !important;
+  padding: 4px !important;
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.95) 0%, rgba(110, 231, 183, 0.7) 12%, transparent 24%),
+              radial-gradient(circle at top right, rgba(255, 255, 255, 0.95) 0%, rgba(110, 231, 183, 0.7) 12%, transparent 24%),
+              radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.95) 0%, rgba(110, 231, 183, 0.7) 12%, transparent 24%),
+              radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.95) 0%, rgba(110, 231, 183, 0.7) 12%, transparent 24%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  animation: jackpot-star-twinkle 2.2s ease-in-out infinite alternate !important;
+  pointer-events: none !important;
+  z-index: 9 !important;
+}
+
+.jackpot-card-border[data-selected="true"] {
+  background: linear-gradient(#022c22, #022c22) padding-box !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.85), 0 0 34px rgba(52, 211, 153, 0.65) !important;
+}
+
+@keyframes jackpot-rotate {
+  0% { --jackpot-angle: 0deg; }
+  100% { --jackpot-angle: 360deg; }
+}
+
+@keyframes jackpot-glow-pulse {
+  0% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.35), inset 0 0 6px rgba(5, 150, 105, 0.15); }
+  100% { box-shadow: 0 0 24px rgba(16, 185, 129, 0.75), inset 0 0 12px rgba(5, 150, 105, 0.35); }
+}
+
+@keyframes jackpot-star-twinkle {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
 /* Guildmaster Metallic Gold Cosmetics */
 .gold-text {
   background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 45%, #AA771C 100%) !important;

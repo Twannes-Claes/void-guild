@@ -12,6 +12,7 @@ import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
 import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
 import ArcaneRunesEffect from '@/components/characters/ArcaneRunesEffect'
+import PhantomSmokeEffect from '@/components/characters/PhantomSmokeEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import { Book } from 'lucide-react'
 
@@ -82,6 +83,9 @@ export default function CharacterCallingCard({
       {(styles.cardClassName.includes('arcane-runes') ||
         cosmetics?.bgColor === 'arcane_runes_bg' ||
         cosmetics?.bgColor === 'arcane-runes-bg') && <ArcaneRunesEffect />}
+      {(styles.cardClassName.includes('phantom-smoke') ||
+        cosmetics?.bgColor === 'phantom_smoke_bg' ||
+        cosmetics?.bgColor === 'phantom-smoke-bg') && <PhantomSmokeEffect />}
 
       {/* Left: Avatar & Info */}
       <div className="flex items-center gap-3 min-w-0 relative z-10">

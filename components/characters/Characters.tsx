@@ -41,6 +41,7 @@ import InfernoFireEffect from './InfernoFireEffect'
 import TintParticlesEffect from './TintParticlesEffect'
 import FallingCoinsEffect from './FallingCoinsEffect'
 import ArcaneRunesEffect from './ArcaneRunesEffect'
+import PhantomSmokeEffect from './PhantomSmokeEffect'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getLevelBadgeStyle, CharacterRankIcon, getXPBarStyles, cn, getCharacterWikiUrl } from '@/lib/utils'
 import { track } from '@vercel/analytics'
@@ -197,6 +198,9 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                       )}
                       {(cosmetics.cardClassName.includes('arcane-runes') || character.cosmetics?.bgColor === 'arcane_runes_bg' || character.cosmetics?.bgColor === 'arcane-runes-bg') && (
                         <ArcaneRunesEffect />
+                      )}
+                      {(cosmetics.cardClassName.includes('phantom-smoke') || character.cosmetics?.bgColor === 'phantom_smoke_bg' || character.cosmetics?.bgColor === 'phantom-smoke-bg') && (
+                        <PhantomSmokeEffect />
                       )}
                       <div className="flex justify-between items-center w-full relative z-10 min-w-0">
                         <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
