@@ -13,6 +13,9 @@ import {
   Upload,
   ImageIcon,
   Trash2,
+  Link2,
+  ExternalLink,
+  Globe,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUser } from '@clerk/nextjs'
@@ -83,6 +86,8 @@ export default function CharacterCosmeticsTab({
   const rankNumber = (characterId ? characterRanks?.[characterId] : undefined) ?? 1
   const [adminView, setAdminView] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isUrlModalOpen, setIsUrlModalOpen] = useState(false)
+  const [customUrlInput, setCustomUrlInput] = useState('')
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -134,6 +139,24 @@ export default function CharacterCosmeticsTab({
       // reset file input
       e.target.value = ''
     }
+  }
+
+  const handleApplyCustomUrl = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    let trimmed = customUrlInput.trim()
+    if (!trimmed) {
+      toast.error('Please enter an image URL')
+      return
+    }
+    if (trimmed.startsWith('/')) {
+      trimmed = `https://void.tarragon.be${trimmed}`
+    }
+    onChangeCosmetics((prev) => ({
+      ...prev,
+      avatarUrl: trimmed,
+    }))
+    setIsUrlModalOpen(false)
+    toast.success('Character portrait link set successfully!')
   }
 
   const handleRemoveAvatar = () => {
@@ -739,7 +762,7 @@ export default function CharacterCosmeticsTab({
                   isUploadingAvatar && "opacity-50 pointer-events-none"
                 )}>
                   <Upload className="h-3.5 w-3.5" />
-                  <span>{isUploadingAvatar ? 'Uploading...' : cosmetics.avatarUrl ? 'Change Portrait' : 'Upload Portrait'}</span>
+                  <span>{isUploadingAvatar ? 'Uploading...' : cosmetics.avatarUrl ? 'Upload New' : 'Upload Portrait'}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -748,6 +771,19 @@ export default function CharacterCosmeticsTab({
                     onChange={handleAvatarFileChange}
                   />
                 </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomUrlInput(cosmetics.avatarUrl || '')
+                    setIsUrlModalOpen((prev) => !prev)
+                  }}
+                  disabled={isUploadingAvatar}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-card hover:bg-muted text-foreground border border-border/80 transition-colors shadow-sm"
+                >
+                  <Link2 className="h-3.5 w-3.5 text-purple-400" />
+                  <span>Browse / Wiki Link</span>
+                </button>
 
                 {cosmetics.avatarUrl && (
                   <button
@@ -761,6 +797,55 @@ export default function CharacterCosmeticsTab({
                   </button>
                 )}
               </div>
+
+              {isUrlModalOpen && (
+                <div className="mt-3 p-3 rounded-md bg-background/90 border border-purple-500/30 space-y-2.5 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5 text-purple-400" />
+                      Link Image from Void Wiki or Web
+                    </span>
+                    <a
+                      href="https://void.tarragon.be"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-300 hover:underline"
+                    >
+                      <span>Open Void Wiki</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    Paste an image URL from the Void Wiki (e.g. <span className="font-mono text-[10px] text-purple-300">https://void.tarragon.be/...</span> or <span className="font-mono text-[10px] text-purple-300">/uploads/...</span>) or any public image URL.
+                  </p>
+
+                  <form onSubmit={handleApplyCustomUrl} className="flex flex-col sm:flex-row items-center gap-2">
+                    <input
+                      type="text"
+                      value={customUrlInput}
+                      onChange={(e) => setCustomUrlInput(e.target.value)}
+                      placeholder="https://void.tarragon.be/uploads/image.webp"
+                      className="w-full text-xs px-2.5 py-1.5 rounded-md bg-muted/40 border border-border focus:outline-none focus:border-purple-500 text-foreground"
+                    />
+                    <div className="flex items-center gap-1.5 w-full sm:w-auto shrink-0 justify-end">
+                      <button
+                        type="submit"
+                        className="px-3 py-1.5 rounded-md text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsUrlModalOpen(false)}
+                        className="px-2.5 py-1.5 rounded-md text-xs font-medium bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         ) : (

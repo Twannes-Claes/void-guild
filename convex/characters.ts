@@ -248,6 +248,7 @@ export const updateCharacter = mutation({
       borderColor: v.optional(v.string()),
       profileBorder: v.optional(v.string()),
       bgColor: v.optional(v.string()),
+      avatarUrl: v.optional(v.string()),
     })),
   },
   handler: async (ctx, args) => {

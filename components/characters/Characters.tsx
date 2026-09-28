@@ -30,6 +30,7 @@ import CreateCharacter from './CreateCharacter'
 import AdminCharacterList from './AdminCharacterList'
 import AdminUserList from './AdminUserList'
 import CharacterDetailsDialog from './CharacterDetailsDialog'
+import ProfileAvatarWithBadge from './ProfileAvatarWithBadge'
 import { MembershipBadge } from './MembershipBadge'
 import InSyncPlasmaEffect from './InSyncPlasmaEffect'
 import BlazeTextParticles from './BlazeTextParticles'
@@ -47,6 +48,7 @@ import {
 
 export default function Characters({ filters }: { filters?: { pf: boolean; dnd: boolean } }) {
   const charactersRaw = useQuery(api.characters.listCharacters)
+  const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
   const updateCharacter = useMutation(api.characters.updateCharacter)
   const deleteCharacter = useMutation(api.characters.deleteCharacter)
   const recordWikiVisit = useMutation(api.users.recordWikiVisit)
@@ -174,53 +176,65 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                         <TintParticlesEffect variant="crimson" />
                       )}
                       <div className="flex justify-between items-center w-full relative z-10 min-w-0">
-                        <div className="flex flex-col min-w-0 flex-1 mr-2">
-                          <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+                          {Boolean((character as any).isMember) && character.cosmetics?.avatarUrl && (
+                            <ProfileAvatarWithBadge
+                              imageUrl={character.cosmetics.avatarUrl}
+                              name={character.name}
+                              cosmetics={character.cosmetics}
+                              profileRingClassName={cosmetics.profileRingClassName}
+                              rankNumber={characterRanks?.[character._id]}
+                              size="md"
+                            />
+                          )}
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={cn('font-medium relative truncate', cosmetics.nameClassName)}
+                                style={cosmetics.nameStyle}
+                              >
+                                {cosmetics.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
+                                {character.name}
+                              </span>
+                              {Boolean((character as any).isMember) && <MembershipBadge />}
+                              <a
+                                href={getCharacterWikiUrl(character.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  recordWikiVisit().then(() => syncAndGetAchievements()).catch(console.error)
+                                }}
+                                className="text-muted-foreground hover:text-purple-500 shrink-0"
+                              >
+                                <Book size={16} />
+                              </a>
+                            </div>
+                            {character.title && (
+                              <span className={cn('relative truncate text-xs', cosmetics.titleClassName)} style={cosmetics.titleStyle}>
+                                {cosmetics.titleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
+                                {character.title}
+                              </span>
+                            )}
                             <span
-                              className={cn('font-medium relative truncate', cosmetics.nameClassName)}
-                              style={cosmetics.nameStyle}
+                              className={cn('relative truncate text-xs', cosmetics.subtitleClassName)}
+                              style={cosmetics.subtitleStyle}
                             >
-                              {cosmetics.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                              {character.name}
+                              {cosmetics.subtitleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
+                              {character.ancestry} {character.class}
                             </span>
-                            {Boolean((character as any).isMember) && <MembershipBadge />}
-                            <a
-                              href={getCharacterWikiUrl(character.name)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                recordWikiVisit().then(() => syncAndGetAchievements()).catch(console.error)
-                              }}
-                              className="text-muted-foreground hover:text-purple-500 shrink-0"
-                            >
-                              <Book size={16} />
-                            </a>
+                            {character.websiteLink && (
+                              <a
+                                href={character.websiteLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-blue-500 hover:underline truncate max-w-full block break-all"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {character.websiteLink}
+                              </a>
+                            )}
                           </div>
-                          {character.title && (
-                            <span className={cn('relative truncate text-xs', cosmetics.titleClassName)} style={cosmetics.titleStyle}>
-                              {cosmetics.titleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                              {character.title}
-                            </span>
-                          )}
-                          <span
-                            className={cn('relative truncate text-xs', cosmetics.subtitleClassName)}
-                            style={cosmetics.subtitleStyle}
-                          >
-                            {cosmetics.subtitleClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
-                            {character.ancestry} {character.class}
-                          </span>
-                          {character.websiteLink && (
-                            <a
-                              href={character.websiteLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] text-blue-500 hover:underline truncate max-w-full block break-all"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {character.websiteLink}
-                            </a>
-                          )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="flex flex-col items-end">

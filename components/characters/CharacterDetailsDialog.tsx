@@ -121,6 +121,7 @@ export default function CharacterDetailsDialog({
         borderColor: char.cosmetics?.borderColor || '',
         profileBorder: char.cosmetics?.profileBorder || 'default',
         bgColor: char.cosmetics?.bgColor || 'default',
+        avatarUrl: char.cosmetics?.avatarUrl,
       })
       setErrors({})
     }
