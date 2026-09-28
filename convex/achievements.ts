@@ -42,6 +42,10 @@ export interface UserEvaluationData {
   hasAuctionListing: boolean
   hasServiceListing: boolean
   hasCharacterQuest: boolean
+  hasCreatedBet: boolean
+  hasAcceptedBet: boolean
+  hasWonBet: boolean
+  hasLostBet: boolean
   unlockedAchievementIds?: Set<string>
 }
 
@@ -510,6 +514,38 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     reward: '',
     checkEligibility: (data) => data.hasCharacterQuest,
   },
+  {
+    id: 'black_void_bet_create',
+    title: 'High Roller',
+    description: 'Created a Deathroll wager in The Black Void with your character.',
+    category: 'hidden',
+    reward: '',
+    checkEligibility: (data) => data.hasCreatedBet,
+  },
+  {
+    id: 'black_void_bet_accept',
+    title: 'Challenge Accepted',
+    description: 'Accepted a Deathroll wager in The Black Void with your character.',
+    category: 'hidden',
+    reward: '',
+    checkEligibility: (data) => data.hasAcceptedBet,
+  },
+  {
+    id: 'black_void_bet_win',
+    title: "Fortune's Favor",
+    description: 'Won a Deathroll bet in The Black Void with your character.',
+    category: 'hidden',
+    reward: '',
+    checkEligibility: (data) => data.hasWonBet,
+  },
+  {
+    id: 'black_void_bet_lose',
+    title: 'Snake Eyes',
+    description: 'Lost a Deathroll bet in The Black Void with your character.',
+    category: 'hidden',
+    reward: '',
+    checkEligibility: (data) => data.hasLostBet,
+  },
 ]
 
 export const syncAndGetAchievements = mutation({
@@ -692,6 +728,10 @@ export const syncAndGetAchievements = mutation({
     let hasAuctionListing = false
     let hasServiceListing = false
     let hasCharacterQuest = false
+    let hasCreatedBet = false
+    let hasAcceptedBet = false
+    let hasWonBet = false
+    let hasLostBet = false
 
     for (const char of characters) {
       if (!hasVoidObjectiveContribution) {
@@ -724,6 +764,46 @@ export const syncAndGetAchievements = mutation({
           hasCharacterQuest = true
         }
       }
+
+      if (!hasCreatedBet) {
+        const bet = await ctx.db
+          .query('blackVoidBets')
+          .withIndex('by_senderCharacterId', (q) => q.eq('senderCharacterId', char._id))
+          .first()
+        if (bet) {
+          hasCreatedBet = true
+        }
+      }
+
+      if (!hasAcceptedBet) {
+        const bet = await ctx.db
+          .query('blackVoidBets')
+          .withIndex('by_acceptedByCharacterId', (q) => q.eq('acceptedByCharacterId', char._id))
+          .first()
+        if (bet) {
+          hasAcceptedBet = true
+        }
+      }
+
+      if (!hasWonBet) {
+        const bet = await ctx.db
+          .query('blackVoidBets')
+          .withIndex('by_winnerCharacterId', (q) => q.eq('winnerCharacterId', char._id))
+          .first()
+        if (bet) {
+          hasWonBet = true
+        }
+      }
+
+      if (!hasLostBet) {
+        const bet = await ctx.db
+          .query('blackVoidBets')
+          .withIndex('by_loserCharacterId', (q) => q.eq('loserCharacterId', char._id))
+          .first()
+        if (bet) {
+          hasLostBet = true
+        }
+      }
     }
 
     const evalData: UserEvaluationData = {
@@ -744,6 +824,10 @@ export const syncAndGetAchievements = mutation({
       hasAuctionListing,
       hasServiceListing,
       hasCharacterQuest,
+      hasCreatedBet,
+      hasAcceptedBet,
+      hasWonBet,
+      hasLostBet,
     }
 
     // Existing unlocked records in database

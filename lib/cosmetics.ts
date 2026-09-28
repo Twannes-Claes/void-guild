@@ -57,6 +57,10 @@ export const ACHIEVEMENT_INFO: Record<string, AchievementInfo> = {
   black_void_auction_listing: { title: 'Black Market Auctioneer', category: 'hidden' },
   black_void_service_listing: { title: 'Services for Hire', category: 'hidden' },
   create_character_quest: { title: 'Quest Benefactor', category: 'hidden' },
+  black_void_bet_create: { title: 'High Roller', category: 'hidden' },
+  black_void_bet_accept: { title: 'Challenge Accepted', category: 'hidden' },
+  black_void_bet_win: { title: "Fortune's Favor", category: 'hidden' },
+  black_void_bet_lose: { title: 'Snake Eyes', category: 'hidden' },
   kobold_member: { title: 'Kobold!', category: 'normal' },
 }
 
