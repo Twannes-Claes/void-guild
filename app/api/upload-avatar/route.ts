@@ -24,10 +24,11 @@ export async function POST(req: NextRequest) {
     const uploadFormData = new FormData()
     uploadFormData.append('file', file, file.name)
 
+    const apiKey = process.env.VOID_WIKI_API_KEY || '4ad0c9f9390ac19aad574367e6fbcf026210fc99a137b984'
     const response = await fetch('https://void.tarragon.be/api/upload', {
       method: 'POST',
       headers: {
-        'X-API-Key': '4ad0c9f9390ac19aad574367e6fbcf026210fc99a137b984',
+        'X-API-Key': apiKey,
       },
       body: uploadFormData,
     })
