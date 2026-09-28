@@ -41,7 +41,8 @@ export default function TintParticlesEffect({
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
@@ -55,7 +56,7 @@ export default function TintParticlesEffect({
 
       // Initialize initial motes
       if (width > 0 && height > 0 && particles.length === 0) {
-        particles = Array.from({ length: 10 }, () => ({
+        particles = Array.from({ length: isMobile ? 6 : 10 }, () => ({
           x: Math.random() * width,
           y: Math.random() * height,
           vx: (Math.random() - 0.5) * 0.2,

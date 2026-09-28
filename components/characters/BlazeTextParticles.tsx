@@ -35,7 +35,8 @@ export default function BlazeTextParticles({ className }: { className?: string }
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
       width = Math.max(rect.width, 20)
       height = Math.max(rect.height, 14)
 
@@ -82,7 +83,8 @@ export default function BlazeTextParticles({ className }: { className?: string }
       ctx.globalCompositeOperation = 'screen'
 
       // Spawn particles
-      if (particles.length < 10 && Math.random() < 0.45) {
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      if (particles.length < (isMobile ? 5 : 10) && Math.random() < (isMobile ? 0.25 : 0.45)) {
         particles.push({
           x: padHoriz + Math.random() * width,
           y: padTop + height * 0.5 + Math.random() * (height * 0.5),

@@ -34,7 +34,8 @@ export default function InfernoFireEffect({ className }: { className?: string })
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
@@ -76,7 +77,8 @@ export default function InfernoFireEffect({ className }: { className?: string })
       frequency: number,
       colorGrad: CanvasGradient
     ) => {
-      const columns = 16 // Optimized from 28
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      const columns = isMobile ? 10 : 16 // Dynamically scaled for mobile efficiency
       const colW = width / columns
 
       ctx.beginPath()
@@ -152,7 +154,8 @@ export default function InfernoFireEffect({ className }: { className?: string })
       drawFlameLayer(elapsed, 4.2, height * 0.25, height * 0.09, 7.5, gradCore)
 
       // 5. Rising Ember Particles
-      if (particles.length < 12 && Math.random() < 0.5) {
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      if (particles.length < (isMobile ? 7 : 12) && Math.random() < (isMobile ? 0.3 : 0.5)) {
         particles.push({
           x: Math.random() * width,
           y: height - Math.random() * (height * 0.25),

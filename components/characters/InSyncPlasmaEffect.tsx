@@ -38,7 +38,8 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
@@ -181,8 +182,9 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
         return
       }
 
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
       const cardRadius = 8
-      const segments = 64 // Optimized from 120
+      const segments = isMobile ? 32 : 64 // Dynamically scale curve calculations on mobile
       const ox = padding
       const oy = padding
 
@@ -205,9 +207,9 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       }
       ctx.closePath()
       ctx.strokeStyle = 'rgba(194, 65, 12, 0.45)'
-      ctx.lineWidth = 8
+      ctx.lineWidth = isMobile ? 6 : 8
       ctx.shadowColor = 'rgba(234, 88, 12, 0.6)'
-      ctx.shadowBlur = 6
+      ctx.shadowBlur = isMobile ? 0 : 6
       ctx.stroke()
 
       // Layer 2: Radiant blazing orange flame
@@ -227,7 +229,7 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       ctx.strokeStyle = 'rgba(249, 115, 22, 0.9)'
       ctx.lineWidth = 3
       ctx.shadowColor = 'rgba(251, 146, 60, 0.8)'
-      ctx.shadowBlur = 4
+      ctx.shadowBlur = isMobile ? 0 : 4
       ctx.stroke()
 
       // Layer 3: Intense white-hot core filaments
@@ -250,7 +252,7 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       ctx.stroke()
 
       // Spawn ember sparks
-      if (particles.length < 12 && Math.random() < 0.4) {
+      if (particles.length < (isMobile ? 5 : 12) && Math.random() < (isMobile ? 0.2 : 0.4)) {
         const t = Math.random()
         const pt = getPerimeterPoint(t, width, height, cardRadius)
         const angle = Math.atan2(pt.ny, pt.nx) + (Math.random() - 0.5) * 0.8

@@ -34,7 +34,8 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
@@ -48,7 +49,7 @@ export default function VoidNebulaEffect({ className }: { className?: string }) 
 
       // Initialize cosmic dust motes
       if (width > 0 && height > 0 && motes.length === 0) {
-        motes = Array.from({ length: 12 }, () => ({
+        motes = Array.from({ length: isMobile ? 6 : 12 }, () => ({
           x: Math.random() * width,
           y: Math.random() * height,
           vx: 0.05 + Math.random() * 0.12,
