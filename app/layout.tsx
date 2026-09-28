@@ -193,11 +193,11 @@ export default function RootLayout({
                 {/* SVG Filter for Organic Plasma Tendril Warping & Animated Fonts */}
                 <svg className="fixed pointer-events-none w-0 h-0 overflow-hidden" aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0 }}>
                   <defs>
-                    <filter id="sync-plasma-displacement" x="-15%" y="-15%" width="130%" height="130%">
+                    <filter id="sync-plasma-displacement" x="-40%" y="-40%" width="180%" height="180%">
                       <feTurbulence type="fractalNoise" baseFrequency="0.04 0.03" numOctaves="2" result="noise" seed="7">
-                        <animate attributeName="baseFrequency" dur="5s" values="0.03 0.02; 0.05 0.05; 0.03 0.02" repeatCount="indefinite" />
+                        <animate attributeName="baseFrequency" dur="4.5s" values="0.03 0.02; 0.05 0.05; 0.03 0.02" repeatCount="indefinite" />
                       </feTurbulence>
-                      <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+                      <feDisplacementMap in="SourceGraphic" in2="noise" scale="9" xChannelSelector="R" yChannelSelector="G" />
                     </filter>
                     <filter id="kobold-letter-shift" x="-20%" y="-20%" width="140%" height="140%">
                       <feTurbulence type="fractalNoise" baseFrequency="0.04 0.05" numOctaves="2" result="noise" seed="42">

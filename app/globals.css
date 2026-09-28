@@ -380,12 +380,12 @@
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
   -webkit-mask-composite: xor !important;
   mask-composite: exclude !important;
-  animation: sync-plasma-rotate 7s linear infinite reverse !important;
+  animation: sync-plasma-rotate 5s linear infinite reverse !important;
   will-change: --sync-plasma-angle !important;
   pointer-events: none !important;
   z-index: 9 !important;
-  filter: url(#sync-plasma-displacement) drop-shadow(0 0 12px rgba(234, 88, 12, 0.85)) blur(1px) !important;
-  opacity: 0.85 !important;
+  filter: url(#sync-plasma-displacement) drop-shadow(0 0 14px rgba(234, 88, 12, 0.9)) blur(0.75px) !important;
+  opacity: 0.9 !important;
 }
 
 /* Inner Hot Plasma Ribbon & Spikes */
@@ -411,11 +411,11 @@
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
   -webkit-mask-composite: xor !important;
   mask-composite: exclude !important;
-  animation: sync-plasma-rotate 4.5s linear infinite !important;
+  animation: sync-plasma-rotate 3.2s linear infinite !important;
   will-change: --sync-plasma-angle !important;
   pointer-events: none !important;
   z-index: 10 !important;
-  filter: url(#sync-plasma-displacement) drop-shadow(0 0 8px rgba(249, 115, 22, 0.95)) drop-shadow(0 0 18px rgba(234, 88, 12, 0.7)) !important;
+  filter: url(#sync-plasma-displacement) drop-shadow(0 0 10px rgba(249, 115, 22, 1)) drop-shadow(0 0 20px rgba(234, 88, 12, 0.8)) !important;
 }
 
 .in-sync-card-border[data-selected="true"],
@@ -435,34 +435,26 @@
 
 @keyframes sync-plasma-pulse {
   0% {
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.4), 0 0 22px rgba(180, 40, 0, 0.25);
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.45), 0 0 24px rgba(180, 40, 0, 0.3);
   }
   50% {
-    box-shadow: 0 0 22px rgba(249, 115, 22, 0.85), 0 0 36px rgba(234, 88, 12, 0.6);
+    box-shadow: 0 0 24px rgba(249, 115, 22, 0.9), 0 0 40px rgba(234, 88, 12, 0.7);
   }
   100% {
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.4), 0 0 22px rgba(180, 40, 0, 0.25);
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.45), 0 0 24px rgba(180, 40, 0, 0.3);
   }
 }
 
 /* Mobile & Touch Hardware-Accelerated Performance Guard */
 @media (max-width: 768px), (pointer: coarse) {
-  .in-sync-card-border,
-  .in-sync-border {
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.45), inset 0 0 6px rgba(124, 29, 0, 0.35) !important;
-    animation: none !important;
-  }
-
   .in-sync-card-border::after,
   .in-sync-border::after {
-    /* Bypass CPU SVG displacement filter on mobile for smooth GPU-accelerated rasterization */
-    filter: drop-shadow(0 0 8px rgba(234, 88, 12, 0.85)) blur(0.75px) !important;
+    filter: drop-shadow(0 0 10px rgba(234, 88, 12, 0.9)) blur(0.5px) !important;
   }
 
   .in-sync-card-border::before,
   .in-sync-border::before {
-    /* Bypass CPU SVG displacement filter on mobile for smooth GPU-accelerated rasterization */
-    filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.95)) !important;
+    filter: drop-shadow(0 0 8px rgba(249, 115, 22, 1)) !important;
   }
 }
 

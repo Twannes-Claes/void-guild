@@ -14,7 +14,7 @@ interface EmberParticle {
   life: number
   maxLife: number
   size: number
-  hue: number // 30-45 (amber to gold)
+  hue: number // 20-45 (fiery red-orange to gold)
 }
 
 export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProps) {
@@ -31,15 +31,14 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
     let isVisible = true
     let width = 0
     let height = 0
-    const padding = 20
+    const padding = 28
     let particles: EmberParticle[] = []
 
     const resize = () => {
       const parent = canvas.parentElement
       if (!parent) return
       const rect = parent.getBoundingClientRect()
-      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
-      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
       width = rect.width
       height = rect.height
 
@@ -72,7 +71,7 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
 
     resize()
 
-    // Helper: parametric point along rounded rectangle perimeter
+    // Helper: parametric point along rounded rectangle perimeter with smooth corner arcs
     const getPerimeterPoint = (tNorm: number, w: number, h: number, r: number) => {
       const straightW = Math.max(0, w - 2 * r)
       const straightH = Math.max(0, h - 2 * r)
@@ -182,9 +181,8 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
         return
       }
 
-      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
       const cardRadius = 8
-      const segments = isMobile ? 32 : 64 // Dynamically scale curve calculations on mobile
+      const segments = 160 // High sample density for perfectly smooth, unclipped rounded corners
       const ox = padding
       const oy = padding
 
@@ -197,75 +195,77 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
         const t = i / segments
         const pt = getPerimeterPoint(t, width, height, cardRadius)
         const wave =
-          Math.sin(t * Math.PI * 8 + elapsed * 2.8) * 2.8 +
-          Math.cos(t * Math.PI * 14 - elapsed * 3.4) * 1.8 +
-          Math.sin(t * Math.PI * 26 + elapsed * 5.2) * 1.1
-        const px = ox + pt.x + pt.nx * (wave + 2)
-        const py = oy + pt.y + pt.ny * (wave + 2)
+          Math.sin(t * Math.PI * 8 + elapsed * 3.4) * 3.6 +
+          Math.cos(t * Math.PI * 14 - elapsed * 4.0) * 2.4 +
+          Math.sin(t * Math.PI * 26 + elapsed * 6.0) * 1.6
+        const px = ox + pt.x + pt.nx * (wave + 2.5)
+        const py = oy + pt.y + pt.ny * (wave + 2.5)
         if (i === 0) ctx.moveTo(px, py)
         else ctx.lineTo(px, py)
       }
       ctx.closePath()
-      ctx.strokeStyle = 'rgba(194, 65, 12, 0.45)'
-      ctx.lineWidth = isMobile ? 6 : 8
-      ctx.shadowColor = 'rgba(234, 88, 12, 0.6)'
-      ctx.shadowBlur = isMobile ? 0 : 6
+      ctx.strokeStyle = 'rgba(234, 88, 12, 0.6)'
+      ctx.lineWidth = 12
+      ctx.shadowColor = 'rgba(234, 88, 12, 0.85)'
+      ctx.shadowBlur = 16
       ctx.stroke()
 
-      // Layer 2: Radiant blazing orange flame
+      // Layer 2: Radiant blazing orange leaping flame tongues
       ctx.beginPath()
       for (let i = 0; i <= segments; i++) {
         const t = i / segments
         const pt = getPerimeterPoint(t, width, height, cardRadius)
         const wave =
-          Math.sin(t * Math.PI * 10 - elapsed * 3.6) * 2.2 +
-          Math.cos(t * Math.PI * 20 + elapsed * 4.5) * 1.4
-        const px = ox + pt.x + pt.nx * (wave + 0.8)
-        const py = oy + pt.y + pt.ny * (wave + 0.8)
+          Math.sin(t * Math.PI * 10 - elapsed * 4.2) * 2.8 +
+          Math.cos(t * Math.PI * 20 + elapsed * 5.4) * 1.8 +
+          Math.sin(t * Math.PI * 32 - elapsed * 7.8) * 1.3
+        const px = ox + pt.x + pt.nx * (wave + 1.2)
+        const py = oy + pt.y + pt.ny * (wave + 1.2)
         if (i === 0) ctx.moveTo(px, py)
         else ctx.lineTo(px, py)
       }
       ctx.closePath()
-      ctx.strokeStyle = 'rgba(249, 115, 22, 0.9)'
-      ctx.lineWidth = 3
-      ctx.shadowColor = 'rgba(251, 146, 60, 0.8)'
-      ctx.shadowBlur = isMobile ? 0 : 4
+      ctx.strokeStyle = 'rgba(249, 115, 22, 0.95)'
+      ctx.lineWidth = 4.5
+      ctx.shadowColor = 'rgba(251, 146, 60, 0.95)'
+      ctx.shadowBlur = 10
       ctx.stroke()
 
-      // Layer 3: Intense white-hot core filaments
+      // Layer 3: Intense white-hot and gold core filaments
       ctx.beginPath()
       for (let i = 0; i <= segments; i++) {
         const t = i / segments
         const pt = getPerimeterPoint(t, width, height, cardRadius)
         const wave =
-          Math.sin(t * Math.PI * 16 + elapsed * 5.0) * 0.9 +
-          Math.cos(t * Math.PI * 36 - elapsed * 8.0) * 0.5
+          Math.sin(t * Math.PI * 16 + elapsed * 6.0) * 1.2 +
+          Math.cos(t * Math.PI * 36 - elapsed * 9.2) * 0.7
         const px = ox + pt.x + pt.nx * wave
         const py = oy + pt.y + pt.ny * wave
         if (i === 0) ctx.moveTo(px, py)
         else ctx.lineTo(px, py)
       }
       ctx.closePath()
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
-      ctx.lineWidth = 1.2
-      ctx.shadowBlur = 0
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.98)'
+      ctx.lineWidth = 1.6
+      ctx.shadowColor = 'rgba(254, 215, 170, 1)'
+      ctx.shadowBlur = 6
       ctx.stroke()
 
-      // Spawn ember sparks
-      if (particles.length < (isMobile ? 5 : 12) && Math.random() < (isMobile ? 0.2 : 0.4)) {
+      // Spawn energetic ember sparks
+      if (particles.length < 22 && Math.random() < 0.5) {
         const t = Math.random()
         const pt = getPerimeterPoint(t, width, height, cardRadius)
-        const angle = Math.atan2(pt.ny, pt.nx) + (Math.random() - 0.5) * 0.8
-        const speed = 0.4 + Math.random() * 1.0
+        const angle = Math.atan2(pt.ny, pt.nx) + (Math.random() - 0.5) * 0.9
+        const speed = 0.5 + Math.random() * 1.4
         particles.push({
           x: ox + pt.x + pt.nx * 2,
           y: oy + pt.y + pt.ny * 2,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 0.2,
+          vy: Math.sin(angle) * speed - 0.3,
           life: 0,
-          maxLife: 25 + Math.random() * 30,
-          size: 1 + Math.random() * 2,
-          hue: 20 + Math.random() * 22,
+          maxLife: 28 + Math.random() * 34,
+          size: 1.2 + Math.random() * 2.2,
+          hue: 20 + Math.random() * 25,
         })
       }
 
@@ -283,8 +283,10 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
           continue
         }
 
-        const alpha = (1 - progress) * 0.85
+        const alpha = (1 - progress) * 0.9
         ctx.fillStyle = `hsla(${p.hue}, 95%, 55%, ${alpha})`
+        ctx.shadowColor = `hsla(${p.hue}, 100%, 65%, ${alpha})`
+        ctx.shadowBlur = 6
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
         ctx.fill()
