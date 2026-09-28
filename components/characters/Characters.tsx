@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery, useMutation } from 'convex/react'
+import { useUser } from '@clerk/nextjs'
 import { api } from '@/convex/_generated/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,6 +48,18 @@ import {
 } from '@/lib/cosmetics'
 
 export default function Characters({ filters }: { filters?: { pf: boolean; dnd: boolean } }) {
+  const { user } = useUser()
+  const isCurrentUserMember = Boolean(
+    user?.publicMetadata?.isMember === true ||
+    String(user?.publicMetadata?.isMember).toLowerCase() === 'true' ||
+    user?.publicMetadata?.role === 'member' ||
+    user?.publicMetadata?.role === 'dragon' ||
+    user?.publicMetadata?.role === 'admin' ||
+    user?.publicMetadata?.role === 'voidmaster' ||
+    user?.publicMetadata?.admin === true ||
+    String(user?.publicMetadata?.admin).toLowerCase() === 'true'
+  )
+
   const charactersRaw = useQuery(api.characters.listCharacters)
   const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
   const updateCharacter = useMutation(api.characters.updateCharacter)
@@ -151,6 +164,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                     cosmetics.cardClassName.includes('rainbow-border') ||
                     cosmetics.cardClassName.includes('void-rotating-border') ||
                     cosmetics.cardClassName.includes('in-sync-border')
+                  const isCharMember = Boolean((character as any).isMember || isCurrentUserMember)
                   return (
                     <li
                       key={character._id}
@@ -177,7 +191,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                       )}
                       <div className="flex justify-between items-center w-full relative z-10 min-w-0">
                         <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
-                          {Boolean((character as any).isMember) && character.cosmetics?.avatarUrl && (
+                          {isCharMember && character.cosmetics?.avatarUrl && (
                             <ProfileAvatarWithBadge
                               imageUrl={character.cosmetics.avatarUrl}
                               name={character.name}
@@ -196,7 +210,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                                 {cosmetics.nameClassName?.includes('blaze-fire-text') && <BlazeTextParticles />}
                                 {character.name}
                               </span>
-                              {Boolean((character as any).isMember) && <MembershipBadge />}
+                              {isCharMember && <MembershipBadge />}
                               <a
                                 href={getCharacterWikiUrl(character.name)}
                                 target="_blank"

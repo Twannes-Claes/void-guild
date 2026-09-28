@@ -28,6 +28,10 @@ export const syncUser = mutation({
   args: {
     discordId: v.optional(v.string()),
     discordUsername: v.optional(v.string()),
+    isMember: v.optional(v.boolean()),
+    isAdmin: v.optional(v.boolean()),
+    isGM: v.optional(v.boolean()),
+    role: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -36,17 +40,31 @@ export const syncUser = mutation({
     const adminClaim = extractClaim(identity, 'admin')
     const gmClaim = extractClaim(identity, 'gamemaster')
     const memberClaim = extractClaim(identity, 'isMember')
-    const roleClaim = String(extractClaim(identity, 'role') || '').toLowerCase()
+    const roleClaim = String(extractClaim(identity, 'role') || args.role || '').toLowerCase()
     const extraSessionsPlayed = Number(extractClaim(identity, 'extraSessionsPlayed') || 0)
     const extraSessionsRan = Number(extractClaim(identity, 'extraSessionsRan') || 0)
     
-    const isAdminUser = adminClaim === true || String(adminClaim).toLowerCase() === 'true'
-    const isGMUser = gmClaim === true || String(gmClaim).toLowerCase() === 'true' || isAdminUser
+    const isAdminUser =
+      args.isAdmin === true ||
+      adminClaim === true ||
+      String(adminClaim).toLowerCase() === 'true' ||
+      roleClaim === 'admin'
+    const isGMUser =
+      args.isGM === true ||
+      gmClaim === true ||
+      String(gmClaim).toLowerCase() === 'true' ||
+      roleClaim === 'gamemaster' ||
+      roleClaim === 'voidmaster' ||
+      isAdminUser
     const isMemberUser =
+      args.isMember === true ||
       memberClaim === true ||
       String(memberClaim).toLowerCase() === 'true' ||
       roleClaim === 'member' ||
-      roleClaim === 'dragon'
+      roleClaim === 'dragon' ||
+      roleClaim === 'admin' ||
+      roleClaim === 'voidmaster' ||
+      isAdminUser
 
     const givenName = extractClaim(identity, 'given_name')
     const familyName = extractClaim(identity, 'family_name')

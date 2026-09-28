@@ -2,7 +2,7 @@ import { query, mutation, QueryCtx, MutationCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { Id } from './_generated/dataModel'
-import { isAdmin } from './roles'
+import { isAdmin, isMember } from './roles'
 import { formatUserDisplayName } from './users'
 
 export const listCharacters = query({
@@ -13,11 +13,7 @@ export const listCharacters = query({
       return null
     }
 
-    const userRecord = await ctx.db
-      .query('users')
-      .withIndex('by_userId', (q) => q.eq('userId', user.subject))
-      .first()
-    const isMember = Boolean(userRecord?.isMember)
+    const memberStatus = await isMember(ctx, user.subject)
 
     const characters = await ctx.db
       .query('characters')
@@ -25,7 +21,7 @@ export const listCharacters = query({
       .collect()
     
     return characters
-      .map((c) => ({ ...c, isMember }))
+      .map((c) => ({ ...c, isMember: memberStatus }))
       .sort((a, b) => (b.lvl * 1000 + b.xp) - (a.lvl * 1000 + a.xp))
   },
 })
@@ -33,11 +29,7 @@ export const listCharacters = query({
 export const listCharactersByUserId = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const userRecord = await ctx.db
-      .query('users')
-      .withIndex('by_userId', (q) => q.eq('userId', args.userId))
-      .first()
-    const isMember = Boolean(userRecord?.isMember)
+    const memberStatus = await isMember(ctx, args.userId)
 
     const characters = await ctx.db
       .query('characters')
@@ -45,7 +37,7 @@ export const listCharactersByUserId = query({
       .collect()
     
     return characters
-      .map((c) => ({ ...c, isMember }))
+      .map((c) => ({ ...c, isMember: memberStatus }))
       .sort((a, b) => (b.lvl * 1000 + b.xp) - (a.lvl * 1000 + a.xp))
   },
 })
@@ -80,7 +72,7 @@ export const listAllCharacters = query({
         ownerName,
         ownerUsername: owner?.username || null,
         ownerEmail: owner?.email || null,
-        isMember: Boolean(owner?.isMember),
+        isMember: Boolean(owner?.isMember || owner?.isAdmin),
       }
     })
 
@@ -130,11 +122,8 @@ export const getCharactersByIds = query({
     const userMap = new Map<string, boolean>()
     await Promise.all(
       userIds.map(async (uId) => {
-        const u = await ctx.db
-          .query('users')
-          .withIndex('by_userId', (q) => q.eq('userId', uId))
-          .first()
-        userMap.set(uId, Boolean(u?.isMember))
+        const isMem = await isMember(ctx, uId)
+        userMap.set(uId, isMem)
       })
     )
 
@@ -604,10 +593,12 @@ export const getCharacterProfile = query({
       (owner?.extraSessionsRan || 0) +
       allSessions.filter((s) => Boolean(s.locked) && s.owner === character.userId).length
 
+    const ownerIsMember = await isMember(ctx, character.userId)
+
     return {
       character: {
         ...character,
-        isMember: Boolean(owner?.isMember),
+        isMember: ownerIsMember,
       },
       owner: {
         userId: character.userId,
@@ -616,7 +607,7 @@ export const getCharacterProfile = query({
         rawName: owner?.name || owner?.username || null,
         username: owner?.username || null,
         discordUsername: owner?.discordUsername || null,
-        isMember: Boolean(owner?.isMember),
+        isMember: ownerIsMember,
         isGM: Boolean(owner?.isGM),
         isAdmin: Boolean(owner?.isAdmin),
         totalSessionsPlayed,

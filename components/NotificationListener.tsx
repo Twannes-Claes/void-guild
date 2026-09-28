@@ -32,20 +32,41 @@ const LEVEL_UP_MESSAGES = [
   "{name} is Level {lvl}! May your nat 20s be frequent and your 'accidental' fireballs be small.",
 ]
 
+const loadSeenIds = (key: string): Set<string> => {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = sessionStorage.getItem(key)
+    return raw ? new Set(JSON.parse(raw)) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+const saveSeenIds = (key: string, set: Set<string>) => {
+  if (typeof window === 'undefined') return
+  try {
+    const arr = Array.from(set).slice(-200)
+    sessionStorage.setItem(key, JSON.stringify(arr))
+  } catch {}
+}
+
 export default function NotificationListener() {
   const router = useRouter()
   const preferences = useQuery(api.notifications.getNotificationPreferences)
   const characters = useQuery(api.characters.listCharacters)
   const feed = useQuery(api.notifications.getNotificationFeed)
 
-  // Tracking refs to avoid notifying on initial data load
+  // Mount timestamp to prevent alerting on items created prior to current browser session
+  const mountTime = useRef(Date.now()).current
+
+  // Tracking refs to avoid notifying on initial data load or duplicate refreshes
   const isInitialCharsLoaded = useRef(false)
   const isInitialFeedLoaded = useRef(false)
   const prevCharStats = useRef<Record<string, { lvl: number; rank?: string }>>({})
-  const seenSessionIds = useRef<Set<string>>(new Set())
-  const seenListingIds = useRef<Set<string>>(new Set())
-  const seenPendingBetIds = useRef<Set<string>>(new Set())
-  const seenExpiringBetIds = useRef<Set<string>>(new Set())
+  const seenSessionIds = useRef<Set<string>>(loadSeenIds('void_seen_sessions'))
+  const seenListingIds = useRef<Set<string>>(loadSeenIds('void_seen_listings'))
+  const seenPendingBetIds = useRef<Set<string>>(loadSeenIds('void_seen_bets'))
+  const seenExpiringBetIds = useRef<Set<string>>(loadSeenIds('void_seen_expiring_bets'))
 
   // Helper function to dispatch a unified toast + desktop notification + sound
   const dispatchAlert = (options: {
@@ -186,7 +207,7 @@ export default function NotificationListener() {
 
   // 2. Monitor Feed (Sessions, Black Void Listings, Bets, Expiring Bets)
   useEffect(() => {
-    if (!feed) return
+    if (!feed || preferences === undefined) return
 
     if (!isInitialFeedLoaded.current) {
       // Seed existing IDs on initial load without alerting
@@ -194,6 +215,10 @@ export default function NotificationListener() {
       feed.listings.forEach((l) => seenListingIds.current.add(l._id))
       feed.pendingBets.forEach((b) => seenPendingBetIds.current.add(b._id))
       feed.expiringBets.forEach((b) => seenExpiringBetIds.current.add(b._id))
+      saveSeenIds('void_seen_sessions', seenSessionIds.current)
+      saveSeenIds('void_seen_listings', seenListingIds.current)
+      saveSeenIds('void_seen_bets', seenPendingBetIds.current)
+      saveSeenIds('void_seen_expiring_bets', seenExpiringBetIds.current)
       isInitialFeedLoaded.current = true
       return
     }
@@ -204,6 +229,10 @@ export default function NotificationListener() {
       feed.listings.forEach((l) => seenListingIds.current.add(l._id))
       feed.pendingBets.forEach((b) => seenPendingBetIds.current.add(b._id))
       feed.expiringBets.forEach((b) => seenExpiringBetIds.current.add(b._id))
+      saveSeenIds('void_seen_sessions', seenSessionIds.current)
+      saveSeenIds('void_seen_listings', seenListingIds.current)
+      saveSeenIds('void_seen_bets', seenPendingBetIds.current)
+      saveSeenIds('void_seen_expiring_bets', seenExpiringBetIds.current)
       return
     }
 
@@ -212,26 +241,30 @@ export default function NotificationListener() {
       feed.sessions.forEach((session) => {
         if (!seenSessionIds.current.has(session._id)) {
           seenSessionIds.current.add(session._id)
+          saveSeenIds('void_seen_sessions', seenSessionIds.current)
 
-          const sysName = session.system === 'PF' ? 'Pathfinder 2e' : 'D&D 5e'
-          const subtitle = session.isIntro
-            ? `🌱 Intro Session • ${sysName}`
-            : session.questName
-            ? `Quest: ${session.questName} • ${sysName}`
-            : `New Session in ${session.worldName} (${sysName})`
+          if (session._creationTime >= mountTime - 30000) {
+            const sysName = session.system === 'PF' ? 'Pathfinder 2e' : 'D&D 5e'
+            const subtitle = session.isIntro
+              ? `🌱 Intro Session • ${sysName}`
+              : session.questName
+              ? `Quest: ${session.questName} • ${sysName}`
+              : `New Session in ${session.worldName} (${sysName})`
 
-          dispatchAlert({
-            categoryTitle: 'New Session Scheduled',
-            title: `Session in ${session.worldName}`,
-            description: subtitle,
-            url: `/sessions/${session._id}`,
-            icon: <Calendar className="h-5 w-5 text-amber-400 shrink-0" />,
-            browserTag: `session-${session._id}`,
-          })
+            dispatchAlert({
+              categoryTitle: 'New Session Scheduled',
+              title: `Session in ${session.worldName}`,
+              description: subtitle,
+              url: `/sessions/${session._id}`,
+              icon: <Calendar className="h-5 w-5 text-amber-400 shrink-0" />,
+              browserTag: `session-${session._id}`,
+            })
+          }
         }
       })
     } else {
       feed.sessions.forEach((s) => seenSessionIds.current.add(s._id))
+      saveSeenIds('void_seen_sessions', seenSessionIds.current)
     }
 
     // B. New Black Void Listings
@@ -239,8 +272,9 @@ export default function NotificationListener() {
       feed.listings.forEach((listing) => {
         if (!seenListingIds.current.has(listing._id)) {
           seenListingIds.current.add(listing._id)
+          saveSeenIds('void_seen_listings', seenListingIds.current)
 
-          if (!listing.isOwnListing) {
+          if (!listing.isOwnListing && listing._creationTime >= mountTime - 30000) {
             const priceInfo = listing.buyoutPrice
               ? `Buyout: ${listing.buyoutPrice} GP`
               : listing.startingBid
@@ -260,6 +294,7 @@ export default function NotificationListener() {
       })
     } else {
       feed.listings.forEach((l) => seenListingIds.current.add(l._id))
+      saveSeenIds('void_seen_listings', seenListingIds.current)
     }
 
     // C. New Bets (Direct Invitations or Open Challenges)
@@ -267,27 +302,31 @@ export default function NotificationListener() {
       feed.pendingBets.forEach((bet) => {
         if (!seenPendingBetIds.current.has(bet._id)) {
           seenPendingBetIds.current.add(bet._id)
+          saveSeenIds('void_seen_bets', seenPendingBetIds.current)
 
-          const title = bet.isDirect
-            ? 'Deathroll Challenge Received!'
-            : 'New Open Deathroll Challenge!'
+          if (bet._creationTime >= mountTime - 30000) {
+            const title = bet.isDirect
+              ? 'Deathroll Challenge Received!'
+              : 'New Open Deathroll Challenge!'
 
-          const desc = bet.isDirect
-            ? `${bet.senderName} challenged ${bet.targetName || 'your character'} for ${bet.wagerAmount} GP (/roll ${bet.deathrollValue})!`
-            : `${bet.senderName} posted an open ${bet.wagerAmount} GP challenge (/roll ${bet.deathrollValue})!`
+            const desc = bet.isDirect
+              ? `${bet.senderName} challenged ${bet.targetName || 'your character'} for ${bet.wagerAmount} GP (/roll ${bet.deathrollValue})!`
+              : `${bet.senderName} posted an open ${bet.wagerAmount} GP challenge (/roll ${bet.deathrollValue})!`
 
-          dispatchAlert({
-            categoryTitle: 'Deathroll Wager',
-            title,
-            description: desc,
-            url: '/black-void',
-            icon: <Swords className="h-5 w-5 text-rose-400 shrink-0" />,
-            browserTag: `bet-${bet._id}`,
-          })
+            dispatchAlert({
+              categoryTitle: 'Deathroll Wager',
+              title,
+              description: desc,
+              url: '/black-void',
+              icon: <Swords className="h-5 w-5 text-rose-400 shrink-0" />,
+              browserTag: `bet-${bet._id}`,
+            })
+          }
         }
       })
     } else {
       feed.pendingBets.forEach((b) => seenPendingBetIds.current.add(b._id))
+      saveSeenIds('void_seen_bets', seenPendingBetIds.current)
     }
 
     // D. Expiring Bets (<= 1 hour remaining on turn)
@@ -295,6 +334,7 @@ export default function NotificationListener() {
       feed.expiringBets.forEach((bet) => {
         if (!seenExpiringBetIds.current.has(bet._id)) {
           seenExpiringBetIds.current.add(bet._id)
+          saveSeenIds('void_seen_expiring_bets', seenExpiringBetIds.current)
 
           dispatchAlert({
             categoryTitle: 'Deathroll Turn Expiring',
@@ -308,6 +348,7 @@ export default function NotificationListener() {
       })
     } else {
       feed.expiringBets.forEach((b) => seenExpiringBetIds.current.add(b._id))
+      saveSeenIds('void_seen_expiring_bets', seenExpiringBetIds.current)
     }
   }, [feed, preferences, router])
 

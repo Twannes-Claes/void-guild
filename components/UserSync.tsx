@@ -46,9 +46,35 @@ export default function UserSync() {
         (discordAccount as any)?.emailAddress ||
         (discordAccount as any)?.label
 
+      const isMember = Boolean(
+        user.publicMetadata?.isMember === true ||
+        String(user.publicMetadata?.isMember).toLowerCase() === 'true' ||
+        user.publicMetadata?.role === 'member' ||
+        user.publicMetadata?.role === 'dragon' ||
+        user.publicMetadata?.role === 'admin' ||
+        user.publicMetadata?.role === 'voidmaster'
+      )
+      const isAdmin = Boolean(
+        user.publicMetadata?.admin === true ||
+        String(user.publicMetadata?.admin).toLowerCase() === 'true' ||
+        user.publicMetadata?.role === 'admin'
+      )
+      const isGM = Boolean(
+        user.publicMetadata?.gamemaster === true ||
+        String(user.publicMetadata?.gamemaster).toLowerCase() === 'true' ||
+        user.publicMetadata?.role === 'gamemaster' ||
+        user.publicMetadata?.role === 'voidmaster' ||
+        isAdmin
+      )
+      const role = String(user.publicMetadata?.role || '')
+
       await syncUser({
         discordId: discordId ? String(discordId) : undefined,
         discordUsername: discordUsername ? String(discordUsername) : undefined,
+        isMember,
+        isAdmin,
+        isGM,
+        role: role || undefined,
       })
 
       if (typeof window !== 'undefined') {

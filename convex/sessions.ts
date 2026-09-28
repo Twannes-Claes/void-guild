@@ -2,7 +2,7 @@ import { query, mutation, QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
-import { isAdmin, isGameMaster, extractClaim } from './roles'
+import { isAdmin, isGameMaster, isMember, extractClaim } from './roles'
 import { applyContributionHelper } from './voidObjectives'
 
 /**
@@ -518,11 +518,8 @@ export const getSession = query({
     const userMap = new Map<string, boolean>()
     await Promise.all(
       userIds.map(async (uId) => {
-        const u = await ctx.db
-          .query('users')
-          .withIndex('by_userId', (q) => q.eq('userId', uId))
-          .first()
-        userMap.set(uId, Boolean(u?.isMember))
+        const isMem = await isMember(ctx, uId)
+        userMap.set(uId, isMem)
       })
     )
 

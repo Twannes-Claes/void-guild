@@ -112,3 +112,40 @@ export async function isGameMaster(ctx: QueryCtx) {
 
   return false;
 }
+
+/**
+ * Checks if a user has Member permissions and benefits (dragon badge, custom portraits, etc.).
+ * Admins also automatically inherit Member benefits.
+ */
+export async function isMember(ctx: QueryCtx, targetUserId?: string): Promise<boolean> {
+  const identity = await ctx.auth.getUserIdentity()
+  const effectiveUserId = targetUserId || identity?.subject
+  if (!effectiveUserId) return false
+
+  // If checking current authenticated user, check JWT claims & admin status
+  if (identity && identity.subject === effectiveUserId) {
+    const memberClaim = extractClaim(identity, 'isMember')
+    if (memberClaim === true || String(memberClaim).toLowerCase() === 'true') return true
+    const roleClaim = String(extractClaim(identity, 'role') || '').toLowerCase()
+    if (
+      roleClaim === 'member' ||
+      roleClaim === 'dragon' ||
+      roleClaim === 'admin' ||
+      roleClaim === 'voidmaster' ||
+      roleClaim === 'gamemaster'
+    ) {
+      return true
+    }
+    if (await isAdmin(ctx)) return true
+  }
+
+  // Check users table
+  const userRecord = await ctx.db
+    .query('users')
+    .withIndex('by_userId', (q) => q.eq('userId', effectiveUserId))
+    .first()
+  if (userRecord?.isMember || userRecord?.isAdmin) return true
+
+  return false
+}
+

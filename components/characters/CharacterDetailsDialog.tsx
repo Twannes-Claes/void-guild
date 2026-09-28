@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, FormEvent } from 'react'
 import { useQuery, useMutation } from 'convex/react'
+import { useUser } from '@clerk/nextjs'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
 import {
@@ -137,9 +138,26 @@ export default function CharacterDetailsDialog({
 
   if (!isOpen || !characterId) return null
 
+  const { user } = useUser()
   const char = profile?.character
   const canEdit = profile ? Boolean(profile.isOwner || profile.isAdmin) : false
   const rankNumber = (char?._id ? characterRanks?.[char._id] : undefined) ?? 1
+
+  const isCurrentUserMember = Boolean(
+    user?.publicMetadata?.isMember === true ||
+    String(user?.publicMetadata?.isMember).toLowerCase() === 'true' ||
+    user?.publicMetadata?.role === 'member' ||
+    user?.publicMetadata?.role === 'dragon' ||
+    user?.publicMetadata?.role === 'admin' ||
+    user?.publicMetadata?.role === 'voidmaster' ||
+    user?.publicMetadata?.admin === true ||
+    String(user?.publicMetadata?.admin).toLowerCase() === 'true'
+  )
+  const isEffectiveMember = Boolean(
+    profile?.owner?.isMember ||
+    profile?.character?.isMember ||
+    (profile?.isOwner && isCurrentUserMember)
+  )
 
   async function handleUpdate(e: FormEvent) {
     e.preventDefault()
@@ -298,7 +316,7 @@ export default function CharacterDetailsDialog({
                   cosmetics={char.cosmetics}
                   rankNumber={rankNumber}
                   streak={profile.streaks?.attendanceStreak}
-                  isMember={profile.owner?.isMember ?? profile.character?.isMember ?? false}
+                  isMember={isEffectiveMember}
                   isYou={profile.isOwner}
                   onWikiClick={() => {
                     recordWikiVisit()
@@ -314,7 +332,7 @@ export default function CharacterDetailsDialog({
                   <span className="flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5 text-purple-400" /> Player Information
                   </span>
-                  {profile.owner?.isMember && (
+                  {isEffectiveMember && (
                     <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                       <MembershipBadge size="sm" className="h-3.5 w-3.5" />
                       Member
@@ -340,7 +358,7 @@ export default function CharacterDetailsDialog({
                         <span className="font-bold text-sm text-foreground truncate">
                           {profile.owner?.name}
                         </span>
-                        {profile.owner?.isMember && <MembershipBadge size="sm" />}
+                        {isEffectiveMember && <MembershipBadge size="sm" />}
                         {profile.owner?.isGM && (
                           <span className="inline-flex items-center gap-0.5 text-[10px] bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
                             <Crown className="h-3 w-3" /> GM
@@ -694,7 +712,7 @@ export default function CharacterDetailsDialog({
               onChangeCosmetics={setEditedCosmetics}
               unlockedAchievementIds={unlockedAchievementIds}
               isAdmin={Boolean(profile.isAdmin)}
-              isMember={profile.owner?.isMember ?? profile.character?.isMember ?? false}
+              isMember={isEffectiveMember}
             />
           ) : null}
         </div>
@@ -705,7 +723,7 @@ export default function CharacterDetailsDialog({
             <div className="flex items-center justify-between w-full">
               <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                 Player: <strong className="text-foreground">{profile?.owner?.name}</strong>
-                {profile?.owner?.isMember && <MembershipBadge size="sm" />}
+                {isEffectiveMember && <MembershipBadge size="sm" />}
               </span>
               <Button type="button" variant="outline" onClick={onClose}>
                 Close
