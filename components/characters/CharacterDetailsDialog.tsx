@@ -62,6 +62,7 @@ export default function CharacterDetailsDialog({
   isOpen,
   onClose,
 }: CharacterDetailsDialogProps) {
+  const { user } = useUser()
   const profile = useQuery(
     api.characters.getCharacterProfile,
     characterId ? { characterId } : 'skip'
@@ -99,6 +100,7 @@ export default function CharacterDetailsDialog({
     borderColor: '',
     profileBorder: 'default',
     bgColor: 'default',
+    avatarUrl: undefined,
   })
 
   useEffect(() => {
@@ -138,7 +140,6 @@ export default function CharacterDetailsDialog({
 
   if (!isOpen || !characterId) return null
 
-  const { user } = useUser()
   const char = profile?.character
   const canEdit = profile ? Boolean(profile.isOwner || profile.isAdmin) : false
   const rankNumber = (char?._id ? characterRanks?.[char._id] : undefined) ?? 1
