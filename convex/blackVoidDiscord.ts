@@ -266,7 +266,7 @@ export const notifyPublicBetInvite = internalAction({
     const fields: Array<{ name: string; value: string; inline?: boolean }> = [
       { name: "Challenger", value: challengerStr, inline: true },
       { name: "Wager", value: `💰 **${details.wagerAmount} GP**`, inline: true },
-      { name: "Starting Roll", value: `🎲 /roll 1-${details.deathrollValue.toLocaleString()}`, inline: true },
+      { name: "Starting Roll", value: `🎲 /roll 0-${details.deathrollValue.toLocaleString()}`, inline: true },
     ];
 
     if (details.message) {

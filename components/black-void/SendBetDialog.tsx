@@ -236,7 +236,7 @@ export default function SendBetDialog({
                 Starting Deathroll Value (Max Roll)
               </label>
               <span className="text-[11px] text-rose-300 font-mono font-semibold">
-                1 - {parseInt(deathrollValue, 10) > 0 ? parseInt(deathrollValue, 10).toLocaleString() : '1,000'}
+                0 - {parseInt(deathrollValue, 10) > 0 ? parseInt(deathrollValue, 10).toLocaleString() : '1,000'}
               </span>
             </div>
 
@@ -251,7 +251,7 @@ export default function SendBetDialog({
                 className="pl-8 bg-background/80 border-border/60 focus-visible:ring-rose-500 font-mono text-sm"
               />
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-rose-400">
-                1-
+                0-
               </span>
             </div>
 
