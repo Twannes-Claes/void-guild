@@ -377,7 +377,7 @@ export default function ReputationSystem({
     }
 
     if (data !== undefined && !isOwner && !isVisible) return null
-    if (!data || !sessions) return null
+    if (!data || (!charactersInSession && !sessions)) return null
 
     return (
         <Card className="flex flex-col bg-card/50 relative group border-border/40 gap-0 py-0 overflow-hidden mt-8">
