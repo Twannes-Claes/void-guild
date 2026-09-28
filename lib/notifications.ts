@@ -91,8 +91,8 @@ export function sendBrowserNotification(
   try {
     const notification = new Notification(title, {
       body: options?.body,
-      icon: options?.icon || '/PFVoid.svg',
-      badge: '/PFVoid.svg',
+      icon: options?.icon || '/Void_Logo_WhiteTransparent.png',
+      badge: '/Void_Logo_WhiteTransparent.png',
       tag: options?.tag,
       silent: false,
     })
