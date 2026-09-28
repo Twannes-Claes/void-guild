@@ -36,12 +36,17 @@ export const syncUser = mutation({
     const adminClaim = extractClaim(identity, 'admin')
     const gmClaim = extractClaim(identity, 'gamemaster')
     const memberClaim = extractClaim(identity, 'isMember')
+    const roleClaim = String(extractClaim(identity, 'role') || '').toLowerCase()
     const extraSessionsPlayed = Number(extractClaim(identity, 'extraSessionsPlayed') || 0)
     const extraSessionsRan = Number(extractClaim(identity, 'extraSessionsRan') || 0)
     
     const isAdminUser = adminClaim === true || String(adminClaim).toLowerCase() === 'true'
     const isGMUser = gmClaim === true || String(gmClaim).toLowerCase() === 'true' || isAdminUser
-    const isMemberUser = memberClaim === true || String(memberClaim).toLowerCase() === 'true'
+    const isMemberUser =
+      memberClaim === true ||
+      String(memberClaim).toLowerCase() === 'true' ||
+      roleClaim === 'member' ||
+      roleClaim === 'dragon'
 
     const givenName = extractClaim(identity, 'given_name')
     const familyName = extractClaim(identity, 'family_name')

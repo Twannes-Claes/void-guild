@@ -806,7 +806,12 @@ export async function checkUserMonthlySessionEligibility(
   
   // 1. Check isMember claim from identity or database
   const memberClaim = identity ? extractClaim(identity, 'isMember') : undefined
-  const isMemberClaim = memberClaim === true || String(memberClaim).toLowerCase() === 'true'
+  const roleClaim = identity ? String(extractClaim(identity, 'role') || '').toLowerCase() : ''
+  const isMemberClaim =
+    memberClaim === true ||
+    String(memberClaim).toLowerCase() === 'true' ||
+    roleClaim === 'member' ||
+    roleClaim === 'dragon'
 
   const userRecord = await ctx.db
     .query('users')

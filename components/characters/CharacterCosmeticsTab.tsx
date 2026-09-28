@@ -68,9 +68,12 @@ export default function CharacterCosmeticsTab({
   isMember = false,
 }: CharacterCosmeticsTabProps) {
   const { user } = useUser()
+  const clerkRole = String(user?.publicMetadata?.role || '').toLowerCase()
   const clerkMember = Boolean(
     user?.publicMetadata?.isMember === true ||
-    String(user?.publicMetadata?.isMember).toLowerCase() === 'true'
+    String(user?.publicMetadata?.isMember).toLowerCase() === 'true' ||
+    clerkRole === 'member' ||
+    clerkRole === 'dragon'
   )
   const isEffectiveMember = Boolean(isMember || clerkMember)
 

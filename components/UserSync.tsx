@@ -18,7 +18,9 @@ export default function UserSync() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return
 
-    const key = `void_user_synced_${user.id}`
+    const memberStatus = String(user.publicMetadata?.isMember)
+    const roleStatus = String(user.publicMetadata?.role || '')
+    const key = `void_user_synced_${user.id}_${memberStatus}_${roleStatus}`
     const lastSynced = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null
     const now = Date.now()
 
