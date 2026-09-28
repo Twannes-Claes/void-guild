@@ -458,6 +458,100 @@
   }
 }
 
+/* Radiant Quest Beacon Border (Quest Benefactor - Create a Character Quest) */
+@property --quest-beacon-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.quest-beacon-border {
+  position: relative !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.4), inset 0 0 8px rgba(217, 119, 6, 0.2) !important;
+  animation: quest-beacon-pulse 3s ease-in-out infinite alternate !important;
+}
+
+/* Outer Orbiting Radiant Quest Beam */
+.quest-beacon-border::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: -2.5px !important;
+  border-radius: inherit !important;
+  padding: 2.5px !important;
+  background: conic-gradient(
+    from var(--quest-beacon-angle, 0deg),
+    #78350f 0%,
+    #d97706 18%,
+    #f59e0b 35%,
+    #fef08a 48%,
+    #ffffff 50%,
+    #fef08a 52%,
+    #f59e0b 65%,
+    #d97706 82%,
+    #78350f 100%
+  ) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  animation: quest-beacon-rotate 3.6s linear infinite !important;
+  will-change: --quest-beacon-angle !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.85)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.55)) !important;
+}
+
+/* Corner Quest Beacon Glints */
+.quest-beacon-border::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: -3.5px !important;
+  border-radius: inherit !important;
+  padding: 3.5px !important;
+  background: radial-gradient(circle at top left, rgba(254, 240, 138, 0.85) 0%, transparent 22%),
+              radial-gradient(circle at top right, rgba(254, 240, 138, 0.85) 0%, transparent 22%),
+              radial-gradient(circle at bottom left, rgba(254, 240, 138, 0.85) 0%, transparent 22%),
+              radial-gradient(circle at bottom right, rgba(254, 240, 138, 0.85) 0%, transparent 22%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  animation: quest-beacon-corner-glint 3s ease-in-out infinite alternate !important;
+  pointer-events: none !important;
+  z-index: 9 !important;
+}
+
+.quest-beacon-border[data-selected="true"] {
+  background: linear-gradient(#1f1300, #1f1300) padding-box !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), 0 0 32px rgba(251, 191, 36, 0.6) !important;
+}
+
+@keyframes quest-beacon-rotate {
+  0% {
+    --quest-beacon-angle: 0deg;
+  }
+  100% {
+    --quest-beacon-angle: 360deg;
+  }
+}
+
+@keyframes quest-beacon-pulse {
+  0% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3), inset 0 0 6px rgba(217, 119, 6, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 22px rgba(245, 158, 11, 0.7), inset 0 0 12px rgba(217, 119, 6, 0.3);
+  }
+}
+
+@keyframes quest-beacon-corner-glint {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .void-rotating-border {
   position: relative !important;
   border-color: transparent !important;

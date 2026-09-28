@@ -511,7 +511,7 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     title: 'Quest Benefactor',
     description: 'Posted a character-sponsored quest for fellow adventurers to undertake.',
     category: 'hidden',
-    reward: '',
+    reward: 'Radiant Quest Beacon Card Border Cosmetic',
     checkEligibility: (data) => data.hasCharacterQuest,
   },
   {

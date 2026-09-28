@@ -246,6 +246,14 @@ export const BORDER_SHAPE_OPTIONS: CosmeticOption[] = [
     value: 'rounded-lg in-sync-card-border',
     previewClass: 'in-sync-card-border rounded-lg p-1',
   },
+  {
+    id: 'quest_beacon_border',
+    name: 'Radiant Quest Beacon Border ❗',
+    unlockedByDefault: false,
+    requiredAchievementId: 'create_character_quest',
+    value: 'rounded-lg quest-beacon-border',
+    previewClass: 'quest-beacon-border rounded-lg p-1',
+  },
 ]
 
 export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
@@ -511,7 +519,8 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     cardClassName.includes('silver-card-border') ||
     cardClassName.includes('bronze-card-border') ||
     cardClassName.includes('purple-card-border') ||
-    cardClassName.includes('in-sync-card-border')
+    cardClassName.includes('in-sync-card-border') ||
+    cardClassName.includes('quest-beacon-border')
 
   if (bgObj?.value === 'gold-bg-tint' || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') {
     if (isGradientBorder) {
