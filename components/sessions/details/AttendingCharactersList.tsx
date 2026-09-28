@@ -32,6 +32,7 @@ import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
 import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
 import ArcaneRunesEffect from '@/components/characters/ArcaneRunesEffect'
 import PhantomSmokeEffect from '@/components/characters/PhantomSmokeEffect'
+import WorldStreakBackgroundEffect from '@/components/characters/WorldStreakBackgroundEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import CharacterDetailsDialog from '@/components/characters/CharacterDetailsDialog'
 
@@ -85,6 +86,7 @@ export default function AttendingCharactersList({
     sessionId ? { sessionId } : 'skip'
   )
   const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
+  const allWorlds = useQuery(api.worlds.getAllWorlds)
   const giveCommendation = useMutation(api.commendations.giveCommendation)
   const recordWikiVisit = useMutation(api.users.recordWikiVisit)
   const syncAndGetAchievements = useMutation(api.achievements.syncAndGetAchievements)
@@ -490,6 +492,13 @@ export default function AttendingCharactersList({
           </>
         )
 
+        const isWorldBg = Boolean(char.cosmetics?.bgColor?.startsWith('world_bg_'))
+        const isWorldBorder = Boolean(char.cosmetics?.borderShape?.startsWith('world_border_'))
+        const bgWorldId = isWorldBg ? char.cosmetics?.bgColor?.replace('world_bg_', '') : null
+        const bgWorld = isWorldBg && allWorlds ? allWorlds.find((w) => w._id === bgWorldId) : null
+        const borderWorldId = isWorldBorder ? char.cosmetics?.borderShape?.replace('world_border_', '') : null
+        const borderWorld = isWorldBorder && allWorlds ? allWorlds.find((w) => w._id === borderWorldId) : null
+
         return (
             <li 
                 key={char._id} 
@@ -520,6 +529,24 @@ export default function AttendingCharactersList({
               )}
               {(cosmeticsStyles.cardClassName.includes('phantom-smoke') || char.cosmetics?.bgColor === 'phantom_smoke_bg' || char.cosmetics?.bgColor === 'phantom-smoke-bg') && (
                 <PhantomSmokeEffect />
+              )}
+              {isWorldBg && <WorldStreakBackgroundEffect emblemUrl={bgWorld?.emblemUrl} />}
+
+              {isWorldBorder && (
+                <div
+                  className="absolute -bottom-1.5 -right-1.5 z-20 w-6 h-6 rounded-full p-0.5 bg-slate-900 border border-slate-300 shadow-[0_0_8px_rgba(203,213,225,0.7)] flex items-center justify-center overflow-hidden"
+                  title={borderWorld ? `${borderWorld.name} Sigil` : 'World Sigil'}
+                >
+                  {borderWorld?.emblemUrl ? (
+                    <img
+                      src={borderWorld.emblemUrl}
+                      alt={borderWorld.name}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <span className="text-[9px] font-bold text-slate-200">✨</span>
+                  )}
+                </div>
               )}
               <div className="flex items-start sm:items-center justify-between gap-3 min-w-0 relative z-10 w-full sm:w-auto">
                 <div className="flex items-center gap-3 min-w-0">

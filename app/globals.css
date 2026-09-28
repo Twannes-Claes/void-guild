@@ -782,6 +782,88 @@
   100% { opacity: 0.4; }
 }
 
+/* World Streak 10 Silvery Sparkles Border */
+@property --world-streak-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.world-streak-border {
+  position: relative !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 16px rgba(226, 232, 240, 0.4), inset 0 0 8px rgba(148, 163, 184, 0.2) !important;
+  animation: world-streak-pulse 3.2s ease-in-out infinite alternate !important;
+}
+
+.world-streak-border::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: -2.5px !important;
+  border-radius: inherit !important;
+  padding: 2.5px !important;
+  background: conic-gradient(
+    from var(--world-streak-angle, 0deg),
+    #334155 0%,
+    #64748b 20%,
+    #94a3b8 35%,
+    #e2e8f0 48%,
+    #ffffff 50%,
+    #f8fafc 52%,
+    #cbd5e1 65%,
+    #64748b 85%,
+    #334155 100%
+  ) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  animation: world-streak-rotate 3.6s linear infinite !important;
+  will-change: --world-streak-angle !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+  filter: drop-shadow(0 0 8px rgba(248, 250, 252, 0.9)) drop-shadow(0 0 16px rgba(203, 213, 225, 0.6)) !important;
+}
+
+/* Silvery Sparkle Corner Accents */
+.world-streak-border::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: -4px !important;
+  border-radius: inherit !important;
+  padding: 4px !important;
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.9) 0%, rgba(203, 213, 225, 0.6) 15%, transparent 25%),
+              radial-gradient(circle at top right, rgba(255, 255, 255, 0.9) 0%, rgba(203, 213, 225, 0.6) 15%, transparent 25%),
+              radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.9) 0%, rgba(203, 213, 225, 0.6) 15%, transparent 25%),
+              radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.9) 0%, rgba(203, 213, 225, 0.6) 15%, transparent 25%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  animation: world-streak-star-twinkle 2.5s ease-in-out infinite alternate !important;
+  pointer-events: none !important;
+  z-index: 9 !important;
+}
+
+.world-streak-border[data-selected="true"] {
+  background: linear-gradient(#0f172a, #0f172a) padding-box !important;
+  box-shadow: 0 0 22px rgba(241, 245, 249, 0.8), 0 0 36px rgba(203, 213, 225, 0.6) !important;
+}
+
+@keyframes world-streak-rotate {
+  0% { --world-streak-angle: 0deg; }
+  100% { --world-streak-angle: 360deg; }
+}
+
+@keyframes world-streak-pulse {
+  0% { box-shadow: 0 0 12px rgba(226, 232, 240, 0.35), inset 0 0 6px rgba(148, 163, 184, 0.15); }
+  100% { box-shadow: 0 0 24px rgba(248, 250, 252, 0.75), inset 0 0 12px rgba(203, 213, 225, 0.35); }
+}
+
+@keyframes world-streak-star-twinkle {
+  0% { opacity: 0.35; }
+  50% { opacity: 1; }
+  100% { opacity: 0.45; }
+}
+
 /* Guildmaster Metallic Gold Cosmetics */
 .gold-text {
   background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 45%, #AA771C 100%) !important;

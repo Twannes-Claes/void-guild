@@ -62,6 +62,9 @@ export const ACHIEVEMENT_INFO: Record<string, AchievementInfo> = {
   black_void_bet_win: { title: "Fortune's Favor", category: 'hidden' },
   black_void_bet_lose: { title: 'Snake Eyes', category: 'hidden' },
   kobold_member: { title: 'Kobold!', category: 'normal' },
+  world_streak_3: { title: 'World Attunement (Streak 3)', category: 'hidden' },
+  world_streak_5: { title: 'World Resonance (Streak 5)', category: 'hidden' },
+  world_streak_10: { title: 'World Mastery (Streak 10)', category: 'hidden' },
 }
 
 
@@ -537,10 +540,16 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
       (s.id === 'purple_border' && cosmetics.borderShape?.includes('#D8B4FE'))
   )
   let cardClassName = shapeObj ? shapeObj.value : ''
+  if (cosmetics.borderShape?.startsWith('world_border_')) {
+    cardClassName = 'rounded-lg world-streak-border relative'
+  }
 
   // Profile Border
   const profileObj = PROFILE_BORDER_OPTIONS.find((p) => p.id === cosmetics.profileBorder || p.value === cosmetics.profileBorder)
-  const profileRingClassName = profileObj ? profileObj.value : 'border border-border'
+  let profileRingClassName = profileObj ? profileObj.value : 'border border-border'
+  if (cosmetics.profileBorder?.startsWith('world_ring_')) {
+    profileRingClassName = 'world-sigil-avatar-ring'
+  }
 
   // Card Background
   const bgObj = BG_COLOR_OPTIONS.find((b) => b.id === cosmetics.bgColor || b.value === cosmetics.bgColor)
@@ -552,9 +561,16 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     cardClassName.includes('purple-card-border') ||
     cardClassName.includes('in-sync-card-border') ||
     cardClassName.includes('quest-beacon-border') ||
-    cardClassName.includes('jackpot-card-border')
+    cardClassName.includes('jackpot-card-border') ||
+    cardClassName.includes('world-streak-border')
 
-  if (bgObj?.value === 'gold-bg-tint' || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') {
+  if (cosmetics.bgColor?.startsWith('world_bg_')) {
+    if (isGradientBorder) {
+      const starlightPaddingLayer =
+        'radial-gradient(ellipse at 80% 50%, rgba(226, 232, 240, 0.16) 0%, rgba(148, 163, 184, 0.08) 50%, transparent 80%), linear-gradient(var(--card), var(--card))'
+      cardBgStyle = { '--card-bg': starlightPaddingLayer } as React.CSSProperties
+    }
+  } else if (bgObj?.value === 'gold-bg-tint' || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') {
     if (isGradientBorder) {
       const goldPaddingLayer =
         'linear-gradient(135deg, rgba(191,149,63,0.18) 0%, rgba(252,246,186,0.12) 50%, rgba(170,119,28,0.18) 100%), linear-gradient(var(--card), var(--card))'

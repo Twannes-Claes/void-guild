@@ -4,6 +4,8 @@ import React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { PROFILE_BORDER_OPTIONS } from '@/lib/cosmetics'
+import { useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 
 interface ProfileAvatarWithBadgeProps {
   imageUrl?: string | null
@@ -15,7 +17,7 @@ interface ProfileAvatarWithBadgeProps {
   profileRingClassName?: string
   rankNumber?: number
   streak?: number
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 export default function ProfileAvatarWithBadge({
@@ -27,13 +29,21 @@ export default function ProfileAvatarWithBadge({
   streak,
   size = 'md',
 }: ProfileAvatarWithBadgeProps) {
+  const isWorldRing = Boolean(cosmetics?.profileBorder?.startsWith('world_ring_'))
+  const allWorlds = useQuery(api.worlds.getAllWorlds, isWorldRing ? {} : 'skip')
+  const worldId = isWorldRing ? cosmetics?.profileBorder?.replace('world_ring_', '') : null
+  const worldRing = isWorldRing && allWorlds ? allWorlds.find((w) => w._id === worldId) : null
+  const worldEmblem = worldRing?.emblemUrl
+
   const profileBorderValue = cosmetics?.profileBorder
     ? PROFILE_BORDER_OPTIONS.find(
         (p) => p.id === cosmetics.profileBorder || p.value === cosmetics.profileBorder
       )?.value
     : null
 
-  const ringClass = profileRingClassName || profileBorderValue || 'border border-border'
+  const ringClass = isWorldRing
+    ? 'border-0'
+    : profileRingClassName || profileBorderValue || 'border border-border'
 
   const streakTier = typeof streak === 'number' && streak >= 10 ? '10' : typeof streak === 'number' && streak >= 5 ? '5' : typeof streak === 'number' && streak >= 3 ? '3' : '1'
 
@@ -74,9 +84,30 @@ export default function ProfileAvatarWithBadge({
 
   return (
     <div className="relative shrink-0 inline-flex items-center justify-center">
+      {isWorldRing && (
+        <div
+          className="absolute -inset-1 rounded-full overflow-hidden z-0 pointer-events-none p-0.5 bg-slate-900 border border-slate-300/50 shadow-[0_0_10px_rgba(203,213,225,0.4)]"
+          title={worldRing ? `${worldRing.name} Sigil Ring` : 'World Sigil Ring'}
+        >
+          {worldEmblem ? (
+            <img
+              src={worldEmblem}
+              alt={worldRing?.name || 'World Sigil'}
+              className="w-full h-full object-cover rounded-full opacity-90 scale-105"
+            />
+          ) : (
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center text-[10px] text-slate-300 font-bold">
+              ✨
+            </div>
+          )}
+          <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/30" />
+        </div>
+      )}
+
       <div
         className={cn(
-          'rounded-full shrink-0 flex items-center justify-center relative',
+          'rounded-full shrink-0 flex items-center justify-center relative z-10',
+          isWorldRing && 'p-[2px]',
           sizeClasses[size],
           ringClass
         )}

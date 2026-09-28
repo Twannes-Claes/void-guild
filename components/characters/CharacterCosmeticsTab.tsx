@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Sparkles,
   Lock,
@@ -32,6 +32,7 @@ import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
 import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
 import ArcaneRunesEffect from '@/components/characters/ArcaneRunesEffect'
 import PhantomSmokeEffect from '@/components/characters/PhantomSmokeEffect'
+import WorldStreakBackgroundEffect from '@/components/characters/WorldStreakBackgroundEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import {
   resolveCosmeticsStyles,
@@ -87,11 +88,42 @@ export default function CharacterCosmeticsTab({
   const profileImageUrl = user?.imageUrl
   const effectiveAvatarUrl = (isEffectiveMember && cosmetics.avatarUrl) ? cosmetics.avatarUrl : profileImageUrl
   const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
+  const userWorldStreaks = useQuery(api.worlds.getUserWorldStreaks) || []
   const rankNumber = (characterId ? characterRanks?.[characterId] : undefined) ?? 1
   const [adminView, setAdminView] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false)
   const [customUrlInput, setCustomUrlInput] = useState('')
+
+  const allBorderShapeOptions: CosmeticOption[] = useMemo(() => {
+    const worldBorderOptions: CosmeticOption[] = userWorldStreaks.map((w) => ({
+      id: `world_border_${w._id}`,
+      name: `${w.name} Sigil Sparkles Border ✨`,
+      unlockedByDefault: false,
+      value: 'rounded-lg world-streak-border',
+    }))
+    return [...BORDER_SHAPE_OPTIONS, ...worldBorderOptions]
+  }, [userWorldStreaks])
+
+  const allBgColorOptions: CosmeticOption[] = useMemo(() => {
+    const worldBgOptions: CosmeticOption[] = userWorldStreaks.map((w) => ({
+      id: `world_bg_${w._id}`,
+      name: `${w.name} Sigil Starlight Tint 🌟`,
+      unlockedByDefault: false,
+      value: `world_bg_${w._id}`,
+    }))
+    return [...BG_COLOR_OPTIONS, ...worldBgOptions]
+  }, [userWorldStreaks])
+
+  const allProfileBorderOptions: CosmeticOption[] = useMemo(() => {
+    const worldRingOptions: CosmeticOption[] = userWorldStreaks.map((w) => ({
+      id: `world_ring_${w._id}`,
+      name: `${w.name} Sigil Ring 🌀`,
+      unlockedByDefault: false,
+      value: `world_ring_${w._id}`,
+    }))
+    return [...PROFILE_BORDER_OPTIONS, ...worldRingOptions]
+  }, [userWorldStreaks])
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -175,6 +207,41 @@ export default function CharacterCosmeticsTab({
 
   function getOptionLockStatus(opt: CosmeticOption) {
     if (opt.unlockedByDefault) return { isUnlocked: true, label: '', badgeLabel: '', isHidden: false, title: '' }
+    
+    // Per-world streak dynamic checks
+    if (opt.id.startsWith('world_ring_')) {
+      const worldId = opt.id.replace('world_ring_', '')
+      const w = userWorldStreaks.find((x) => x._id === worldId)
+      const currentStreak = w?.userMaxStreak ?? 0
+      const isUnlocked = isEffectiveAdmin || currentStreak >= 3
+      const title = `${w?.name || 'World'} Streak 3`
+      const label = isUnlocked ? '' : `Requires World Streak 3 in ${w?.name || 'this world'} (Current: ${currentStreak}/3)`
+      const badgeLabel = isUnlocked ? '' : `Streak 3 (${currentStreak}/3)`
+      return { isUnlocked, isHidden: false, label, badgeLabel, title }
+    }
+
+    if (opt.id.startsWith('world_bg_')) {
+      const worldId = opt.id.replace('world_bg_', '')
+      const w = userWorldStreaks.find((x) => x._id === worldId)
+      const currentStreak = w?.userMaxStreak ?? 0
+      const isUnlocked = isEffectiveAdmin || currentStreak >= 5
+      const title = `${w?.name || 'World'} Streak 5`
+      const label = isUnlocked ? '' : `Requires World Streak 5 in ${w?.name || 'this world'} (Current: ${currentStreak}/5)`
+      const badgeLabel = isUnlocked ? '' : `Streak 5 (${currentStreak}/5)`
+      return { isUnlocked, isHidden: false, label, badgeLabel, title }
+    }
+
+    if (opt.id.startsWith('world_border_')) {
+      const worldId = opt.id.replace('world_border_', '')
+      const w = userWorldStreaks.find((x) => x._id === worldId)
+      const currentStreak = w?.userMaxStreak ?? 0
+      const isUnlocked = isEffectiveAdmin || currentStreak >= 10
+      const title = `${w?.name || 'World'} Streak 10`
+      const label = isUnlocked ? '' : `Requires World Streak 10 in ${w?.name || 'this world'} (Current: ${currentStreak}/10)`
+      const badgeLabel = isUnlocked ? '' : `Streak 10 (${currentStreak}/10)`
+      return { isUnlocked, isHidden: false, label, badgeLabel, title }
+    }
+
     if (!opt.requiredAchievementId) return { isUnlocked: true, label: '', badgeLabel: '', isHidden: false, title: '' }
     const isUnlocked = unlockedAchievementIds.includes(opt.requiredAchievementId)
     const info = ACHIEVEMENT_INFO[opt.requiredAchievementId]
@@ -299,6 +366,12 @@ export default function CharacterCosmeticsTab({
   }
 
   const previewStyles = resolveCosmeticsStyles(cosmetics)
+  const isPreviewWorldBg = Boolean(cosmetics.bgColor?.startsWith('world_bg_'))
+  const isPreviewWorldBorder = Boolean(cosmetics.borderShape?.startsWith('world_border_'))
+  const previewBgWorldId = isPreviewWorldBg ? cosmetics.bgColor?.replace('world_bg_', '') : null
+  const previewBgWorld = isPreviewWorldBg && userWorldStreaks ? userWorldStreaks.find((w) => w._id === previewBgWorldId) : null
+  const previewBorderWorldId = isPreviewWorldBorder ? cosmetics.borderShape?.replace('world_border_', '') : null
+  const previewBorderWorld = isPreviewWorldBorder && userWorldStreaks ? userWorldStreaks.find((w) => w._id === previewBorderWorldId) : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -368,6 +441,24 @@ export default function CharacterCosmeticsTab({
           )}
           {(previewStyles.cardClassName.includes('phantom-smoke') || cosmetics.bgColor === 'phantom_smoke_bg' || cosmetics.bgColor === 'phantom-smoke-bg') && (
             <PhantomSmokeEffect />
+          )}
+          {isPreviewWorldBg && <WorldStreakBackgroundEffect emblemUrl={previewBgWorld?.emblemUrl} />}
+
+          {isPreviewWorldBorder && (
+            <div
+              className="absolute -bottom-1.5 -right-1.5 z-20 w-6 h-6 rounded-full p-0.5 bg-slate-900 border border-slate-300 shadow-[0_0_8px_rgba(203,213,225,0.7)] flex items-center justify-center overflow-hidden"
+              title={previewBorderWorld ? `${previewBorderWorld.name} Sigil` : 'World Sigil'}
+            >
+              {previewBorderWorld?.emblemUrl ? (
+                <img
+                  src={previewBorderWorld.emblemUrl}
+                  alt={previewBorderWorld.name}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span className="text-[9px] font-bold text-slate-200">✨</span>
+              )}
+            </div>
           )}
           <div className="flex items-center gap-3 min-w-0 relative z-10">
             <ProfileAvatarWithBadge
@@ -590,14 +681,15 @@ export default function CharacterCosmeticsTab({
           Card Border Effect & Shape
         </label>
         <div className="flex flex-col gap-2">
-          {BORDER_SHAPE_OPTIONS.filter(isOptionVisible).map((opt) => {
+          {allBorderShapeOptions.filter(isOptionVisible).map((opt) => {
             const { isUnlocked, label, badgeLabel } = getOptionLockStatus(opt)
             const isSelected = cosmetics.borderShape === opt.id || cosmetics.borderShape === opt.value
             const isSpecialBorder =
               opt.value.includes('-card-border') ||
               opt.value.includes('rainbow-border') ||
               opt.value.includes('void-rotating-border') ||
-              opt.value.includes('in-sync-border')
+              opt.value.includes('in-sync-border') ||
+              opt.value.includes('world-streak-border')
 
             return (
               <button
@@ -641,7 +733,7 @@ export default function CharacterCosmeticsTab({
           Card Background Tint
         </label>
         <div className="flex flex-col gap-2">
-          {BG_COLOR_OPTIONS.filter(isOptionVisible).map((opt) => {
+          {allBgColorOptions.filter(isOptionVisible).map((opt) => {
             const { isUnlocked, label, badgeLabel } = getOptionLockStatus(opt)
             const isSelected =
               cosmetics.bgColor === opt.id ||
@@ -649,6 +741,8 @@ export default function CharacterCosmeticsTab({
               (opt.id === 'default' && (!cosmetics.bgColor || cosmetics.bgColor === 'default'))
 
             const isClassTint = typeof opt.value === 'string' && (opt.value.endsWith('-bg-tint') || opt.value.endsWith('-bg'))
+            const isWorldBgOpt = opt.id.startsWith('world_bg_')
+            const worldOpt = isWorldBgOpt ? userWorldStreaks.find((w) => w._id === opt.id.replace('world_bg_', '')) : null
 
             return (
               <button
@@ -667,7 +761,7 @@ export default function CharacterCosmeticsTab({
                       : 'border-border/40 opacity-50 grayscale cursor-not-allowed'
                 )}
                 style={{
-                  backgroundColor: !isClassTint && opt.value ? opt.value : undefined,
+                  backgroundColor: !isClassTint && !isWorldBgOpt && opt.value ? opt.value : undefined,
                 }}
               >
                 {(opt.id === 'void_nebula' || opt.value === 'void-nebula-bg') && isUnlocked && (
@@ -691,6 +785,9 @@ export default function CharacterCosmeticsTab({
                 {(opt.id === 'phantom_smoke_bg' || opt.value === 'phantom-smoke-bg') && isUnlocked && (
                   <PhantomSmokeEffect />
                 )}
+                {isWorldBgOpt && isUnlocked && (
+                  <WorldStreakBackgroundEffect emblemUrl={worldOpt?.emblemUrl} />
+                )}
                 <span className="font-semibold relative z-10">{opt.name}</span>
                 {!isUnlocked && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 shrink-0 relative z-10">
@@ -711,7 +808,7 @@ export default function CharacterCosmeticsTab({
           Profile Avatar Ring
         </label>
         <div className="flex flex-wrap gap-2.5 items-center">
-          {PROFILE_BORDER_OPTIONS.filter(isOptionVisible).map((opt) => {
+          {allProfileBorderOptions.filter(isOptionVisible).map((opt) => {
             const { isUnlocked, label } = getOptionLockStatus(opt)
             const isSelected =
               cosmetics.profileBorder === opt.id ||

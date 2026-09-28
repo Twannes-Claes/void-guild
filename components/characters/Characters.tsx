@@ -42,6 +42,7 @@ import TintParticlesEffect from './TintParticlesEffect'
 import FallingCoinsEffect from './FallingCoinsEffect'
 import ArcaneRunesEffect from './ArcaneRunesEffect'
 import PhantomSmokeEffect from './PhantomSmokeEffect'
+import WorldStreakBackgroundEffect from './WorldStreakBackgroundEffect'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getLevelBadgeStyle, CharacterRankIcon, getXPBarStyles, cn, getCharacterWikiUrl } from '@/lib/utils'
 import { track } from '@vercel/analytics'
@@ -71,6 +72,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
   const recordWikiVisit = useMutation(api.users.recordWikiVisit)
   const syncAndGetAchievements = useMutation(api.achievements.syncAndGetAchievements)
 
+  const allWorlds = useQuery(api.worlds.getAllWorlds)
   const isAdmin = useQuery(api.sessions.isAdminQuery)
   const userCommendations = useQuery(api.commendations.getUserCharactersCommendations)
   const unlockedAchievementIds = useQuery(api.achievements.getUserUnlockedAchievementIds) || []
@@ -167,8 +169,16 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                     cosmetics.cardClassName.includes('-card-border') ||
                     cosmetics.cardClassName.includes('rainbow-border') ||
                     cosmetics.cardClassName.includes('void-rotating-border') ||
-                    cosmetics.cardClassName.includes('in-sync-border')
+                    cosmetics.cardClassName.includes('in-sync-border') ||
+                    cosmetics.cardClassName.includes('world-streak-border')
                   const isCharMember = Boolean((character as any).isMember || isCurrentUserMember)
+                  const isWorldBg = Boolean(character.cosmetics?.bgColor?.startsWith('world_bg_'))
+                  const isWorldBorder = Boolean(character.cosmetics?.borderShape?.startsWith('world_border_'))
+                  const bgWorldId = isWorldBg ? character.cosmetics?.bgColor?.replace('world_bg_', '') : null
+                  const bgWorld = isWorldBg && allWorlds ? allWorlds.find((w) => w._id === bgWorldId) : null
+                  const borderWorldId = isWorldBorder ? character.cosmetics?.borderShape?.replace('world_border_', '') : null
+                  const borderWorld = isWorldBorder && allWorlds ? allWorlds.find((w) => w._id === borderWorldId) : null
+
                   return (
                     <li
                       key={character._id}
@@ -201,6 +211,24 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                       )}
                       {(cosmetics.cardClassName.includes('phantom-smoke') || character.cosmetics?.bgColor === 'phantom_smoke_bg' || character.cosmetics?.bgColor === 'phantom-smoke-bg') && (
                         <PhantomSmokeEffect />
+                      )}
+                      {isWorldBg && <WorldStreakBackgroundEffect emblemUrl={bgWorld?.emblemUrl} />}
+
+                      {isWorldBorder && (
+                        <div
+                          className="absolute -bottom-1.5 -right-1.5 z-20 w-6 h-6 rounded-full p-0.5 bg-slate-900 border border-slate-300 shadow-[0_0_8px_rgba(203,213,225,0.7)] flex items-center justify-center overflow-hidden"
+                          title={borderWorld ? `${borderWorld.name} Sigil` : 'World Sigil'}
+                        >
+                          {borderWorld?.emblemUrl ? (
+                            <img
+                              src={borderWorld.emblemUrl}
+                              alt={borderWorld.name}
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          ) : (
+                            <span className="text-[9px] font-bold text-slate-200">✨</span>
+                          )}
+                        </div>
                       )}
                       <div className="flex justify-between items-center w-full relative z-10 min-w-0">
                         <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">

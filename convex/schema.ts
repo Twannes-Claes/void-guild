@@ -97,6 +97,8 @@ export default defineSchema({
         calendarVisible: v.optional(v.boolean()),
         description: v.optional(v.string()),
         mapEmbed: v.optional(v.string()),
+        emblemUrl: v.optional(v.string()),
+        emblemStorageId: v.optional(v.id('_storage')),
     }).index('by_owner', ['owner'])
       .index('by_name', ['name']),
     reputations: defineTable({

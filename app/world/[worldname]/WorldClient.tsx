@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { 
   ChevronLeft, Globe, Calendar, Book, Lock, Shield, MapPin, Users, 
-  Plus, Settings, Pencil, Map
+  Plus, Settings, Pencil, Map, Upload, Camera, Sparkles
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn, formatDate, formatTime, getLevelBadgeStyle, getDualLevelBadgeStyle, getWorldWikiUrl } from '@/lib/utils'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { Id } from '@/convex/_generated/dataModel'
 import { UserMetadata } from '@/app/stats/actions'
@@ -124,10 +124,15 @@ export default function WorldClient() {
   const isGM = useQuery(api.sessions.isGameMasterQuery)
   const userCharacters = useQuery(api.characters.listCharacters)
   const renameWorld = useMutation(api.worlds.renameWorld)
+  const generateEmblemUploadUrl = useMutation(api.worlds.generateWorldEmblemUploadUrl)
+  const saveWorldEmblem = useMutation(api.worlds.saveWorldEmblem)
   const updateSessionInGameDate = useMutation(api.sessions.updateInGameDate)
   const recordWorldVisit = useMutation(api.users.recordWorldVisit)
   const recordWikiVisit = useMutation(api.users.recordWikiVisit)
   const syncAndGetAchievements = useMutation(api.achievements.syncAndGetAchievements)
+
+  const [isUploadingEmblem, setIsUploadingEmblem] = useState(false)
+  const emblemInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (userId) {
@@ -141,6 +146,47 @@ export default function WorldClient() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [newName, setNewName] = useState('')
   const [viewMode, setViewMode] = useState<'reputation' | 'calendar'>('reputation')
+
+  const handleEmblemUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !world) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, WEBP, etc.)')
+      return
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Image size must be less than 8MB')
+      return
+    }
+
+    setIsUploadingEmblem(true)
+    const toastId = toast.loading('Uploading world sigil / emblem...')
+    try {
+      const uploadUrl = await generateEmblemUploadUrl()
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      const { storageId } = await res.json()
+      if (!storageId) {
+        throw new Error('Failed to get storage ID for upload')
+      }
+      await saveWorldEmblem({
+        worldId: world._id,
+        storageId,
+      })
+      toast.success('World emblem updated successfully!', { id: toastId })
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err?.message || 'Failed to upload emblem', { id: toastId })
+    } finally {
+      setIsUploadingEmblem(false)
+      if (emblemInputRef.current) emblemInputRef.current.value = ''
+    }
+  }
 
   const userIds = useMemo(() => {
     if (!world) return [];
@@ -317,59 +363,102 @@ export default function WorldClient() {
         <div className="lg:col-span-4 space-y-8">
           <div>
             <div className="flex items-center gap-4 group min-w-0">
-                {isEditingName ? (
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
-                        <Input 
-                            value={newName} 
-                            onChange={(e) => setNewName(e.target.value)}
-                            className="text-2xl font-bold h-12 flex-grow"
-                            autoFocus
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleRenameWorld()
-                                if (e.key === 'Escape') setIsEditingName(false)
-                            }}
-                        />
-                        <div className="flex gap-2 shrink-0">
-                            <Button size="sm" onClick={handleRenameWorld}>Save</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)}>Cancel</Button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="min-w-0 w-full overflow-hidden">
-                        <h1 
-                            className="font-bold flex flex-wrap items-center gap-x-4 gap-y-2 transition-all duration-300"
-                            style={{ 
-                                fontSize: `clamp(1.25rem, ${(25 / (world.name.length || 1))}rem, 3.5rem)`,
-                                lineHeight: '1.1'
-                            }}
+              {/* World Emblem Avatar */}
+              {world.emblemUrl ? (
+                <div className="relative group/emblem shrink-0">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-2 ring-primary/40 ring-offset-2 ring-offset-background overflow-hidden bg-muted/30 shadow-md flex items-center justify-center">
+                    <img src={world.emblemUrl} alt={world.name} className="w-full h-full object-cover" />
+                  </div>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => emblemInputRef.current?.click()}
+                      disabled={isUploadingEmblem}
+                      className="absolute inset-0 rounded-full bg-black/60 text-white opacity-0 group-hover/emblem:opacity-100 transition-opacity flex flex-col items-center justify-center text-[10px] font-bold gap-0.5 cursor-pointer"
+                      title="Change World Emblem"
+                    >
+                      <Camera className="h-4 w-4" />
+                      <span>{isUploadingEmblem ? '...' : 'Change'}</span>
+                    </button>
+                  )}
+                </div>
+              ) : isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => emblemInputRef.current?.click()}
+                  disabled={isUploadingEmblem}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center text-primary transition-all cursor-pointer group/upload shrink-0 shadow-sm"
+                  title="Upload World Sigil / Emblem"
+                >
+                  <Upload className="h-4 w-4 transition-transform group-hover/upload:scale-110" />
+                  <span className="text-[9px] font-bold mt-1 text-center leading-tight">
+                    {isUploadingEmblem ? 'Uploading' : 'Upload Sigil'}
+                  </span>
+                </button>
+              ) : null}
+
+              <input
+                ref={emblemInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={isUploadingEmblem}
+                onChange={handleEmblemUpload}
+              />
+
+              {isEditingName ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
+                  <Input 
+                    value={newName} 
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="text-2xl font-bold h-12 flex-grow"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleRenameWorld()
+                      if (e.key === 'Escape') setIsEditingName(false)
+                    }}
+                  />
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" onClick={handleRenameWorld}>Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="min-w-0 w-full overflow-hidden">
+                  <h1 
+                    className="font-bold flex flex-wrap items-center gap-x-4 gap-y-2 transition-all duration-300"
+                    style={{ 
+                      fontSize: `clamp(1.25rem, ${(25 / (world.name.length || 1))}rem, 3.5rem)`,
+                      lineHeight: '1.1'
+                    }}
+                  >
+                    <span className="break-words max-w-full">{world.name}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a 
+                        href={getWorldWikiUrl(world.name)} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="hover:text-primary transition-colors shrink-0"
+                        onClick={() => {
+                          recordWikiVisit().then(() => syncAndGetAchievements()).catch(console.error);
+                        }}
+                      >
+                        <Book className="h-8 w-8" />
+                      </a>
+                      {userId === world.owner && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                          onClick={() => setIsEditingName(true)}
                         >
-                            <span className="break-words max-w-full">{world.name}</span>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <a 
-                                    href={getWorldWikiUrl(world.name)} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="hover:text-primary transition-colors shrink-0"
-                                    onClick={() => {
-                                        recordWikiVisit().then(() => syncAndGetAchievements()).catch(console.error);
-                                    }}
-                                >
-                                    <Book className="h-8 w-8" />
-                                </a>
-                                {userId === world.owner && (
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-                                        onClick={() => setIsEditingName(true)}
-                                    >
-                                        <Pencil className="h-5 w-5" />
-                                    </Button>
-                                )}
-                            </div>
-                        </h1>
+                          <Pencil className="h-5 w-5" />
+                        </Button>
+                      )}
                     </div>
-                )}
+                  </h1>
+                </div>
+              )}
             </div>
             <p className="text-xl text-muted-foreground mt-2 italic font-serif">
               Directed by <span className="font-semibold text-foreground not-italic">{ownerName}</span>.

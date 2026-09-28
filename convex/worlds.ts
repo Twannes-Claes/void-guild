@@ -619,3 +619,127 @@ export const updateWorldCalendar = mutation({
     }
   },
 })
+
+export const generateWorldEmblemUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+export const saveWorldEmblem = mutation({
+  args: {
+    worldId: v.id('worlds'),
+    storageId: v.id('_storage'),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    const world = await ctx.db.get(args.worldId)
+    const isAdminUser = await isAdmin(ctx)
+    if (!world || (world.owner !== user.subject && !isAdminUser)) {
+      throw new Error('Unauthorized')
+    }
+
+    const emblemUrl = await ctx.storage.getUrl(args.storageId)
+    if (!emblemUrl) {
+      throw new Error('Failed to retrieve uploaded image URL')
+    }
+
+    await ctx.db.patch(args.worldId, {
+      emblemUrl,
+      emblemStorageId: args.storageId,
+    })
+
+    return { success: true, emblemUrl }
+  },
+})
+
+export const getAllWorlds = query({
+  args: {},
+  handler: async (ctx) => {
+    const worlds = await ctx.db.query('worlds').collect()
+    return worlds.map((w) => ({
+      _id: w._id,
+      name: w.name,
+      owner: w.owner,
+      emblemUrl: w.emblemUrl,
+    }))
+  },
+})
+
+export const getUserWorldStreaks = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await ctx.auth.getUserIdentity()
+    const worlds = await ctx.db.query('worlds').collect()
+    if (!user) {
+      return worlds.map((w) => ({
+        _id: w._id,
+        name: w.name,
+        emblemUrl: w.emblemUrl,
+        userMaxStreak: 0,
+        unlockedStreak3: false,
+        unlockedStreak5: false,
+        unlockedStreak10: false,
+      }))
+    }
+
+    const characters = await ctx.db
+      .query('characters')
+      .withIndex('by_userId', (q) => q.eq('userId', user.subject))
+      .collect()
+
+    const allSessions = await ctx.db.query('sessions').collect()
+    const lockedSessions = allSessions.filter((s) => s.locked)
+    const sortedLockedSessions = [...lockedSessions].sort((a, b) => {
+      const dateA = a.date || a._creationTime
+      const dateB = b.date || b._creationTime
+      return dateA - dateB
+    })
+
+    const worldStreaksMap: Record<string, number> = {}
+    for (const w of worlds) {
+      worldStreaksMap[w._id] = 0
+    }
+
+    for (const char of characters) {
+      const charSessions = sortedLockedSessions.filter(
+        (s) => s.characters && s.characters.includes(char._id)
+      )
+
+      let currentWorld: string | null = null
+      let currentStreak = 0
+
+      for (const s of charSessions) {
+        const wId = s.world ? s.world.toString() : null
+        if (wId && wId === currentWorld) {
+          currentStreak++
+        } else {
+          currentWorld = wId
+          currentStreak = wId ? 1 : 0
+        }
+
+        if (wId && currentStreak > (worldStreaksMap[wId] || 0)) {
+          worldStreaksMap[wId] = currentStreak
+        }
+      }
+    }
+
+    return worlds.map((w) => {
+      const streak = worldStreaksMap[w._id] || 0
+      return {
+        _id: w._id,
+        name: w.name,
+        emblemUrl: w.emblemUrl,
+        userMaxStreak: streak,
+        unlockedStreak3: streak >= 3,
+        unlockedStreak5: streak >= 5,
+        unlockedStreak10: streak >= 10,
+      }
+    })
+  },
+})
+
