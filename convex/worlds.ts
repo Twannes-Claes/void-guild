@@ -648,6 +648,14 @@ export const saveWorldEmblem = mutation({
       throw new Error('Failed to retrieve uploaded image URL')
     }
 
+    if (world.emblemStorageId && world.emblemStorageId !== args.storageId) {
+      try {
+        await ctx.storage.delete(world.emblemStorageId)
+      } catch (e) {
+        console.warn('Failed to delete previous emblem storage blob:', e)
+      }
+    }
+
     await ctx.db.patch(args.worldId, {
       emblemUrl,
       emblemStorageId: args.storageId,
@@ -729,15 +737,17 @@ export const getUserWorldStreaks = query({
     }
 
     return worlds.map((w) => {
+      const isOwner = w.owner === user.subject
       const streak = worldStreaksMap[w._id] || 0
       return {
         _id: w._id,
         name: w.name,
         emblemUrl: w.emblemUrl,
+        isOwner,
         userMaxStreak: streak,
-        unlockedStreak3: streak >= 3,
-        unlockedStreak5: streak >= 5,
-        unlockedStreak10: streak >= 10,
+        unlockedStreak3: isOwner || streak >= 3,
+        unlockedStreak5: isOwner || streak >= 5,
+        unlockedStreak10: isOwner || streak >= 10,
       }
     })
   },

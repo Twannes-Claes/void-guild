@@ -106,7 +106,7 @@ export default function ProfileAvatarWithBadge({
 
       <div
         className={cn(
-          'rounded-full shrink-0 flex items-center justify-center relative z-10',
+          'rounded-full shrink-0 flex items-center justify-center relative z-10 overflow-hidden',
           isWorldRing && 'p-[2px]',
           sizeClasses[size],
           ringClass

@@ -29,9 +29,14 @@ export default function WorldStreakBackgroundEffect({
   useEffect(() => {
     if (emblemUrl) {
       const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.src = emblemUrl
       img.onload = () => {
+        imageRef.current = img
+      }
+      img.onerror = () => {
+        imageRef.current = null
+      }
+      img.src = emblemUrl
+      if (img.complete && img.naturalWidth > 0) {
         imageRef.current = img
       }
     } else {
@@ -116,21 +121,33 @@ export default function WorldStreakBackgroundEffect({
 
       ctx.save()
 
-      // 1. Scaled Up & Cropped World Emblem on Right Side (25-30% opacity)
+      // 1. Scaled Up & Cropped World Emblem on Right Side (28% opacity)
       if (imageRef.current) {
         ctx.save()
         const img = imageRef.current
-        const imgSize = Math.max(height * 1.6, width * 0.45)
-        const imgX = width - imgSize * 0.72
-        const imgY = height * 0.5 - imgSize * 0.5
+        const imgW = img.naturalWidth || img.width || 1
+        const imgH = img.naturalHeight || img.height || 1
+        const aspect = imgW / imgH
+
+        const baseSize = Math.max(height * 1.6, width * 0.45)
+        let drawW = baseSize
+        let drawH = baseSize
+        if (aspect > 1) {
+          drawW = baseSize * aspect
+        } else {
+          drawH = baseSize / aspect
+        }
+
+        const imgX = width - drawW * 0.72
+        const imgY = height * 0.5 - drawH * 0.5
 
         ctx.globalAlpha = 0.28
-        ctx.drawImage(img, imgX, imgY, imgSize, imgSize)
+        ctx.drawImage(img, imgX, imgY, drawW, drawH)
 
         // Soft gradient mask so left edge blends into card
-        const maskGrad = ctx.createLinearGradient(width - imgSize, 0, width, 0)
-        maskGrad.addColorStop(0, 'rgba(15, 23, 42, 0.9)')
-        maskGrad.addColorStop(0.3, 'rgba(15, 23, 42, 0.2)')
+        const maskGrad = ctx.createLinearGradient(width - drawW * 0.75, 0, width, 0)
+        maskGrad.addColorStop(0, 'rgba(15, 23, 42, 0.95)')
+        maskGrad.addColorStop(0.35, 'rgba(15, 23, 42, 0.25)')
         maskGrad.addColorStop(1, 'rgba(15, 23, 42, 0)')
         ctx.globalCompositeOperation = 'destination-out'
         ctx.fillStyle = maskGrad

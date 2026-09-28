@@ -213,8 +213,8 @@ export default function CharacterCosmeticsTab({
       const worldId = opt.id.replace('world_ring_', '')
       const w = userWorldStreaks.find((x) => x._id === worldId)
       const currentStreak = w?.userMaxStreak ?? 0
-      const isUnlocked = isEffectiveAdmin || currentStreak >= 3
-      const title = `${w?.name || 'World'} Streak 3`
+      const isUnlocked = isEffectiveAdmin || Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak3) || currentStreak >= 3
+      const title = (w as any)?.isOwner ? `${w?.name || 'World'} Owner` : `${w?.name || 'World'} Streak 3`
       const label = isUnlocked ? '' : `Requires World Streak 3 in ${w?.name || 'this world'} (Current: ${currentStreak}/3)`
       const badgeLabel = isUnlocked ? '' : `Streak 3 (${currentStreak}/3)`
       return { isUnlocked, isHidden: false, label, badgeLabel, title }
@@ -224,8 +224,8 @@ export default function CharacterCosmeticsTab({
       const worldId = opt.id.replace('world_bg_', '')
       const w = userWorldStreaks.find((x) => x._id === worldId)
       const currentStreak = w?.userMaxStreak ?? 0
-      const isUnlocked = isEffectiveAdmin || currentStreak >= 5
-      const title = `${w?.name || 'World'} Streak 5`
+      const isUnlocked = isEffectiveAdmin || Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak5) || currentStreak >= 5
+      const title = (w as any)?.isOwner ? `${w?.name || 'World'} Owner` : `${w?.name || 'World'} Streak 5`
       const label = isUnlocked ? '' : `Requires World Streak 5 in ${w?.name || 'this world'} (Current: ${currentStreak}/5)`
       const badgeLabel = isUnlocked ? '' : `Streak 5 (${currentStreak}/5)`
       return { isUnlocked, isHidden: false, label, badgeLabel, title }
@@ -235,8 +235,8 @@ export default function CharacterCosmeticsTab({
       const worldId = opt.id.replace('world_border_', '')
       const w = userWorldStreaks.find((x) => x._id === worldId)
       const currentStreak = w?.userMaxStreak ?? 0
-      const isUnlocked = isEffectiveAdmin || currentStreak >= 10
-      const title = `${w?.name || 'World'} Streak 10`
+      const isUnlocked = isEffectiveAdmin || Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak10) || currentStreak >= 10
+      const title = (w as any)?.isOwner ? `${w?.name || 'World'} Owner` : `${w?.name || 'World'} Streak 10`
       const label = isUnlocked ? '' : `Requires World Streak 10 in ${w?.name || 'this world'} (Current: ${currentStreak}/10)`
       const badgeLabel = isUnlocked ? '' : `Streak 10 (${currentStreak}/10)`
       return { isUnlocked, isHidden: false, label, badgeLabel, title }

@@ -362,11 +362,17 @@ export default function WorldClient() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-4 space-y-8">
           <div>
-            <div className="flex items-center gap-4 group min-w-0">
+            <div className="flex items-start sm:items-center gap-4 group min-w-0">
               {/* World Emblem Avatar */}
               {world.emblemUrl ? (
-                <div className="relative group/emblem shrink-0">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-2 ring-primary/40 ring-offset-2 ring-offset-background overflow-hidden bg-muted/30 shadow-md flex items-center justify-center">
+                <div className="relative group/emblem shrink-0 mt-1 sm:mt-0">
+                  <div
+                    onClick={() => isOwner && emblemInputRef.current?.click()}
+                    className={cn(
+                      "w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-2 ring-primary/40 ring-offset-2 ring-offset-background overflow-hidden bg-muted/30 shadow-md flex items-center justify-center transition-all",
+                      isOwner && "cursor-pointer hover:ring-primary hover:brightness-105"
+                    )}
+                  >
                     <img src={world.emblemUrl} alt={world.name} className="w-full h-full object-cover" />
                   </div>
                   {isOwner && (
@@ -374,11 +380,10 @@ export default function WorldClient() {
                       type="button"
                       onClick={() => emblemInputRef.current?.click()}
                       disabled={isUploadingEmblem}
-                      className="absolute inset-0 rounded-full bg-black/60 text-white opacity-0 group-hover/emblem:opacity-100 transition-opacity flex flex-col items-center justify-center text-[10px] font-bold gap-0.5 cursor-pointer"
+                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-all border-2 border-background"
                       title="Change World Emblem"
                     >
-                      <Camera className="h-4 w-4" />
-                      <span>{isUploadingEmblem ? '...' : 'Change'}</span>
+                      <Camera className="h-3 w-3" />
                     </button>
                   )}
                 </div>
@@ -387,7 +392,7 @@ export default function WorldClient() {
                   type="button"
                   onClick={() => emblemInputRef.current?.click()}
                   disabled={isUploadingEmblem}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center text-primary transition-all cursor-pointer group/upload shrink-0 shadow-sm"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center text-primary transition-all cursor-pointer group/upload shrink-0 shadow-sm mt-1 sm:mt-0"
                   title="Upload World Sigil / Emblem"
                 >
                   <Upload className="h-4 w-4 transition-transform group-hover/upload:scale-110" />
@@ -406,63 +411,65 @@ export default function WorldClient() {
                 onChange={handleEmblemUpload}
               />
 
-              {isEditingName ? (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
-                  <Input 
-                    value={newName} 
-                    onChange={(e) => setNewName(e.target.value)}
-                    className="text-2xl font-bold h-12 flex-grow"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleRenameWorld()
-                      if (e.key === 'Escape') setIsEditingName(false)
-                    }}
-                  />
-                  <div className="flex gap-2 shrink-0">
-                    <Button size="sm" onClick={handleRenameWorld}>Save</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)}>Cancel</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="min-w-0 w-full overflow-hidden">
-                  <h1 
-                    className="font-bold flex flex-wrap items-center gap-x-4 gap-y-2 transition-all duration-300"
-                    style={{ 
-                      fontSize: `clamp(1.25rem, ${(25 / (world.name.length || 1))}rem, 3.5rem)`,
-                      lineHeight: '1.1'
-                    }}
-                  >
-                    <span className="break-words max-w-full">{world.name}</span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <a 
-                        href={getWorldWikiUrl(world.name)} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="hover:text-primary transition-colors shrink-0"
-                        onClick={() => {
-                          recordWikiVisit().then(() => syncAndGetAchievements()).catch(console.error);
-                        }}
-                      >
-                        <Book className="h-8 w-8" />
-                      </a>
-                      {userId === world.owner && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-                          onClick={() => setIsEditingName(true)}
-                        >
-                          <Pencil className="h-5 w-5" />
-                        </Button>
-                      )}
+              <div className="min-w-0 flex-1">
+                {isEditingName ? (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
+                    <Input 
+                      value={newName} 
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="text-2xl font-bold h-12 flex-grow"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRenameWorld()
+                        if (e.key === 'Escape') setIsEditingName(false)
+                      }}
+                    />
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" onClick={handleRenameWorld}>Save</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)}>Cancel</Button>
                     </div>
-                  </h1>
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <div className="min-w-0 w-full overflow-hidden">
+                    <h1 
+                      className="font-bold flex flex-wrap items-center gap-x-4 gap-y-2 transition-all duration-300"
+                      style={{ 
+                        fontSize: `clamp(1.25rem, ${(25 / (world.name.length || 1))}rem, 3.5rem)`,
+                        lineHeight: '1.1'
+                      }}
+                    >
+                      <span className="break-words max-w-full">{world.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a 
+                          href={getWorldWikiUrl(world.name)} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="hover:text-primary transition-colors shrink-0"
+                          onClick={() => {
+                            recordWikiVisit().then(() => syncAndGetAchievements()).catch(console.error);
+                          }}
+                        >
+                          <Book className="h-8 w-8" />
+                        </a>
+                        {userId === world.owner && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                            onClick={() => setIsEditingName(true)}
+                          >
+                            <Pencil className="h-5 w-5" />
+                          </Button>
+                        )}
+                      </div>
+                    </h1>
+                  </div>
+                )}
+                <p className="text-xl text-muted-foreground mt-2 italic font-serif">
+                  Directed by <span className="font-semibold text-foreground not-italic">{ownerName}</span>.
+                </p>
+              </div>
             </div>
-            <p className="text-xl text-muted-foreground mt-2 italic font-serif">
-              Directed by <span className="font-semibold text-foreground not-italic">{ownerName}</span>.
-            </p>
           </div>
 
           <Card>
