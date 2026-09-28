@@ -215,6 +215,7 @@ export default function StatsPage() {
         characterId={characterDetailsId}
         isOpen={Boolean(characterDetailsId)}
         onClose={() => setCharacterDetailsId(null)}
+        readOnly={true}
       />
     </div>
   )

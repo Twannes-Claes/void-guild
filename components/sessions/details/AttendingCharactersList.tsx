@@ -1010,6 +1010,7 @@ export default function AttendingCharactersList({
         characterId={characterDetailsId}
         isOpen={Boolean(characterDetailsId)}
         onClose={() => setCharacterDetailsId(null)}
+        readOnly={true}
       />
     </>
   )

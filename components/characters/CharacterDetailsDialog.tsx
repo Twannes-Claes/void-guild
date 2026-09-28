@@ -55,12 +55,14 @@ interface CharacterDetailsDialogProps {
   characterId: Id<'characters'> | null
   isOpen: boolean
   onClose: () => void
+  readOnly?: boolean
 }
 
 export default function CharacterDetailsDialog({
   characterId,
   isOpen,
   onClose,
+  readOnly = false,
 }: CharacterDetailsDialogProps) {
   const { user } = useUser()
   const profile = useQuery(
@@ -141,7 +143,7 @@ export default function CharacterDetailsDialog({
   if (!isOpen || !characterId) return null
 
   const char = profile?.character
-  const canEdit = profile ? Boolean(profile.isOwner || profile.isAdmin) : false
+  const canEdit = !readOnly && Boolean(profile?.isOwner || profile?.isAdmin)
   const rankNumber = (char?._id ? characterRanks?.[char._id] : undefined) ?? 1
 
   const isCurrentUserMember = Boolean(
