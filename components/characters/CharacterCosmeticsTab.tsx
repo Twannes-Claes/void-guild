@@ -30,6 +30,7 @@ import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
 import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
+import ArcaneRunesEffect from '@/components/characters/ArcaneRunesEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import {
   resolveCosmeticsStyles,
@@ -361,6 +362,9 @@ export default function CharacterCosmeticsTab({
           {(previewStyles.cardClassName.includes('gold-coins') || cosmetics.bgColor === 'gold_coins_bg' || cosmetics.bgColor === 'gold-coins-bg') && (
             <FallingCoinsEffect />
           )}
+          {(previewStyles.cardClassName.includes('arcane-runes') || cosmetics.bgColor === 'arcane_runes_bg' || cosmetics.bgColor === 'arcane-runes-bg') && (
+            <ArcaneRunesEffect />
+          )}
           <div className="flex items-center gap-3 min-w-0 relative z-10">
             <ProfileAvatarWithBadge
               imageUrl={effectiveAvatarUrl}
@@ -676,6 +680,9 @@ export default function CharacterCosmeticsTab({
                 )}
                 {(opt.id === 'gold_coins_bg' || opt.value === 'gold-coins-bg') && isUnlocked && (
                   <FallingCoinsEffect />
+                )}
+                {(opt.id === 'arcane_runes_bg' || opt.value === 'arcane-runes-bg') && isUnlocked && (
+                  <ArcaneRunesEffect />
                 )}
                 <span className="font-semibold relative z-10">{opt.name}</span>
                 {!isUnlocked && (

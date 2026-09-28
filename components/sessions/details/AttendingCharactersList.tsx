@@ -30,6 +30,7 @@ import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
 import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
+import ArcaneRunesEffect from '@/components/characters/ArcaneRunesEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import CharacterDetailsDialog from '@/components/characters/CharacterDetailsDialog'
 
@@ -512,6 +513,9 @@ export default function AttendingCharactersList({
               )}
               {(cosmeticsStyles.cardClassName.includes('gold-coins') || char.cosmetics?.bgColor === 'gold_coins_bg' || char.cosmetics?.bgColor === 'gold-coins-bg') && (
                 <FallingCoinsEffect />
+              )}
+              {(cosmeticsStyles.cardClassName.includes('arcane-runes') || char.cosmetics?.bgColor === 'arcane_runes_bg' || char.cosmetics?.bgColor === 'arcane-runes-bg') && (
+                <ArcaneRunesEffect />
               )}
               <div className="flex items-start sm:items-center justify-between gap-3 min-w-0 relative z-10 w-full sm:w-auto">
                 <div className="flex items-center gap-3 min-w-0">

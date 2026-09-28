@@ -440,6 +440,13 @@ export const BG_COLOR_OPTIONS: CosmeticOption[] = [
     requiredAchievementId: 'black_void_auction_listing',
     value: 'gold-coins-bg',
   },
+  {
+    id: 'arcane_runes_bg',
+    name: 'Arcane Runes & Spell Circles Tint',
+    unlockedByDefault: false,
+    requiredAchievementId: 'black_void_service_listing',
+    value: 'arcane-runes-bg',
+  },
 ]
 
 export interface CharacterCosmetics {
@@ -572,6 +579,15 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
       cardClassName = cardClassName ? `${cardClassName} gold-coins-bg` : 'gold-coins-bg'
     } else {
       cardClassName = cardClassName ? `${cardClassName} gold-coins-bg` : 'gold-coins-bg'
+    }
+  } else if (bgObj?.value === 'arcane-runes-bg' || cosmetics.bgColor === 'arcane_runes_bg' || cosmetics.bgColor === 'arcane-runes-bg') {
+    if (isGradientBorder) {
+      const arcanePaddingLayer =
+        'radial-gradient(ellipse at 85% 50%, rgba(56, 189, 248, 0.2) 0%, rgba(168, 85, 247, 0.18) 50%, transparent 90%), linear-gradient(var(--card), var(--card))'
+      cardBgStyle = { '--card-bg': arcanePaddingLayer } as React.CSSProperties
+      cardClassName = cardClassName ? `${cardClassName} arcane-runes-bg` : 'arcane-runes-bg'
+    } else {
+      cardClassName = cardClassName ? `${cardClassName} arcane-runes-bg` : 'arcane-runes-bg'
     }
   } else if (bgObj && bgObj.value) {
     if (isGradientBorder) {

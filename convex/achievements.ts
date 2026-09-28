@@ -503,7 +503,7 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     title: 'Services for Hire',
     description: 'Offered a craft or spellcasting service in The Black Void with your character.',
     category: 'hidden',
-    reward: '',
+    reward: 'Arcane Runes & Spell Circles Background Tint Cosmetic',
     checkEligibility: (data) => data.hasServiceListing,
   },
   {
