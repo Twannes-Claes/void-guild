@@ -57,6 +57,7 @@ export const ACHIEVEMENT_INFO: Record<string, AchievementInfo> = {
   black_void_auction_listing: { title: 'Black Market Auctioneer', category: 'hidden' },
   black_void_service_listing: { title: 'Services for Hire', category: 'hidden' },
   create_character_quest: { title: 'Quest Benefactor', category: 'hidden' },
+  kobold_member: { title: 'Kobold!', category: 'normal' },
 }
 
 
@@ -82,6 +83,13 @@ export const FONT_OPTIONS: CosmeticOption[] = [
     unlockedByDefault: false,
     requiredAchievementId: 'master_player_10',
     value: 'font-taroca',
+  },
+  {
+    id: 'kobold_font',
+    name: 'Kobold Gothic (Animated)',
+    unlockedByDefault: false,
+    requiredAchievementId: 'kobold_member',
+    value: 'font-kobold',
   },
   {
     id: 'rounded_sans',
@@ -421,6 +429,13 @@ export const BG_COLOR_OPTIONS: CosmeticOption[] = [
     requiredAchievementId: 'character_streak_10',
     value: 'blaze-inferno-bg',
   },
+  {
+    id: 'gold_coins_bg',
+    name: 'Falling Gold Coins Tint',
+    unlockedByDefault: false,
+    requiredAchievementId: 'black_void_auction_listing',
+    value: 'gold-coins-bg',
+  },
 ]
 
 export interface CharacterCosmetics {
@@ -544,6 +559,15 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
       cardClassName = cardClassName ? `${cardClassName} blaze-inferno-bg` : 'blaze-inferno-bg'
     } else {
       cardClassName = cardClassName ? `${cardClassName} blaze-inferno-bg` : 'blaze-inferno-bg'
+    }
+  } else if (bgObj?.value === 'gold-coins-bg' || cosmetics.bgColor === 'gold_coins_bg' || cosmetics.bgColor === 'gold-coins-bg') {
+    if (isGradientBorder) {
+      const goldCoinsPaddingLayer =
+        'radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.12) 60%, transparent 100%), linear-gradient(var(--card), var(--card))'
+      cardBgStyle = { '--card-bg': goldCoinsPaddingLayer } as React.CSSProperties
+      cardClassName = cardClassName ? `${cardClassName} gold-coins-bg` : 'gold-coins-bg'
+    } else {
+      cardClassName = cardClassName ? `${cardClassName} gold-coins-bg` : 'gold-coins-bg'
     }
   } else if (bgObj && bgObj.value) {
     if (isGradientBorder) {

@@ -47,6 +47,14 @@ export interface UserEvaluationData {
 
 export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
   {
+    id: 'kobold_member',
+    title: 'Kobold!',
+    description: 'Claim your member privileges and become a verified supporter of the Guild.',
+    category: 'normal',
+    reward: 'Kobold Fancy Medieval Font (Animated Letters) Cosmetic',
+    checkEligibility: (data) => Boolean(data.userDoc?.isMember || data.userDoc?.isAdmin || data.userDoc?.isGM),
+  },
+  {
     id: 'first_character',
     title: 'First Steps',
     description: 'Created your first player character in the Void Guild.',
@@ -483,7 +491,7 @@ export const ACHIEVEMENTS_REGISTRY: AchievementDefinition[] = [
     title: 'Black Market Auctioneer',
     description: 'Created an Auction House item listing in The Black Void with your character.',
     category: 'hidden',
-    reward: '',
+    reward: 'Falling Gold Coins Background Tint Cosmetic',
     checkEligibility: (data) => data.hasAuctionListing,
   },
   {

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
-import { Geist, Geist_Mono, MedievalSharp, Cinzel_Decorative, Fredoka } from 'next/font/google'
+import { Geist, Geist_Mono, MedievalSharp, Cinzel_Decorative, Fredoka, UnifrakturCook } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
 import { ClerkProvider } from '@clerk/nextjs'
@@ -29,6 +29,12 @@ const medievalSharp = MedievalSharp({
   weight: '400',
   subsets: ['latin'],
   variable: '--font-medieval-sharp',
+})
+
+const unifrakturCook = UnifrakturCook({
+  weight: '700',
+  subsets: ['latin'],
+  variable: '--font-unifraktur',
 })
 
 const cinzelDec = Cinzel_Decorative({
@@ -159,7 +165,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${oxProto.variable} ${taroca.variable} ${gin.variable} ${sabon.variable} ${medievalSharp.variable} ${cinzelDec.variable} ${fredoka.variable} antialiased font-sans`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${oxProto.variable} ${taroca.variable} ${gin.variable} ${sabon.variable} ${medievalSharp.variable} ${unifrakturCook.variable} ${cinzelDec.variable} ${fredoka.variable} antialiased font-sans`}>
         <ClerkProvider>
           <ConvexClientProvider>
             <TooltipProvider>
@@ -184,7 +190,7 @@ export default function RootLayout({
                 <SessionClosedListener />
                 <AchievementListener />
                 <UserSync />
-                {/* SVG Filter for Organic Plasma Tendril Warping */}
+                {/* SVG Filter for Organic Plasma Tendril Warping & Animated Fonts */}
                 <svg className="fixed pointer-events-none w-0 h-0 overflow-hidden" aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0 }}>
                   <defs>
                     <filter id="sync-plasma-displacement" x="-15%" y="-15%" width="130%" height="130%">
@@ -192,6 +198,12 @@ export default function RootLayout({
                         <animate attributeName="baseFrequency" dur="5s" values="0.03 0.02; 0.05 0.05; 0.03 0.02" repeatCount="indefinite" />
                       </feTurbulence>
                       <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+                    </filter>
+                    <filter id="kobold-letter-shift" x="-20%" y="-20%" width="140%" height="140%">
+                      <feTurbulence type="fractalNoise" baseFrequency="0.04 0.05" numOctaves="2" result="noise" seed="42">
+                        <animate attributeName="baseFrequency" dur="6s" values="0.03 0.04; 0.05 0.06; 0.03 0.04" repeatCount="indefinite" />
+                      </feTurbulence>
+                      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.5" xChannelSelector="R" yChannelSelector="G" />
                     </filter>
                   </defs>
                 </svg>

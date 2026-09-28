@@ -13,6 +13,7 @@
   --font-taroca: var(--font-taroca);
   --font-sabon: var(--font-sabon);
   --font-medieval: var(--font-medieval-sharp);
+  --font-kobold: var(--font-unifraktur);
   --font-cinzel-dec: var(--font-cinzel-dec);
   --font-rounded: var(--font-fredoka);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -140,6 +141,34 @@
 
 .font-medieval {
   font-family: var(--font-medieval-sharp), cursive, serif !important;
+}
+
+.font-kobold {
+  font-family: var(--font-unifraktur), var(--font-medieval-sharp), cursive, serif !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  display: inline-block;
+  filter: url(#kobold-letter-shift);
+  animation: kobold-smooth-drift 5s ease-in-out infinite alternate !important;
+  will-change: transform, filter;
+}
+
+@keyframes kobold-smooth-drift {
+  0% {
+    transform: translateY(0px) rotate(0deg) skewX(0deg);
+  }
+  25% {
+    transform: translateY(-0.75px) rotate(0.35deg) skewX(0.2deg);
+  }
+  50% {
+    transform: translateY(0.5px) rotate(-0.25deg) skewX(-0.3deg);
+  }
+  75% {
+    transform: translateY(-0.5px) rotate(-0.35deg) skewX(0.25deg);
+  }
+  100% {
+    transform: translateY(0.75px) rotate(0.25deg) skewX(-0.2deg);
+  }
 }
 
 .font-rounded {
@@ -690,6 +719,14 @@
   background:
     radial-gradient(ellipse at 50% 100%, rgba(234, 88, 12, 0.35) 0%, rgba(185, 28, 28, 0.2) 50%, transparent 80%),
     linear-gradient(180deg, rgba(30, 10, 5, 0.1) 0%, rgba(127, 29, 29, 0.3) 100%) !important;
+}
+
+/* Falling Gold Coins Background Tint (Black Market Auctioneer) */
+.gold-coins-bg {
+  position: relative !important;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.12) 60%, transparent 100%),
+    linear-gradient(180deg, rgba(20, 12, 4, 0.25) 0%, rgba(45, 26, 8, 0.35) 100%) !important;
 }
 
 /* Treasure Seeker Bronze Metallic Card Border */

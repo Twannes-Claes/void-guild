@@ -38,6 +38,7 @@ import BlazeTextParticles from './BlazeTextParticles'
 import VoidNebulaEffect from './VoidNebulaEffect'
 import InfernoFireEffect from './InfernoFireEffect'
 import TintParticlesEffect from './TintParticlesEffect'
+import FallingCoinsEffect from './FallingCoinsEffect'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getLevelBadgeStyle, CharacterRankIcon, getXPBarStyles, cn, getCharacterWikiUrl } from '@/lib/utils'
 import { track } from '@vercel/analytics'
@@ -188,6 +189,9 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                       )}
                       {(cosmetics.cardClassName.includes('crimson-particle') || character.cosmetics?.bgColor === 'crimson_particles' || character.cosmetics?.bgColor === 'crimson-particle-bg') && (
                         <TintParticlesEffect variant="crimson" />
+                      )}
+                      {(cosmetics.cardClassName.includes('gold-coins') || character.cosmetics?.bgColor === 'gold_coins_bg' || character.cosmetics?.bgColor === 'gold-coins-bg') && (
+                        <FallingCoinsEffect />
                       )}
                       <div className="flex justify-between items-center w-full relative z-10 min-w-0">
                         <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">

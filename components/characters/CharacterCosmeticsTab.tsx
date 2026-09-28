@@ -28,6 +28,7 @@ import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
+import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import {
   resolveCosmeticsStyles,
@@ -356,6 +357,9 @@ export default function CharacterCosmeticsTab({
           {(previewStyles.cardClassName.includes('crimson-particle') || cosmetics.bgColor === 'crimson_particles' || cosmetics.bgColor === 'crimson-particle-bg') && (
             <TintParticlesEffect variant="crimson" />
           )}
+          {(previewStyles.cardClassName.includes('gold-coins') || cosmetics.bgColor === 'gold_coins_bg' || cosmetics.bgColor === 'gold-coins-bg') && (
+            <FallingCoinsEffect />
+          )}
           <div className="flex items-center gap-3 min-w-0 relative z-10">
             <ProfileAvatarWithBadge
               imageUrl={effectiveAvatarUrl}
@@ -667,6 +671,9 @@ export default function CharacterCosmeticsTab({
                 )}
                 {(opt.id === 'crimson_particles' || opt.value === 'crimson-particle-bg') && isUnlocked && (
                   <TintParticlesEffect variant="crimson" />
+                )}
+                {(opt.id === 'gold_coins_bg' || opt.value === 'gold-coins-bg') && isUnlocked && (
+                  <FallingCoinsEffect />
                 )}
                 <span className="font-semibold relative z-10">{opt.name}</span>
                 {!isUnlocked && (

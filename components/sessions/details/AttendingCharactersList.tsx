@@ -28,6 +28,7 @@ import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
 import TintParticlesEffect from '@/components/characters/TintParticlesEffect'
+import FallingCoinsEffect from '@/components/characters/FallingCoinsEffect'
 import { MembershipBadge } from '@/components/characters/MembershipBadge'
 import CharacterDetailsDialog from '@/components/characters/CharacterDetailsDialog'
 
@@ -507,6 +508,9 @@ export default function AttendingCharactersList({
               )}
               {(cosmeticsStyles.cardClassName.includes('crimson-particle') || char.cosmetics?.bgColor === 'crimson_particles' || char.cosmetics?.bgColor === 'crimson-particle-bg') && (
                 <TintParticlesEffect variant="crimson" />
+              )}
+              {(cosmeticsStyles.cardClassName.includes('gold-coins') || char.cosmetics?.bgColor === 'gold_coins_bg' || char.cosmetics?.bgColor === 'gold-coins-bg') && (
+                <FallingCoinsEffect />
               )}
               <div className="flex items-start sm:items-center justify-between gap-3 min-w-0 relative z-10 w-full sm:w-auto">
                 <div className="flex items-center gap-3 min-w-0">
