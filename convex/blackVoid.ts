@@ -1468,3 +1468,38 @@ export const lookupNethysItem = action({
     },
 })
 
+export const contactServiceListing = mutation({
+    args: {
+        listingId: v.id('blackVoidListings'),
+        buyerCharacterId: v.id('characters'),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity()
+        if (!user) {
+            throw new Error('Not authenticated')
+        }
+
+        const buyerChar = await ctx.db.get(args.buyerCharacterId)
+        if (!buyerChar || buyerChar.userId !== user.subject) {
+            throw new Error('You do not own the selected character.')
+        }
+
+        const listing = await ctx.db.get(args.listingId)
+        if (!listing || listing.type !== 'service' || listing.status !== 'active') {
+            throw new Error('Service listing is not active or does not exist.')
+        }
+
+        if (listing.characterId === args.buyerCharacterId) {
+            throw new Error('You cannot contact yourself for your own service listing.')
+        }
+
+        await ctx.scheduler.runAfter(0, internal.blackVoidDiscord.contactServiceListing, {
+            listingId: args.listingId,
+            buyerCharacterId: args.buyerCharacterId,
+        })
+
+        return { success: true }
+    },
+})
+
+

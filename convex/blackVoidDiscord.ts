@@ -385,3 +385,92 @@ export const checkClosingSoonListings = internalAction({
     }
   },
 });
+
+/**
+ * Queries service listing, craftsman, requester character, and both user Discord IDs for the contact notification.
+ */
+export const getContactServiceListingDetails = internalQuery({
+  args: {
+    listingId: v.id("blackVoidListings"),
+    buyerCharacterId: v.id("characters"),
+  },
+  handler: async (ctx, args) => {
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing || listing.type !== "service") return null;
+
+    const craftsmanChar = await ctx.db.get(listing.characterId);
+    const buyerChar = await ctx.db.get(args.buyerCharacterId);
+
+    if (!craftsmanChar || !buyerChar) return null;
+
+    const craftsmanUser = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", craftsmanChar.userId))
+      .first();
+
+    const buyerUser = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", buyerChar.userId))
+      .first();
+
+    return {
+      listingName: listing.name,
+      priceDetails: listing.priceDetails,
+      priceType: listing.priceType,
+      percentage: listing.percentage,
+      markupGp: listing.markupGp,
+      craftsmanName: craftsmanChar.name,
+      craftsmanLvl: craftsmanChar.lvl,
+      craftsmanDiscordId: craftsmanUser?.discordId || null,
+      buyerName: buyerChar.name,
+      buyerLvl: buyerChar.lvl,
+      buyerDiscordId: buyerUser?.discordId || null,
+    };
+  },
+});
+
+/**
+ * Action to send a contact inquiry message into #black-void.
+ */
+export const contactServiceListing = internalAction({
+  args: {
+    listingId: v.id("blackVoidListings"),
+    buyerCharacterId: v.id("characters"),
+  },
+  handler: async (ctx, args): Promise<boolean> => {
+    const details: {
+      listingName: string;
+      priceDetails?: string;
+      priceType?: "percentage" | "flat" | "custom";
+      percentage?: number;
+      markupGp?: number;
+      craftsmanName: string;
+      craftsmanLvl: number;
+      craftsmanDiscordId: string | null;
+      buyerName: string;
+      buyerLvl: number;
+      buyerDiscordId: string | null;
+    } | null = await ctx.runQuery(
+      internal.blackVoidDiscord.getContactServiceListingDetails,
+      {
+        listingId: args.listingId,
+        buyerCharacterId: args.buyerCharacterId,
+      }
+    );
+
+    if (!details) {
+      console.warn("Could not find contact details for service listing.");
+      return false;
+    }
+
+    const craftsmanTag = details.craftsmanDiscordId ? ` (<@${details.craftsmanDiscordId}>)` : "";
+    const buyerTag = details.buyerDiscordId ? ` (<@${details.buyerDiscordId}>)` : "";
+
+    const messageContent: string = `🛎️ **${details.craftsmanName}**${craftsmanTag}: **${details.buyerName}**${buyerTag} wants more information or to hire them for **${details.listingName}**!`;
+
+    return await sendDiscordBlackVoidMessage({
+      content: messageContent,
+    });
+  },
+});
+

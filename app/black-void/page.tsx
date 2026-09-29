@@ -38,7 +38,18 @@ import {
   Trash2,
   Dices,
   Layers,
+  MessageSquare,
 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
 import { cn, CharacterRankIcon } from '@/lib/utils'
@@ -57,12 +68,16 @@ export default function BlackVoidPage() {
   const [isItemModalOpen, setIsItemModalOpen] = useState(false)
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
   const [editingService, setEditingService] = useState<any | null>(null)
+  const [contactingService, setContactingService] = useState<any | null>(null)
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false)
   const [biddingListing, setBiddingListing] = useState<any>(null)
   const [isSendBetOpen, setIsSendBetOpen] = useState(false)
+  const [isContactingSubmitting, setIsContactingSubmitting] = useState(false)
 
   // Mutations
   const deleteServiceListing = useMutation(api.blackVoid.deleteServiceListing)
+  const contactServiceListing = useMutation(api.blackVoid.contactServiceListing)
+
 
   // Queries
   const userCharacters = useQuery(api.blackVoid.getUserCharacters, {system: 'PF'})
@@ -694,7 +709,7 @@ export default function BlackVoidPage() {
                     )}
                   </div>
 
-                  <div className="p-3 bg-muted/30 border-t border-border/20 flex items-center justify-between text-xs gap-2">
+                    <div className="p-3 bg-muted/30 border-t border-border/20 flex items-center justify-between text-xs gap-2">
                     <span className="text-muted-foreground">
                       Service Level:{' '}
                       <strong className="text-amber-300">
@@ -702,42 +717,61 @@ export default function BlackVoidPage() {
                       </strong>
                     </span>
 
-                    {userCharacters?.some((c: any) => c._id === svc.characterId) && (
-                      <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!userCharacters?.some((c: any) => c._id === svc.characterId) && (
                         <Button
-                          variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs text-amber-300 hover:text-amber-200 hover:bg-amber-500/20 border border-amber-500/30 gap-1"
+                          className="h-7 px-3 text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1"
                           onClick={() => {
-                            setEditingService(svc)
-                            setIsServiceModalOpen(true)
-                          }}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/20 border border-red-500/30 gap-1"
-                          onClick={async () => {
-                            if (!window.confirm(`Are you sure you want to delete "${svc.name}"?`)) return
-                            try {
-                              await deleteServiceListing({
-                                listingId: svc._id,
-                                characterId: svc.characterId,
-                              })
-                              toast.success('Service listing deleted.')
-                            } catch (err: any) {
-                              toast.error(err.message || 'Failed to delete service listing.')
+                            if (!selectedCharacterId) {
+                              toast.error('Please select an active character first.')
+                              return
                             }
+                            setContactingService(svc)
                           }}
                         >
-                          <Trash2 className="h-3 w-3" />
-                          Delete
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Contact
                         </Button>
-                      </div>
-                    )}
+                      )}
+
+                      {userCharacters?.some((c: any) => c._id === svc.characterId) && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-amber-300 hover:text-amber-200 hover:bg-amber-500/20 border border-amber-500/30 gap-1"
+                            onClick={() => {
+                              setEditingService(svc)
+                              setIsServiceModalOpen(true)
+                            }}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/20 border border-red-500/30 gap-1"
+                            onClick={async () => {
+                              if (!window.confirm(`Are you sure you want to delete "${svc.name}"?`)) return
+                              try {
+                                await deleteServiceListing({
+                                  listingId: svc._id,
+                                  characterId: svc.characterId,
+                                })
+                                toast.success('Service listing deleted.')
+                              } catch (err: any) {
+                                toast.error(err.message || 'Failed to delete service listing.')
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -932,6 +966,53 @@ export default function BlackVoidPage() {
           availableOpponents={bettingData?.availableOpponents || []}
         />
       )}
+
+      {/* Contact Service Confirmation Dialog */}
+      <AlertDialog open={!!contactingService} onOpenChange={(open) => { if (!open) setContactingService(null) }}>
+        <AlertDialogContent className="bg-slate-950 border border-amber-500/30 text-foreground">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-amber-300 flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-amber-400" />
+              Contact {contactingService?.sellerName}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-xs leading-relaxed">
+              This will send a message in #black_void pinging you and the character&apos;s owner if your discord accounts are linked. Confirm/Cancel
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel
+              disabled={isContactingSubmitting}
+              className="border-border/40 hover:bg-muted/40 text-xs"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isContactingSubmitting || !selectedCharacterId || !contactingService}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs"
+              onClick={async (e) => {
+                e.preventDefault()
+                if (!selectedCharacterId || !contactingService) return
+                setIsContactingSubmitting(true)
+                try {
+                  await contactServiceListing({
+                    listingId: contactingService._id,
+                    buyerCharacterId: selectedCharacterId,
+                  })
+                  toast.success(`Inquiry sent to #black_void for ${contactingService.name}!`)
+                  setContactingService(null)
+                } catch (err: any) {
+                  toast.error(err.message || 'Failed to send inquiry to Discord.')
+                } finally {
+                  setIsContactingSubmitting(false)
+                }
+              }}
+            >
+              {isContactingSubmitting ? 'Sending...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
+
