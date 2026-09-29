@@ -16,6 +16,7 @@ import SendBetDialog from '@/components/black-void/SendBetDialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Coins,
   PackagePlus,
@@ -69,10 +70,12 @@ export default function BlackVoidPage() {
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
   const [editingService, setEditingService] = useState<any | null>(null)
   const [contactingService, setContactingService] = useState<any | null>(null)
+  const [contactMessage, setContactMessage] = useState('')
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false)
   const [biddingListing, setBiddingListing] = useState<any>(null)
   const [isSendBetOpen, setIsSendBetOpen] = useState(false)
   const [isContactingSubmitting, setIsContactingSubmitting] = useState(false)
+
 
   // Mutations
   const deleteServiceListing = useMutation(api.blackVoid.deleteServiceListing)
@@ -968,7 +971,15 @@ export default function BlackVoidPage() {
       )}
 
       {/* Contact Service Confirmation Dialog */}
-      <AlertDialog open={!!contactingService} onOpenChange={(open) => { if (!open) setContactingService(null) }}>
+      <AlertDialog
+        open={!!contactingService}
+        onOpenChange={(open) => {
+          if (!open) {
+            setContactingService(null)
+            setContactMessage('')
+          }
+        }}
+      >
         <AlertDialogContent className="bg-slate-950 border border-amber-500/30 text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-amber-300 flex items-center gap-2">
@@ -979,6 +990,20 @@ export default function BlackVoidPage() {
               This will send a message in #black_void pinging you and the character&apos;s owner if your discord accounts are linked. Confirm/Cancel
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="space-y-1.5 py-1">
+            <label className="text-xs font-semibold text-muted-foreground">
+              Optional Message / Note
+            </label>
+            <Textarea
+              value={contactMessage}
+              onChange={(e) => setContactMessage(e.target.value)}
+              placeholder="e.g. Inquiring about crafting a +1 Striking weapon, will provide materials..."
+              className="min-h-[70px] bg-muted/30 border-border/40 text-xs resize-none"
+              disabled={isContactingSubmitting}
+            />
+          </div>
+
           <AlertDialogFooter className="gap-2 sm:gap-0">
             <AlertDialogCancel
               disabled={isContactingSubmitting}
@@ -997,9 +1022,11 @@ export default function BlackVoidPage() {
                   await contactServiceListing({
                     listingId: contactingService._id,
                     buyerCharacterId: selectedCharacterId,
+                    message: contactMessage.trim() || undefined,
                   })
                   toast.success(`Inquiry sent to #black_void for ${contactingService.name}!`)
                   setContactingService(null)
+                  setContactMessage('')
                 } catch (err: any) {
                   toast.error(err.message || 'Failed to send inquiry to Discord.')
                 } finally {

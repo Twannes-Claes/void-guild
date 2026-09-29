@@ -430,14 +430,23 @@ export const getContactServiceListingDetails = internalQuery({
 });
 
 /**
- * Action to send a contact inquiry message into #black-void.
+ * Action to send a contact inquiry message into #black-void and create a conversation thread.
  */
 export const contactServiceListing = internalAction({
   args: {
     listingId: v.id("blackVoidListings"),
     buyerCharacterId: v.id("characters"),
+    message: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<boolean> => {
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    const channelId = process.env.DISCORD_BV_CHANNEL_ID || DEFAULT_BV_CHANNEL_ID;
+
+    if (!botToken) {
+      console.warn("Discord bot token not configured.");
+      return false;
+    }
+
     const details: {
       listingName: string;
       priceDetails?: string;
@@ -466,11 +475,79 @@ export const contactServiceListing = internalAction({
     const craftsmanTag = details.craftsmanDiscordId ? ` (<@${details.craftsmanDiscordId}>)` : "";
     const buyerTag = details.buyerDiscordId ? ` (<@${details.buyerDiscordId}>)` : "";
 
-    const messageContent: string = `🛎️ **${details.craftsmanName}**${craftsmanTag}: **${details.buyerName}**${buyerTag} wants more information or to hire them for **${details.listingName}**!`;
+    const pingMessage: string = `🛎️ **${details.craftsmanName}**${craftsmanTag}: **${details.buyerName}**${buyerTag} wants more information or to hire them for **${details.listingName}**!`;
 
-    return await sendDiscordBlackVoidMessage({
-      content: messageContent,
-    });
+    try {
+      // 1. Post the main ping message to #black-void
+      const msgRes = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: pingMessage,
+        }),
+      });
+
+      if (!msgRes.ok) {
+        const errText = await msgRes.text();
+        console.error(`Discord API error creating message in #black-void (${msgRes.status}):`, errText);
+        return false;
+      }
+
+      const createdMsg = await msgRes.json();
+      const messageId = createdMsg.id;
+
+      // 2. Create a public thread attached to the ping message to start the conversation
+      let threadTitle = `Inquiry: ${details.listingName} (${details.buyerName})`;
+      if (threadTitle.length > 100) {
+        threadTitle = threadTitle.substring(0, 97) + "...";
+      }
+
+      const threadRes = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages/${messageId}/threads`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: threadTitle,
+          auto_archive_duration: 1440, // 24 hours
+        }),
+      });
+
+      if (!threadRes.ok) {
+        const errText = await threadRes.text();
+        console.warn(`Could not create thread from message in #black-void (${threadRes.status}):`, errText);
+      } else {
+        const threadData = await threadRes.json();
+        const threadId = threadData.id;
+
+        // 3. If an optional note/message was provided by the user, post it into the thread
+        if (args.message && args.message.trim()) {
+          const userNote = args.message.trim();
+          const noteContent = `💬 **${details.buyerName}**: ${userNote}`;
+
+          await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bot ${botToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: noteContent,
+            }),
+          });
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Failed to post contact inquiry or create thread in #black-void:", err);
+      return false;
+    }
   },
 });
+
 

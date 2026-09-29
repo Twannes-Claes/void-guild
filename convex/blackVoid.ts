@@ -1472,6 +1472,7 @@ export const contactServiceListing = mutation({
     args: {
         listingId: v.id('blackVoidListings'),
         buyerCharacterId: v.id('characters'),
+        message: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity()
@@ -1496,10 +1497,12 @@ export const contactServiceListing = mutation({
         await ctx.scheduler.runAfter(0, internal.blackVoidDiscord.contactServiceListing, {
             listingId: args.listingId,
             buyerCharacterId: args.buyerCharacterId,
+            message: args.message?.trim() || undefined,
         })
 
         return { success: true }
     },
 })
+
 
 
