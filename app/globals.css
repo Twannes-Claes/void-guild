@@ -151,26 +151,25 @@
 
 .kobold-letter {
   display: inline-block !important;
-  animation: kobold-letter-float 3.6s ease-in-out infinite alternate !important;
+  animation-name: kobold-letter-float !important;
+  animation-timing-function: ease-in-out !important;
+  animation-iteration-count: infinite !important;
+  animation-direction: alternate !important;
   will-change: transform;
-  filter: url(#kobold-letter-shift);
 }
 
 @keyframes kobold-letter-float {
   0% {
-    transform: translateY(0px) rotate(0deg) scale(1);
+    transform: translate(calc(var(--x-amp, 1px) * -1), calc(var(--y-amp, 2px) * -1)) rotate(calc(var(--rot-amp, 2deg) * -1));
   }
-  25% {
-    transform: translateY(-2px) rotate(1.4deg) scale(1.02);
+  33% {
+    transform: translate(calc(var(--x-amp, 1px) * 0.8), calc(var(--y-amp, 2px) * 0.5)) rotate(calc(var(--rot-amp, 2deg) * 0.7));
   }
-  50% {
-    transform: translateY(1.2px) rotate(-1.2deg) scale(0.99);
-  }
-  75% {
-    transform: translateY(-1.5px) rotate(-1.8deg) scale(1.01);
+  66% {
+    transform: translate(calc(var(--x-amp, 1px) * -0.5), calc(var(--y-amp, 2px) * 1.1)) rotate(calc(var(--rot-amp, 2deg) * -0.6));
   }
   100% {
-    transform: translateY(1.8px) rotate(1.2deg) scale(0.98);
+    transform: translate(calc(var(--x-amp, 1px) * 1.1), calc(var(--y-amp, 2px) * -0.8)) rotate(calc(var(--rot-amp, 2deg) * 1.1));
   }
 }
 
