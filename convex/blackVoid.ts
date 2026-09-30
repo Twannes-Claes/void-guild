@@ -93,6 +93,229 @@ export const getUserCharacters = query({
     },
 })
 
+export const getUserBlackVoidNotifications = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity()
+        if (!user) {
+            return {
+                hasAnyPendingAction: false,
+                characters: {} as Record<string, { hasPendingLog: boolean; hasPendingBet: boolean; hasAnyPending: boolean }>,
+            }
+        }
+
+        const characters = await ctx.db
+            .query('characters')
+            .withIndex('by_userId', (q) => q.eq('userId', user.subject))
+            .collect()
+
+        if (characters.length === 0) {
+            return {
+                hasAnyPendingAction: false,
+                characters: {},
+            }
+        }
+
+        // Pre-fetch global active bets to check whose turn it is
+        const activeBets = await ctx.db
+            .query('blackVoidBets')
+            .withIndex('by_status', (q) => q.eq('status', 'accepted'))
+            .collect()
+
+        // Pre-fetch locked sessions for loot calculation
+        const lockedSessions = await ctx.db
+            .query('sessions')
+            .withIndex('by_locked', (q) => q.eq('locked', true))
+            .collect()
+
+        const charStatusMap: Record<string, { hasPendingLog: boolean; hasPendingBet: boolean; hasAnyPending: boolean }> = {}
+        let userHasAnyPending = false
+
+        for (const char of characters) {
+            let hasPendingLog = false
+            let hasPendingBet = false
+
+            // --- 1. BETTING CHECKS ---
+            // A. Incoming pending direct challenge invitations
+            const receivedPendingBet = await ctx.db
+                .query('blackVoidBets')
+                .withIndex('by_targetCharacterId_and_status', (q) =>
+                    q.eq('targetCharacterId', char._id).eq('status', 'pending')
+                )
+                .first()
+
+            if (receivedPendingBet) {
+                hasPendingBet = true
+            }
+
+            // B. Active matches where it is this character's turn
+            if (!hasPendingBet) {
+                const isMyTurn = activeBets.some(
+                    (b) =>
+                        (b.senderCharacterId === char._id || b.acceptedByCharacterId === char._id) &&
+                        b.currentTurnCharacterId === char._id
+                )
+                if (isMyTurn) {
+                    hasPendingBet = true
+                }
+            }
+
+            // --- 2. LOG CHECKS ---
+            // A. Sold items created by this character awaiting seller claim
+            const createdListings = await ctx.db
+                .query('blackVoidListings')
+                .withIndex('by_characterId', (q) => q.eq('characterId', char._id))
+                .collect()
+
+            for (const item of createdListings) {
+                if (item.type === 'item' && item.status === 'completed' && item.winningAmount && !item.sellerClaimed) {
+                    hasPendingLog = true
+                    break
+                }
+            }
+
+            // B. Won items awaiting buyer claim
+            if (!hasPendingLog) {
+                const wonListings = await ctx.db
+                    .query('blackVoidListings')
+                    .withIndex('by_winningBidderCharacterId', (q) => q.eq('winningBidderCharacterId', char._id))
+                    .collect()
+
+                for (const item of wonListings) {
+                    if (!item.buyerClaimed) {
+                        hasPendingLog = true
+                        break
+                    }
+                }
+            }
+
+            // C. Sponsored quest reimbursements or payments to adventurers
+            if (!hasPendingLog) {
+                const characterQuests = await ctx.db
+                    .query('quests')
+                    .withIndex('by_characterId', (q) => q.eq('characterId', char._id))
+                    .collect()
+
+                for (const quest of characterQuests) {
+                    if (quest.isCompleted) {
+                        if (quest.isSponsored && !quest.reimbursementClaimed) {
+                            hasPendingLog = true
+                            break
+                        }
+                        if (!quest.paymentClaimed) {
+                            hasPendingLog = true
+                            break
+                        }
+                    }
+                }
+            }
+
+            // D. Guildmaster cut
+            if (!hasPendingLog && char.rank === 'guildmaster') {
+                const gmSessions = await ctx.db
+                    .query('sessions')
+                    .withIndex('by_guildmaster_cut', (q) => q.eq('guildmasterCut.characterId', char._id))
+                    .collect()
+
+                for (const sess of gmSessions) {
+                    if (sess.guildmasterCut && !sess.guildmasterCut.claimed) {
+                        hasPendingLog = true
+                        break
+                    }
+                }
+            }
+
+            // E. Won bets ledger claim
+            if (!hasPendingLog) {
+                const wonBets = await ctx.db
+                    .query('blackVoidBets')
+                    .withIndex('by_winnerCharacterId', (q) => q.eq('winnerCharacterId', char._id))
+                    .collect()
+
+                for (const b of wonBets) {
+                    if (b.status === 'completed' && !b.winnerClaimed) {
+                        hasPendingLog = true
+                        break
+                    }
+                }
+            }
+
+            // F. Lost bets ledger claim
+            if (!hasPendingLog) {
+                const lostBets = await ctx.db
+                    .query('blackVoidBets')
+                    .withIndex('by_loserCharacterId', (q) => q.eq('loserCharacterId', char._id))
+                    .collect()
+
+                for (const b of lostBets) {
+                    if (b.status === 'completed' && !b.loserClaimed) {
+                        hasPendingLog = true
+                        break
+                    }
+                }
+            }
+
+            // G. Attended sessions money cuts / adjustments
+            if (!hasPendingLog) {
+                const userAttendedSessions = lockedSessions.filter(
+                    (s) => Array.isArray(s.characters) && s.characters.includes(char._id)
+                )
+
+                for (const sess of userAttendedSessions) {
+                    const lootList = sess.loot || []
+                    const attendingCount = (sess.characters || []).length || 1
+                    const totalLootValue = lootList.reduce((sum, item) => {
+                        const baseVal = item.isGood ? item.valueGP : item.valueGP / 2
+                        const itemTotal = item.isPerCharacter ? baseVal * attendingCount : baseVal
+                        return sum + itemTotal
+                    }, 0)
+                    const sharePerPlayer = totalLootValue / attendingCount
+                    const characterClaimedItems = lootList.filter((item) => item.claimedBy === char._id)
+                    const userClaimedValue = characterClaimedItems.reduce((sum, item) => {
+                        const val = item.isGood ? item.valueGP : item.valueGP / 2
+                        return sum + val
+                    }, 0)
+                    const currentNetMoneyGP = Math.round((sharePerPlayer - userClaimedValue) * 100) / 100
+
+                    const claimedLog = await ctx.db
+                        .query('sessionClaimedLogs')
+                        .withIndex('by_session_character', (q) =>
+                            q.eq('sessionId', sess._id).eq('characterId', char._id)
+                        )
+                        .first()
+
+                    const isMoneyClaimed = Boolean(claimedLog)
+                    const previousClaimedAmount = claimedLog ? claimedLog.claimedMoneyAmount : 0
+                    const pendingMoneyAdjustmentGP = isMoneyClaimed
+                        ? Math.round((currentNetMoneyGP - previousClaimedAmount) * 100) / 100
+                        : currentNetMoneyGP
+
+                    if (Math.abs(pendingMoneyAdjustmentGP) > 0.001) {
+                        hasPendingLog = true
+                        break
+                    }
+                }
+            }
+
+            const hasAnyPending = hasPendingLog || hasPendingBet
+            if (hasAnyPending) {
+                userHasAnyPending = true
+            }
+
+            charStatusMap[char._id] = {
+                hasPendingLog,
+                hasPendingBet,
+                hasAnyPending,
+            }
+        }
+
+        return {
+            hasAnyPendingAction: userHasAnyPending,
+            characters: charStatusMap,
+        }
+    },
+})
+
 export const createItemListing = mutation({
     args: {
         characterId: v.id('characters'),

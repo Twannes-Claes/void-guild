@@ -29,6 +29,7 @@ export default function ActiveCharacterSelector({
 }: ActiveCharacterSelectorProps) {
   const [open, setOpen] = useState(false)
   const characters = useQuery(api.blackVoid.getUserCharacters, {system: 'PF'})
+  const blackVoidNotifications = useQuery(api.blackVoid.getUserBlackVoidNotifications)
 
   if (characters === undefined) {
     return <div className="h-10 w-52 bg-muted/20 animate-pulse rounded-xl border border-border/30" />
@@ -44,6 +45,10 @@ export default function ActiveCharacterSelector({
   }
 
   const selectedChar = characters.find((c: any) => c._id === selectedCharacterId) || characters[0]
+
+  const hasUnselectedPending = characters.some(
+    (c: any) => c._id !== selectedCharacterId && blackVoidNotifications?.characters?.[c._id]?.hasAnyPending
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -72,7 +77,15 @@ export default function ActiveCharacterSelector({
               </div>
             </div>
           </div>
-          <ChevronDown className="h-3.5 w-3.5 text-purple-400 shrink-0 opacity-70 ml-1" />
+          <div className="flex items-center gap-1.5 shrink-0 ml-1">
+            {hasUnselectedPending && (
+              <span className="relative flex h-2.5 w-2.5" title="Other characters have pending actions">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+              </span>
+            )}
+            <ChevronDown className="h-3.5 w-3.5 text-purple-400 opacity-70" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-[300px] p-2 bg-slate-950/95 border-purple-500/30 text-foreground shadow-2xl backdrop-blur-xl rounded-xl space-y-1">
@@ -84,6 +97,7 @@ export default function ActiveCharacterSelector({
         <div className="max-h-[260px] overflow-y-auto space-y-1 pt-1 scrollbar-thin">
           {characters.map((char: any) => {
             const isSelected = char._id === selectedCharacterId
+            const charHasPending = blackVoidNotifications?.characters?.[char._id]?.hasAnyPending
 
             return (
               <button
@@ -107,9 +121,17 @@ export default function ActiveCharacterSelector({
                     {char.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex flex-col">
-                    <span className={cn("font-bold truncate", isSelected ? "text-white" : "text-foreground")}>
-                      {char.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("font-bold truncate", isSelected ? "text-white" : "text-foreground")}>
+                        {char.name}
+                      </span>
+                      {charHasPending && (
+                        <span className="relative flex h-2 w-2 shrink-0" title="Pending character sheet actions or bet response">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                      )}
+                    </div>
                     {char.title && (
                       <span className="text-[10px] text-amber-400/90 italic font-medium truncate">
                         {char.title}

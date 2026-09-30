@@ -73,6 +73,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
   const syncAndGetAchievements = useMutation(api.achievements.syncAndGetAchievements)
 
   const allWorlds = useQuery(api.worlds.getAllWorlds)
+  const blackVoidNotifications = useQuery(api.blackVoid.getUserBlackVoidNotifications)
   const isAdmin = useQuery(api.sessions.isAdminQuery)
   const userCommendations = useQuery(api.commendations.getUserCharactersCommendations)
   const unlockedAchievementIds = useQuery(api.achievements.getUserUnlockedAchievementIds) || []
@@ -395,10 +396,16 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
           <Link href="/black-void" className="w-full">
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center gap-3 h-12 text-md font-bold border-2 border-purple-500/50 text-purple-300 hover:bg-purple-500/10 hover:border-purple-500 shadow-md hover:shadow-lg transition-all rounded-xl"
+              className="w-full flex items-center justify-center gap-3 h-12 text-md font-bold border-2 border-purple-500/50 text-purple-300 hover:bg-purple-500/10 hover:border-purple-500 shadow-md hover:shadow-lg transition-all rounded-xl relative"
             >
               <Coins className="h-5 w-5 text-purple-400" />
-              The Black Void
+              <span>The Black Void</span>
+              {blackVoidNotifications?.hasAnyPendingAction && (
+                <span className="relative flex h-2.5 w-2.5 ml-0.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                </span>
+              )}
             </Button>
           </Link>
 

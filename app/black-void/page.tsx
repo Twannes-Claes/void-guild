@@ -88,6 +88,7 @@ export default function BlackVoidPage() {
   const activeServiceListings = useQuery(api.blackVoid.getListings, { type: 'service', status: 'active' })
   const characterQuests = useQuery(api.quests.getCharacterQuests, { characterId: selectedCharacterId || undefined })
   const bettingData = useQuery(api.blackVoidBets.getBettingData, { characterId: selectedCharacterId || undefined })
+  const blackVoidNotifications = useQuery(api.blackVoid.getUserBlackVoidNotifications)
 
   // Auto-select initial character
   useEffect(() => {
@@ -318,12 +319,18 @@ export default function BlackVoidPage() {
             size="sm"
             onClick={() => setActiveTab('log')}
             className={cn(
-              "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all",
+              "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all relative",
               activeTab === 'log' && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
             )}
           >
             <Receipt className="h-4 w-4" />
-            Character Sheet Log
+            <span>Character Sheet Log</span>
+            {selectedCharacterId && blackVoidNotifications?.characters?.[selectedCharacterId]?.hasPendingLog && (
+              <span className="relative flex h-2 w-2 ml-0.5" title="Unclaimed items or gold adjustments">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+            )}
           </Button>
 
           <Button
@@ -331,14 +338,20 @@ export default function BlackVoidPage() {
             size="sm"
             onClick={() => setActiveTab('gambling')}
             className={cn(
-              "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all",
+              "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all relative",
               activeTab === 'gambling' && "bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20"
             )}
           >
             <Dices className="h-4 w-4" />
-            Betting
+            <span>Betting</span>
+            {selectedCharacterId && blackVoidNotifications?.characters?.[selectedCharacterId]?.hasPendingBet && (
+              <span className="relative flex h-2 w-2 ml-0.5" title="Pending bet challenge or active turn roll">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+            )}
             {bettingData && (bettingData.activeMatches.length > 0 || bettingData.receivedInvitations.length > 0) && (
-              <span className="ml-1 bg-rose-950 px-1.5 py-0.5 rounded text-[10px] text-rose-200 font-mono font-bold animate-pulse">
+              <span className="ml-1 bg-rose-950 px-1.5 py-0.5 rounded text-[10px] text-rose-200 font-mono font-bold">
                 {bettingData.activeMatches.length + bettingData.receivedInvitations.length}
               </span>
             )}
