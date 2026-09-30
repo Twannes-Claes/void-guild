@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { UserButton } from '@clerk/nextjs'
 import { Trophy, Key, Bell } from 'lucide-react'
+import { DragonHeadIcon } from '@/components/characters/MembershipBadge'
 import AchievementsModal from '@/components/AchievementsModal'
 import { ApiKeyDialog } from '@/components/ApiKeyDialog'
 import { NotificationsDialog } from '@/components/NotificationsDialog'
@@ -22,6 +23,11 @@ export default function CustomUserButton() {
         }}
       >
         <UserButton.MenuItems>
+          <UserButton.Action
+            label="Buy Membership"
+            labelIcon={<DragonHeadIcon className="h-4 w-4 text-amber-400" />}
+            onClick={() => window.open('https://tarragon.be', '_blank', 'noopener,noreferrer')}
+          />
           <UserButton.Action
             label="Notifications"
             labelIcon={<Bell className="h-4 w-4 text-purple-400" />}

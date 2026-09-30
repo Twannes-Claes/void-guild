@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Trophy, Book, Globe, Sparkles, Coins, Key } from 'lucide-react'
+import { DragonHeadIcon } from '@/components/characters/MembershipBadge'
 import ActivityFeed from '@/components/ActivityFeed'
 import VoidObjectiveWidget from '@/components/VoidObjectiveWidget'
 import { useState, useEffect, useRef } from 'react'
@@ -126,6 +127,12 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
                 <span className="hidden sm:inline">Wiki</span>
               </Button>
             </a>
+            <a href="https://tarragon.be" target="_blank" rel="noopener noreferrer" title="Get Membership at tarragon.be">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 w-9 sm:w-auto sm:px-3 p-0 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)]">
+                <DragonHeadIcon className="h-4 w-4 text-amber-400" />
+                <span className="hidden sm:inline">Membership</span>
+              </Button>
+            </a>
             <Link href="/stats">
               <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 w-9 sm:w-auto sm:px-3 p-0">
                 <Trophy className="h-4 w-4" />
@@ -154,12 +161,19 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
                 </div>
                 <Skeleton className="h-9 w-9 sm:w-24" />
                 <Skeleton className="h-9 w-9 sm:w-24" />
+                <Skeleton className="h-9 w-9 sm:w-24" />
                 <Skeleton className="h-9 w-9" />
                 <Skeleton className="h-8 w-8 rounded-full" />
             </div>
         </AuthLoading>
         <Unauthenticated>
-          <div className="self-start sm:self-auto">
+          <div className="self-start sm:self-auto flex items-center gap-2">
+            <a href="https://tarragon.be" target="_blank" rel="noopener noreferrer" title="Get Membership at tarragon.be">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)]">
+                <DragonHeadIcon className="h-4 w-4 text-amber-400" />
+                <span>Membership</span>
+              </Button>
+            </a>
             <SignInButton />
           </div>
         </Unauthenticated>
@@ -184,11 +198,19 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
           <p className="text-xl text-muted-foreground mb-8">
             Manage your characters, join epic sessions, and track your progress in the void.
           </p>
-          <SignInButton mode="modal">
-            <Button size="lg" className="px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all">
-              Get Started
-            </Button>
-          </SignInButton>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <SignInButton mode="modal">
+              <Button size="lg" className="px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all">
+                Get Started
+              </Button>
+            </SignInButton>
+            <a href="https://tarragon.be" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" variant="outline" className="px-8 py-6 text-lg rounded-full border-amber-500/50 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+                <DragonHeadIcon className="h-5 w-5 text-amber-400" />
+                Buy Membership
+              </Button>
+            </a>
+          </div>
         </div>
       </Unauthenticated>
     </>
