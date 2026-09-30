@@ -476,7 +476,7 @@ function FiveDayOverview({ sessions, userCharacterIds }: { sessions: SessionWith
     let gridColsClass = "grid-cols-5";
 
     // Adjust breakpoints based on window width
-    if (width > 0 && (width < 640 || (width >= 768 && width / 2 <= 380))) {
+    if (width > 0 && width < 520) {
       numberOfDaysToShow = 3;
       gridColsClass = "grid-cols-3";
     } else {
@@ -641,7 +641,6 @@ function FiveDayOverview({ sessions, userCharacterIds }: { sessions: SessionWith
 }
 
 export default function Sessions({ filters }: { filters?: { pf: boolean, dnd: boolean } }) {
-  const { width } = useWindowSize()
   const { userId } = useAuth()
   const [activeTab, setActiveTab] = useState<'upcoming' | 'planning' | 'past'>('upcoming')
   const [viewDate, setViewDate] = useState(new Date())
@@ -740,10 +739,7 @@ export default function Sessions({ filters }: { filters?: { pf: boolean, dnd: bo
 
   return (
     <Card>
-      <CardHeader className={cn(
-        "flex flex-row flex-wrap items-center justify-between gap-4",
-        width < 1015 && "flex-col items-center justify-center text-center"
-      )}>
+      <CardHeader className="flex flex-col sm:flex-row flex-wrap sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
             <CardTitle>Sessions</CardTitle>
             <Popover>
@@ -850,10 +846,7 @@ export default function Sessions({ filters }: { filters?: { pf: boolean, dnd: bo
                 </PopoverContent>
             </Popover>
         </div>
-        <div className={cn(
-          "flex items-center gap-4",
-          width < 1015 && "flex-wrap justify-center w-full"
-        )}>
+        <div className="flex items-center gap-3 flex-wrap justify-between sm:justify-end w-full sm:w-auto">
           {(activeTab === 'upcoming' || activeTab === 'planning') && isGM && <SessionDialog hasWorld={!!world} />}
           <div className="flex bg-muted p-1 rounded-md h-9 relative">
             {(['upcoming', 'planning', 'past'] as const).map((tab) => (

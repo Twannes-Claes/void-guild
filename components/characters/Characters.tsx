@@ -136,7 +136,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] 2xl:grid-cols-[440px_1fr] gap-8 items-start">
       <div className="flex flex-col">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

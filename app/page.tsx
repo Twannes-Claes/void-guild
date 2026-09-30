@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Home() {
   const HomeSkeleton = (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 opacity-40 grayscale pointer-events-none select-none">
+    <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] 2xl:grid-cols-[440px_1fr] gap-8 opacity-40 grayscale pointer-events-none select-none items-start">
       <div className="space-y-8">
         <Card>
           <CardHeader>
@@ -40,7 +40,7 @@ export default function Home() {
   )
 
   return (
-    <main className="container mx-auto px-4 py-8 pt-[calc(2rem+env(safe-area-inset-top))]">
+    <main className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-[calc(2rem+env(safe-area-inset-top))]">
       <HomeClient skeleton={HomeSkeleton} />
     </main>
   )

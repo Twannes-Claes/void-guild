@@ -70,10 +70,10 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
-        <div className="flex flex-row items-center gap-4 w-full sm:w-auto">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-6 mb-8">
+        <div className="flex flex-row items-center gap-4 w-full lg:w-auto">
           <motion.div 
-            className={cn("cursor-pointer select-none", isRainbow && "rainbow-logo hyper-spin")}
+            className={cn("cursor-pointer select-none shrink-0", isRainbow && "rainbow-logo hyper-spin")}
             onClick={handleLogoClick}
             style={{ rotate: rotation }}
           >
@@ -88,14 +88,14 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
                 <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse shrink-0" />
               )}
             </h1>
-            <p className="text-sm text-muted-foreground max-w-[300px] sm:max-w-none">
+            <p className="text-sm text-muted-foreground">
               Management tool for The Void Campaign.
             </p>
           </div>
         </div>
         <Authenticated>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <div className="flex items-center bg-muted/30 p-1 rounded-md gap-1 mr-2">
+          <div className="flex items-center gap-2 flex-wrap self-start lg:self-auto justify-start lg:justify-end">
+            <div className="flex items-center bg-muted/30 p-1 rounded-md gap-1 mr-1">
                 <Button 
                     variant="ghost" 
                     size="sm" 
@@ -122,19 +122,19 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
                 </Button>
             </div>
             <a href="https://void.tarragon.be/" target="_blank" rel="noopener noreferrer" onClick={handleWikiClick}>
-              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 w-9 sm:w-auto sm:px-3 p-0">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 px-3">
                 <Book className="h-4 w-4" />
                 <span className="hidden sm:inline">Wiki</span>
               </Button>
             </a>
             <a href="https://tarragon.be" target="_blank" rel="noopener noreferrer" title="Get Membership at tarragon.be">
-              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 w-9 sm:w-auto sm:px-3 p-0 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)]">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 px-3 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)]">
                 <DragonHeadIcon className="h-4 w-4 text-amber-400" />
                 <span className="hidden sm:inline">Membership</span>
               </Button>
             </a>
             <Link href="/stats">
-              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 w-9 sm:w-auto sm:px-3 p-0">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 h-9 px-3">
                 <Trophy className="h-4 w-4" />
                 <span className="hidden sm:inline">Stats</span>
               </Button>
@@ -142,7 +142,7 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
             {(isGM || ownedWorld) && (
               <Link href={ownedWorld ? `/world/${encodeURIComponent(ownedWorld.name)}` : "/world"}>
                 <Button variant="outline" size="sm" className={cn(
-                  "flex items-center gap-2 h-9 w-9 sm:w-auto sm:px-3 p-0",
+                  "flex items-center gap-2 h-9 px-3",
                   ownedWorld && "border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
                 )}>
                   <Globe className="h-4 w-4" />
@@ -154,15 +154,15 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
           </div>
         </Authenticated>
         <AuthLoading>
-            <div className="flex items-center gap-2 self-start sm:self-auto opacity-50">
-                <div className="flex items-center bg-muted/30 p-1 rounded-md gap-1 mr-2">
+            <div className="flex items-center gap-2 flex-wrap self-start lg:self-auto opacity-50">
+                <div className="flex items-center bg-muted/30 p-1 rounded-md gap-1 mr-1">
                     <Skeleton className="h-9 w-9" />
                     <Skeleton className="h-9 w-9" />
                 </div>
-                <Skeleton className="h-9 w-9 sm:w-24" />
-                <Skeleton className="h-9 w-9 sm:w-24" />
-                <Skeleton className="h-9 w-9 sm:w-24" />
-                <Skeleton className="h-9 w-9" />
+                <Skeleton className="h-9 w-20" />
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-9 w-20" />
+                <Skeleton className="h-9 w-24" />
                 <Skeleton className="h-8 w-8 rounded-full" />
             </div>
         </AuthLoading>
@@ -185,7 +185,7 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
 
       <Authenticated>
         <Characters filters={{ pf: pfFilter, dnd: dndFilter }} />
-        <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <div className="mt-12 grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
           <VoidObjectiveWidget />
           <ActivityFeed />
         </div>
