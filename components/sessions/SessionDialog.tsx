@@ -25,6 +25,34 @@ interface SessionDialogProps {
   initialDate?: Date | number | string
 }
 
+function formatToDDMMYYYY(dateObjOrIso: Date | string | number | undefined): string {
+  if (!dateObjOrIso) return ''
+  const d = new Date(dateObjOrIso)
+  if (isNaN(d.getTime())) return ''
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+function parseDDMMYYYY(str: string): { iso: string; valid: boolean } {
+  const trimmed = str.trim()
+  const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!match) return { iso: '', valid: false }
+  const day = parseInt(match[1], 10)
+  const month = parseInt(match[2], 10)
+  const year = parseInt(match[3], 10)
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 2000 || year > 2100) {
+    return { iso: '', valid: false }
+  }
+  const d = new Date(year, month - 1, day)
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) {
+    return { iso: '', valid: false }
+  }
+  const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  return { iso, valid: true }
+}
+
 export default function SessionDialog({ session, trigger, hasWorld, initialDate }: SessionDialogProps) {
   const createSession = useMutation(api.sessions.createSession)
   const updateSession = useMutation(api.sessions.updateSession)
@@ -32,24 +60,41 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
   const userCharacters = useQuery(api.characters.listCharacters)
   const worldName = useQuery(api.worlds.getWorldByOwner) // Fetch the current world details to display the name
 
-  const [date, setDate] = useState(() => {
+  const [displayDate, setDisplayDate] = useState(() => {
     if (session?.date) {
-      const d = new Date(session.date)
-      const year = d.getFullYear()
-      const month = (d.getMonth() + 1).toString().padStart(2, '0')
-      const day = d.getDate().toString().padStart(2, '0')
-      return `${year}-${month}-${day}`
+      return formatToDDMMYYYY(session.date)
     }
     if (initialDate) {
-      const d = new Date(initialDate)
-      const year = d.getFullYear()
-      const month = (d.getMonth() + 1).toString().padStart(2, '0')
-      const day = d.getDate().toString().padStart(2, '0')
-      return `${year}-${month}-${day}`
+      return formatToDDMMYYYY(initialDate)
     }
     return ''
   })
-  const [time, setTime] = useState('')
+  const [timeHour, setTimeHour] = useState(() => {
+    if (session?.date) {
+      const d = new Date(session.date)
+      return String(d.getHours()).padStart(2, '0')
+    }
+    if (initialDate) {
+      const d = new Date(initialDate)
+      if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+        return String(d.getHours()).padStart(2, '0')
+      }
+    }
+    return ''
+  })
+  const [timeMinute, setTimeMinute] = useState(() => {
+    if (session?.date) {
+      const d = new Date(session.date)
+      return String(d.getMinutes()).padStart(2, '0')
+    }
+    if (initialDate) {
+      const d = new Date(initialDate)
+      if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+        return String(d.getMinutes()).padStart(2, '0')
+      }
+    }
+    return '00'
+  })
   // const [world, setWorld] = useState('') // Removed: world is now derived
   const [level, setLevel] = useState(session?.level?.toString() || '1')
   const [maxPlayers, setMaxPlayers] = useState(session?.maxPlayers?.toString() || '4')
@@ -72,20 +117,13 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
       if (session) {
         if (session.date) {
             const d = new Date(session.date)
-            
-            // Format YYYY-MM-DD in local time
-            const year = d.getFullYear()
-            const month = (d.getMonth() + 1).toString().padStart(2, '0')
-            const day = d.getDate().toString().padStart(2, '0')
-            setDate(`${year}-${month}-${day}`)
-
-            // Format HH:mm in local time
-            const hours = d.getHours().toString().padStart(2, '0')
-            const minutes = d.getMinutes().toString().padStart(2, '0')
-            setTime(`${hours}:${minutes}`)
+            setDisplayDate(formatToDDMMYYYY(d))
+            setTimeHour(String(d.getHours()).padStart(2, '0'))
+            setTimeMinute(String(d.getMinutes()).padStart(2, '0'))
         } else {
-            setDate('')
-            setTime('')
+            setDisplayDate('')
+            setTimeHour('')
+            setTimeMinute('00')
         }
         
         // setWorld(session.world) // Removed: world is now derived
@@ -101,24 +139,23 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
       } else {
         if (initialDate) {
           const d = new Date(initialDate)
-          const year = d.getFullYear()
-          const month = (d.getMonth() + 1).toString().padStart(2, '0')
-          const day = d.getDate().toString().padStart(2, '0')
-          setDate(`${year}-${month}-${day}`)
+          setDisplayDate(formatToDDMMYYYY(d))
           if (typeof initialDate === 'number' || (typeof initialDate === 'object' && initialDate instanceof Date)) {
             if (d.getHours() !== 0 || d.getMinutes() !== 0) {
-              const hours = d.getHours().toString().padStart(2, '0')
-              const minutes = d.getMinutes().toString().padStart(2, '0')
-              setTime(`${hours}:${minutes}`)
+              setTimeHour(String(d.getHours()).padStart(2, '0'))
+              setTimeMinute(String(d.getMinutes()).padStart(2, '0'))
             } else {
-              setTime('')
+              setTimeHour('')
+              setTimeMinute('00')
             }
           } else {
-            setTime('')
+            setTimeHour('')
+            setTimeMinute('00')
           }
         } else {
-          setDate('')
-          setTime('')
+          setDisplayDate('')
+          setTimeHour('')
+          setTimeMinute('00')
         }
         // setWorld('') // Removed: world is now derived
         setIsIntro(false)
@@ -138,9 +175,31 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
     
     // Validation
     const newErrors: Record<string, string> = {}
+    let sessionDateTime: number | undefined = undefined;
+
     if (!planning) {
-        if (!date) newErrors.date = "Date is required"
-        if (!time) newErrors.time = "Time is required"
+        if (!displayDate) {
+          newErrors.date = "Date (DD/MM/YYYY) is required"
+        } else {
+          const parsed = parseDDMMYYYY(displayDate)
+          if (!parsed.valid) {
+            newErrors.date = "Please enter a valid date in DD/MM/YYYY format (e.g. 30/09/2026)"
+          } else if (timeHour && timeMinute) {
+            sessionDateTime = new Date(`${parsed.iso}T${timeHour}:${timeMinute}`).getTime()
+            if (isNaN(sessionDateTime)) sessionDateTime = undefined
+          }
+        }
+        if (!timeHour) {
+          newErrors.time = "Arrival hour is required"
+        }
+    } else {
+      if (displayDate) {
+        const parsed = parseDDMMYYYY(displayDate)
+        if (parsed.valid && timeHour && timeMinute) {
+          sessionDateTime = new Date(`${parsed.iso}T${timeHour}:${timeMinute}`).getTime()
+          if (isNaN(sessionDateTime)) sessionDateTime = undefined
+        }
+      }
     }
     
     const maxPlayersNum = parseInt(maxPlayers)
@@ -161,11 +220,6 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
     }
 
     setErrors({})
-    let sessionDateTime: number | undefined = undefined;
-    if (date && time) {
-        sessionDateTime = new Date(`${date}T${time}`).getTime()
-        if (isNaN(sessionDateTime)) sessionDateTime = undefined
-    }
 
     let levelValue: number | undefined = isIntro ? (system === 'PF' ? 1 : 3) : parseInt(level)
     if (!isIntro && (isNaN(levelValue) || levelValue === 0)) {
@@ -400,12 +454,13 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Date {planning && "(Optional)"}</label>
+            <label className="text-sm font-medium">Date (DD/MM/YYYY) {planning && "(Optional)"}</label>
             <Input
-              type="date"
-              value={date}
+              type="text"
+              placeholder="DD/MM/YYYY (e.g. 30/09/2026)"
+              value={displayDate}
               onChange={(e) => {
-                setDate(e.target.value)
+                setDisplayDate(e.target.value)
                 if (errors.date) setErrors({ ...errors, date: '' })
               }}
               required={!planning}
@@ -414,20 +469,55 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
             {errors.date && <p className="text-[10px] text-destructive font-medium">{errors.date}</p>}
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Arrival Time {planning && "(Optional)"}</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Arrival Time (24h) {planning && "(Optional)"}</label>
+              <span className="text-[10px] text-muted-foreground">HH:mm (24-hour)</span>
+            </div>
             <p className="text-[10px] text-muted-foreground -mt-1 italic">
                 Session starts 30 minutes after.
             </p>
-            <Input
-              type="time"
-              value={time}
-              onChange={(e) => {
-                setTime(e.target.value)
-                if (errors.time) setErrors({ ...errors, time: '' })
-              }}
-              required={!planning}
-              className={errors.time ? "border-destructive focus-visible:ring-destructive" : ""}
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] text-muted-foreground font-medium">Hour (00-23)</label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={timeHour}
+                  onChange={(e) => {
+                    setTimeHour(e.target.value)
+                    if (errors.time) setErrors({ ...errors, time: '' })
+                  }}
+                  disabled={planning}
+                >
+                  <option value="">-- Hour --</option>
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const h = String(i).padStart(2, '0')
+                    return (
+                      <option key={h} value={h}>
+                        {h}:00
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] text-muted-foreground font-medium">Minute</label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={timeMinute}
+                  onChange={(e) => {
+                    setTimeMinute(e.target.value)
+                    if (errors.time) setErrors({ ...errors, time: '' })
+                  }}
+                  disabled={planning}
+                >
+                  {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map((m) => (
+                    <option key={m} value={m}>
+                      :{m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             {errors.time && <p className="text-[10px] text-destructive font-medium">{errors.time}</p>}
           </div>
           <DialogFooter className="flex flex-col-reverse sm:flex-row justify-between items-center sm:gap-2 pt-4">
@@ -440,7 +530,7 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="flex-1" disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={(!planning && (!date || !time)) || !maxPlayers || isSubmitting}>
+              <Button type="submit" disabled={(!planning && (!displayDate || !timeHour)) || !maxPlayers || isSubmitting}>
                 {isSubmitting ? (session ? 'Updating...' : 'Creating...') : (session ? 'Update' : 'Create')}
               </Button>
             </div>
