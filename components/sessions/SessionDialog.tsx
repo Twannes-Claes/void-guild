@@ -53,6 +53,50 @@ function parseDDMMYYYY(str: string): { iso: string; valid: boolean } {
   return { iso, valid: true }
 }
 
+function formatToHHMM(dateObjOrIso: Date | string | number | undefined): string {
+  if (!dateObjOrIso) return ''
+  const d = new Date(dateObjOrIso)
+  if (isNaN(d.getTime())) return ''
+  const hour = String(d.getHours()).padStart(2, '0')
+  const minute = String(d.getMinutes()).padStart(2, '0')
+  return `${hour}:${minute}`
+}
+
+function parseTimeInput(timeStr: string): { hour: string; minute: string; valid: boolean } {
+  const trimmed = timeStr.trim()
+  if (!trimmed) return { hour: '', minute: '', valid: false }
+
+  let h = -1
+  let m = 0
+
+  if (trimmed.includes(':') || trimmed.includes('.')) {
+    const parts = trimmed.split(/[:.]/)
+    if (parts.length === 2) {
+      h = parseInt(parts[0], 10)
+      m = parseInt(parts[1], 10)
+    }
+  } else if (/^\d{3,4}$/.test(trimmed)) {
+    if (trimmed.length === 4) {
+      h = parseInt(trimmed.slice(0, 2), 10)
+      m = parseInt(trimmed.slice(2), 10)
+    } else {
+      h = parseInt(trimmed.slice(0, 1), 10)
+      m = parseInt(trimmed.slice(1), 10)
+    }
+  } else if (/^\d{1,2}$/.test(trimmed)) {
+    h = parseInt(trimmed, 10)
+    m = 0
+  }
+
+  if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+    return { hour: '', minute: '', valid: false }
+  }
+
+  const hourFormatted = String(h).padStart(2, '0')
+  const minuteFormatted = String(m).padStart(2, '0')
+  return { hour: hourFormatted, minute: minuteFormatted, valid: true }
+}
+
 export default function SessionDialog({ session, trigger, hasWorld, initialDate }: SessionDialogProps) {
   const createSession = useMutation(api.sessions.createSession)
   const updateSession = useMutation(api.sessions.updateSession)
@@ -69,35 +113,21 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
     }
     return ''
   })
-  const [timeHour, setTimeHour] = useState(() => {
+  const [displayTime, setDisplayTime] = useState(() => {
     if (session?.date) {
-      const d = new Date(session.date)
-      return String(d.getHours()).padStart(2, '0')
+      return formatToHHMM(session.date)
     }
     if (initialDate) {
       const d = new Date(initialDate)
       if (d.getHours() !== 0 || d.getMinutes() !== 0) {
-        return String(d.getHours()).padStart(2, '0')
+        return formatToHHMM(d)
       }
     }
     return ''
   })
-  const [timeMinute, setTimeMinute] = useState(() => {
-    if (session?.date) {
-      const d = new Date(session.date)
-      return String(d.getMinutes()).padStart(2, '0')
-    }
-    if (initialDate) {
-      const d = new Date(initialDate)
-      if (d.getHours() !== 0 || d.getMinutes() !== 0) {
-        return String(d.getMinutes()).padStart(2, '0')
-      }
-    }
-    return '00'
-  })
   // const [world, setWorld] = useState('') // Removed: world is now derived
   const [level, setLevel] = useState(session?.level?.toString() || '1')
-  const [maxPlayers, setMaxPlayers] = useState(session?.maxPlayers?.toString() || '4')
+  const [maxPlayers, setMaxPlayers] = useState(session?.maxPlayers?.toString() || '6')
   const [gmCharacter, setGmCharacter] = useState<Id<'characters'> | ''>(session?.gmCharacter || '')
   const [location, setLocation] = useState(session?.location || '')
   const [system, setSystem] = useState<'PF' | 'DnD'>(session?.system || 'PF')
@@ -116,14 +146,11 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
     if (open) {
       if (session) {
         if (session.date) {
-            const d = new Date(session.date)
-            setDisplayDate(formatToDDMMYYYY(d))
-            setTimeHour(String(d.getHours()).padStart(2, '0'))
-            setTimeMinute(String(d.getMinutes()).padStart(2, '0'))
+            setDisplayDate(formatToDDMMYYYY(session.date))
+            setDisplayTime(formatToHHMM(session.date))
         } else {
             setDisplayDate('')
-            setTimeHour('')
-            setTimeMinute('00')
+            setDisplayTime('')
         }
         
         // setWorld(session.world) // Removed: world is now derived
@@ -142,25 +169,21 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
           setDisplayDate(formatToDDMMYYYY(d))
           if (typeof initialDate === 'number' || (typeof initialDate === 'object' && initialDate instanceof Date)) {
             if (d.getHours() !== 0 || d.getMinutes() !== 0) {
-              setTimeHour(String(d.getHours()).padStart(2, '0'))
-              setTimeMinute(String(d.getMinutes()).padStart(2, '0'))
+              setDisplayTime(formatToHHMM(d))
             } else {
-              setTimeHour('')
-              setTimeMinute('00')
+              setDisplayTime('')
             }
           } else {
-            setTimeHour('')
-            setTimeMinute('00')
+            setDisplayTime('')
           }
         } else {
           setDisplayDate('')
-          setTimeHour('')
-          setTimeMinute('00')
+          setDisplayTime('')
         }
         // setWorld('') // Removed: world is now derived
         setIsIntro(false)
         setLevel('1')
-        setMaxPlayers('4')
+        setMaxPlayers('6')
         setGmCharacter('')
         setLocation('')
         setSystem('PF')
@@ -184,20 +207,39 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
           const parsed = parseDDMMYYYY(displayDate)
           if (!parsed.valid) {
             newErrors.date = "Please enter a valid date in DD/MM/YYYY format (e.g. 30/09/2026)"
-          } else if (timeHour && timeMinute) {
-            sessionDateTime = new Date(`${parsed.iso}T${timeHour}:${timeMinute}`).getTime()
-            if (isNaN(sessionDateTime)) sessionDateTime = undefined
           }
         }
-        if (!timeHour) {
-          newErrors.time = "Arrival hour is required"
+        if (!displayTime) {
+          newErrors.time = "Arrival time (HH:mm) is required"
+        } else {
+          const parsedTime = parseTimeInput(displayTime)
+          if (!parsedTime.valid) {
+            newErrors.time = "Please enter a valid 24h time in HH:mm format (e.g. 19:30 or 14:00)"
+          }
+        }
+
+        const parsedDate = parseDDMMYYYY(displayDate)
+        const parsedTime = parseTimeInput(displayTime)
+        if (parsedDate.valid && parsedTime.valid) {
+          sessionDateTime = new Date(`${parsedDate.iso}T${parsedTime.hour}:${parsedTime.minute}`).getTime()
+          if (isNaN(sessionDateTime)) sessionDateTime = undefined
         }
     } else {
       if (displayDate) {
-        const parsed = parseDDMMYYYY(displayDate)
-        if (parsed.valid && timeHour && timeMinute) {
-          sessionDateTime = new Date(`${parsed.iso}T${timeHour}:${timeMinute}`).getTime()
-          if (isNaN(sessionDateTime)) sessionDateTime = undefined
+        const parsedDate = parseDDMMYYYY(displayDate)
+        if (parsedDate.valid) {
+          if (displayTime) {
+            const parsedTime = parseTimeInput(displayTime)
+            if (parsedTime.valid) {
+              sessionDateTime = new Date(`${parsedDate.iso}T${parsedTime.hour}:${parsedTime.minute}`).getTime()
+              if (isNaN(sessionDateTime)) sessionDateTime = undefined
+            } else {
+              newErrors.time = "Please enter a valid 24h time in HH:mm format (e.g. 19:30)"
+            }
+          } else {
+            sessionDateTime = new Date(`${parsedDate.iso}T00:00:00`).getTime()
+            if (isNaN(sessionDateTime)) sessionDateTime = undefined
+          }
         }
       }
     }
@@ -392,12 +434,9 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
               disabled // World name is not editable here
             />
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-start">
             <div className="flex-1 flex flex-col gap-2">
                 <label className="text-sm font-medium">Level {isIntro && "(Fixed for Intro)"}</label>
-                <p className="text-[10px] text-muted-foreground -mt-1 italic">
-                  {isIntro ? `Fixed at Level ${system === 'PF' ? '1' : '3'} for ${system === 'PF' ? 'Pathfinder' : 'D&D'}` : 'Level can be 0 or empty to set TBD'}
-                </p>
                 <Input
                 type="number"
                 min="0"
@@ -411,6 +450,9 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
                 }}
                 className={errors.level ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                <p className="text-[10px] text-muted-foreground italic -mt-1">
+                  {isIntro ? `Fixed at Level ${system === 'PF' ? '1' : '3'} for ${system === 'PF' ? 'Pathfinder' : 'D&D'}` : 'Level can be 0 or empty to set TBD'}
+                </p>
                 {errors.level && <p className="text-[10px] text-destructive font-medium">{errors.level}</p>}
             </div>
             <div className="flex-1 flex flex-col gap-2">
@@ -427,6 +469,9 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
                 required
                 className={errors.maxPlayers ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                <p className="text-[10px] text-muted-foreground italic -mt-1">
+                  Default is 6 players
+                </p>
                 {errors.maxPlayers && <p className="text-[10px] text-destructive font-medium">{errors.maxPlayers}</p>}
             </div>
           </div>
@@ -453,72 +498,44 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
               placeholder="https://goo.gl/maps/..."
             />
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Date (DD/MM/YYYY) {planning && "(Optional)"}</label>
-            <Input
-              type="text"
-              placeholder="DD/MM/YYYY (e.g. 30/09/2026)"
-              value={displayDate}
-              onChange={(e) => {
-                setDisplayDate(e.target.value)
-                if (errors.date) setErrors({ ...errors, date: '' })
-              }}
-              required={!planning}
-              className={errors.date ? "border-destructive focus-visible:ring-destructive" : ""}
-            />
-            {errors.date && <p className="text-[10px] text-destructive font-medium">{errors.date}</p>}
-          </div>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Date (DD/MM/YYYY) {planning && "(Optional)"}</label>
+              <Input
+                type="text"
+                placeholder="DD/MM/YYYY (e.g. 30/09/2026)"
+                value={displayDate}
+                onChange={(e) => {
+                  setDisplayDate(e.target.value)
+                  if (errors.date) setErrors({ ...errors, date: '' })
+                }}
+                required={!planning}
+                className={errors.date ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              <p className="text-[10px] text-muted-foreground italic -mt-1">
+                Format: DD/MM/YYYY
+              </p>
+              {errors.date && <p className="text-[10px] text-destructive font-medium">{errors.date}</p>}
+            </div>
+            <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">Arrival Time (24h) {planning && "(Optional)"}</label>
-              <span className="text-[10px] text-muted-foreground">HH:mm (24-hour)</span>
+              <Input
+                type="text"
+                placeholder="HH:mm (e.g. 19:30)"
+                value={displayTime}
+                onChange={(e) => {
+                  setDisplayTime(e.target.value)
+                  if (errors.time) setErrors({ ...errors, time: '' })
+                }}
+                disabled={planning}
+                required={!planning}
+                className={errors.time ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              <p className="text-[10px] text-muted-foreground italic -mt-1">
+                24-hour time. Session starts +30m
+              </p>
+              {errors.time && <p className="text-[10px] text-destructive font-medium">{errors.time}</p>}
             </div>
-            <p className="text-[10px] text-muted-foreground -mt-1 italic">
-                Session starts 30 minutes after.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-muted-foreground font-medium">Hour (00-23)</label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={timeHour}
-                  onChange={(e) => {
-                    setTimeHour(e.target.value)
-                    if (errors.time) setErrors({ ...errors, time: '' })
-                  }}
-                  disabled={planning}
-                >
-                  <option value="">-- Hour --</option>
-                  {Array.from({ length: 24 }, (_, i) => {
-                    const h = String(i).padStart(2, '0')
-                    return (
-                      <option key={h} value={h}>
-                        {h}:00
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-muted-foreground font-medium">Minute</label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={timeMinute}
-                  onChange={(e) => {
-                    setTimeMinute(e.target.value)
-                    if (errors.time) setErrors({ ...errors, time: '' })
-                  }}
-                  disabled={planning}
-                >
-                  {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map((m) => (
-                    <option key={m} value={m}>
-                      :{m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {errors.time && <p className="text-[10px] text-destructive font-medium">{errors.time}</p>}
           </div>
           <DialogFooter className="flex flex-col-reverse sm:flex-row justify-between items-center sm:gap-2 pt-4">
             {session && (
@@ -530,7 +547,7 @@ export default function SessionDialog({ session, trigger, hasWorld, initialDate 
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="flex-1" disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={(!planning && (!displayDate || !timeHour)) || !maxPlayers || isSubmitting}>
+              <Button type="submit" disabled={(!planning && (!displayDate || !displayTime)) || !maxPlayers || isSubmitting}>
                 {isSubmitting ? (session ? 'Updating...' : 'Creating...') : (session ? 'Update' : 'Create')}
               </Button>
             </div>
