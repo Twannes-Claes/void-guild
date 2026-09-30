@@ -22,16 +22,33 @@ interface SessionDialogProps {
   session?: Doc<'sessions'>
   trigger?: React.ReactNode
   hasWorld: boolean
+  initialDate?: Date | number | string
 }
 
-export default function SessionDialog({ session, trigger, hasWorld }: SessionDialogProps) {
+export default function SessionDialog({ session, trigger, hasWorld, initialDate }: SessionDialogProps) {
   const createSession = useMutation(api.sessions.createSession)
   const updateSession = useMutation(api.sessions.updateSession)
   const deleteSession = useMutation(api.sessions.deleteSession)
   const userCharacters = useQuery(api.characters.listCharacters)
   const worldName = useQuery(api.worlds.getWorldByOwner) // Fetch the current world details to display the name
 
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(() => {
+    if (session?.date) {
+      const d = new Date(session.date)
+      const year = d.getFullYear()
+      const month = (d.getMonth() + 1).toString().padStart(2, '0')
+      const day = d.getDate().toString().padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    if (initialDate) {
+      const d = new Date(initialDate)
+      const year = d.getFullYear()
+      const month = (d.getMonth() + 1).toString().padStart(2, '0')
+      const day = d.getDate().toString().padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    return ''
+  })
   const [time, setTime] = useState('')
   // const [world, setWorld] = useState('') // Removed: world is now derived
   const [level, setLevel] = useState(session?.level?.toString() || '1')
@@ -82,8 +99,27 @@ export default function SessionDialog({ session, trigger, hasWorld }: SessionDia
         setPlanning(session.planning || false)
         setIsPrivate(session.isPrivate || false)
       } else {
-        setDate('')
-        setTime('')
+        if (initialDate) {
+          const d = new Date(initialDate)
+          const year = d.getFullYear()
+          const month = (d.getMonth() + 1).toString().padStart(2, '0')
+          const day = d.getDate().toString().padStart(2, '0')
+          setDate(`${year}-${month}-${day}`)
+          if (typeof initialDate === 'number' || (typeof initialDate === 'object' && initialDate instanceof Date)) {
+            if (d.getHours() !== 0 || d.getMinutes() !== 0) {
+              const hours = d.getHours().toString().padStart(2, '0')
+              const minutes = d.getMinutes().toString().padStart(2, '0')
+              setTime(`${hours}:${minutes}`)
+            } else {
+              setTime('')
+            }
+          } else {
+            setTime('')
+          }
+        } else {
+          setDate('')
+          setTime('')
+        }
         // setWorld('') // Removed: world is now derived
         setIsIntro(false)
         setLevel('1')

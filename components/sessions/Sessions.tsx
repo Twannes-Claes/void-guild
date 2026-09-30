@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useState, useEffect, useMemo } from 'react'
 import SessionDialog from './SessionDialog'
 import Link from 'next/link'
-import { Book, Lock, ChevronLeft, ChevronRight, User, Shield, Filter, Sprout } from 'lucide-react'
+import { Book, Lock, ChevronLeft, ChevronRight, User, Shield, Filter, Sprout, Calendar, Plus } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn, getLevelBadgeStyle, getDualLevelBadgeStyle, formatDate, formatTime, CharacterRankIcon, getSessionWikiUrl } from '@/lib/utils'
 import './sessions.css'
@@ -75,14 +75,18 @@ function AvailabilityDialog({
     onToggle,
     userMetadata,
     userCharacterIds,
-    daySessions
+    daySessions,
+    isGM,
+    hasWorld,
 }: { 
     date: Date, 
     availability: Doc<'availability'>[], 
     onToggle: () => void,
     userMetadata: Record<string, UserMetadata>,
     userCharacterIds: Set<string>,
-    daySessions: SessionWithDetails[]
+    daySessions: SessionWithDetails[],
+    isGM?: boolean,
+    hasWorld?: boolean,
 }) {
     const { userId } = useAuth()
     const isAvailable = availability.some(a => a.userId === userId)
@@ -156,7 +160,7 @@ function AvailabilityDialog({
                     </div>
                 </div>
             </div>
-            <DialogFooter className="sm:justify-center">
+            <DialogFooter className="sm:justify-center flex-col sm:flex-row gap-2">
                 <Button 
                     onClick={onToggle} 
                     variant={isAvailable ? "destructive" : "default"}
@@ -164,6 +168,22 @@ function AvailabilityDialog({
                 >
                     {isAvailable ? "Remove Availability" : "Mark as Available"}
                 </Button>
+                {isGM && (
+                    <SessionDialog 
+                        hasWorld={!!hasWorld}
+                        initialDate={date}
+                        trigger={
+                            <Button 
+                                variant="outline" 
+                                className="w-full sm:w-auto flex items-center justify-center gap-1.5"
+                                disabled={!hasWorld}
+                            >
+                                <Calendar className="h-4 w-4 text-primary" />
+                                New Session
+                            </Button>
+                        }
+                    />
+                )}
             </DialogFooter>
         </DialogContent>
     )
@@ -176,7 +196,9 @@ function MonthOverview({
   viewDate, 
   onPrevMonth, 
   onNextMonth, 
-  canPrevMonth 
+  canPrevMonth,
+  isGM,
+  hasWorld,
 }: { 
   sessions: SessionWithDetails[], 
   allSessions: SessionWithDetails[],
@@ -184,7 +206,9 @@ function MonthOverview({
   viewDate: Date,
   onPrevMonth: () => void,
   onNextMonth: () => void,
-  canPrevMonth: boolean
+  canPrevMonth: boolean,
+  isGM?: boolean,
+  hasWorld?: boolean,
 }) {
     const { userId } = useAuth();
     const year = viewDate.getFullYear();
@@ -413,6 +437,8 @@ function MonthOverview({
                                     availability={dayAvailability}
                                     userCharacterIds={userCharacterIds}
                                     daySessions={highlightSessions}
+                                    isGM={isGM}
+                                    hasWorld={hasWorld}
                                     onToggle={async () => {
                                         const isCurrentlyAvailable = dayAvailability.some(a => a.userId === userId);
                                         // Update optimistic state
@@ -885,6 +911,8 @@ export default function Sessions({ filters }: { filters?: { pf: boolean, dnd: bo
                   onPrevMonth={handlePrevMonth}
                   onNextMonth={handleNextMonth}
                   canPrevMonth={canPrevMonth}
+                  isGM={!!isGM}
+                  hasWorld={!!world}
                 />
               )
             ) : sessions === undefined ? (
