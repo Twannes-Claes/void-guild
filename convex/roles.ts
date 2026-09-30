@@ -45,27 +45,34 @@ export function extractClaim(identity: any, claimName: string): any {
  * Checks if the authenticated user has Admin permissions.
  * Falls back to database checks if JWT claims are missing.
  */
-export async function isAdmin(ctx: QueryCtx) {
+export async function isAdmin(ctx: QueryCtx, targetUserId?: string) {
   const identity = await ctx.auth.getUserIdentity()
-  if (!identity) return false
+  const effectiveUserId = targetUserId || identity?.subject
+  if (!effectiveUserId) return false
   
-  // A. Check JWT claims (configured in Clerk JWT templates)
-  const adminClaim = extractClaim(identity, 'admin');
-  if (adminClaim === true || String(adminClaim).toLowerCase() === 'true') {
-    return true;
+  // A. Check JWT claims (configured in Clerk JWT templates) if checking current authenticated user
+  if (identity && identity.subject === effectiveUserId) {
+    const adminClaim = extractClaim(identity, 'admin');
+    if (adminClaim === true || String(adminClaim).toLowerCase() === 'true') {
+      return true;
+    }
+    const roleClaim = String(extractClaim(identity, 'role') || '').toLowerCase();
+    if (roleClaim === 'admin') {
+      return true;
+    }
   }
 
   // B. Check users table
   const userRecord = await ctx.db
     .query('users')
-    .withIndex('by_userId', (q) => q.eq('userId', identity.subject))
+    .withIndex('by_userId', (q) => q.eq('userId', effectiveUserId))
     .first();
   if (userRecord?.isAdmin) return true;
 
   // C. Check characters for rank 'guildmaster'
   const characters = await ctx.db
     .query('characters')
-    .withIndex('by_userId', (q) => q.eq('userId', identity.subject))
+    .withIndex('by_userId', (q) => q.eq('userId', effectiveUserId))
     .collect();
   if (characters.some(c => c.rank === 'guildmaster')) return true;
 
@@ -73,40 +80,47 @@ export async function isAdmin(ctx: QueryCtx) {
 }
 
 /**
- * Checks if the authenticated user has Game Master permissions.
+ * Checks if a user has Game Master / Voidmaster permissions.
  * Falls back to database checks if JWT claims are missing.
  */
-export async function isGameMaster(ctx: QueryCtx) {
+export async function isGameMaster(ctx: QueryCtx, targetUserId?: string) {
   const identity = await ctx.auth.getUserIdentity()
-  if (!identity) return false
+  const effectiveUserId = targetUserId || identity?.subject
+  if (!effectiveUserId) return false
   
   // Admins are always GMs
-  if (await isAdmin(ctx)) return true;
+  if (await isAdmin(ctx, effectiveUserId)) return true;
 
-  // A. Check JWT claims
-  const gmClaim = extractClaim(identity, 'gamemaster');
-  if (gmClaim === true || String(gmClaim).toLowerCase() === 'true') {
-    return true;
+  // A. Check JWT claims if checking current authenticated user
+  if (identity && identity.subject === effectiveUserId) {
+    const gmClaim = extractClaim(identity, 'gamemaster');
+    if (gmClaim === true || String(gmClaim).toLowerCase() === 'true') {
+      return true;
+    }
+    const roleClaim = String(extractClaim(identity, 'role') || '').toLowerCase();
+    if (roleClaim === 'gamemaster' || roleClaim === 'voidmaster') {
+      return true;
+    }
   }
 
   // B. Check users table
   const userRecord = await ctx.db
     .query('users')
-    .withIndex('by_userId', (q) => q.eq('userId', identity.subject))
+    .withIndex('by_userId', (q) => q.eq('userId', effectiveUserId))
     .first();
   if (userRecord?.isGM) return true;
 
   // C. Check if user owns a world (World owners are GMs)
   const world = await ctx.db
     .query('worlds')
-    .withIndex('by_owner', (q) => q.eq('owner', identity.subject))
+    .withIndex('by_owner', (q) => q.eq('owner', effectiveUserId))
     .first();
   if (world) return true;
 
   // D. Check characters for rank 'journeyman' or 'guildmaster'
   const characters = await ctx.db
     .query('characters')
-    .withIndex('by_userId', (q) => q.eq('userId', identity.subject))
+    .withIndex('by_userId', (q) => q.eq('userId', effectiveUserId))
     .collect();
   if (characters.some(c => c.rank === 'journeyman' || c.rank === 'guildmaster')) return true;
 
@@ -114,15 +128,40 @@ export async function isGameMaster(ctx: QueryCtx) {
 }
 
 /**
- * Checks if a user has Member permissions and benefits (dragon badge, custom portraits, etc.).
- * Admins also automatically inherit Member benefits.
+ * Checks if a user is an active Game Master / Voidmaster
+ * (has run/hosted at least 1 session in the past 90 days / 3 months).
+ */
+export async function isActiveGameMaster(ctx: QueryCtx, targetUserId?: string): Promise<boolean> {
+  const identity = await ctx.auth.getUserIdentity()
+  const effectiveUserId = targetUserId || identity?.subject
+  if (!effectiveUserId) return false
+
+  const userIsGM = await isGameMaster(ctx, effectiveUserId)
+  if (!userIsGM) return false
+
+  const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
+  const recentGMSessions = await ctx.db
+    .query('sessions')
+    .withIndex('by_owner', (q) => q.eq('owner', effectiveUserId))
+    .collect()
+
+  return recentGMSessions.some(
+    (s) => (s.date || s._creationTime) >= ninetyDaysAgo
+  )
+}
+
+/**
+ * Checks if a user has Member permissions and benefits (dragon badge, custom portraits, unrestricted sessions).
+ * Rules:
+ * 1. Explicit paid membership from tarragon.be (isMember = true claim or in users table), dragon role, or admin.
+ * 2. Active Voidmasters / GMs who ran at least 1 session in the last 3 months automatically receive full membership perks.
  */
 export async function isMember(ctx: QueryCtx, targetUserId?: string): Promise<boolean> {
   const identity = await ctx.auth.getUserIdentity()
   const effectiveUserId = targetUserId || identity?.subject
   if (!effectiveUserId) return false
 
-  // If checking current authenticated user, check JWT claims & admin status
+  // 1. If checking current authenticated user, check JWT claims & admin status
   if (identity && identity.subject === effectiveUserId) {
     const memberClaim = extractClaim(identity, 'isMember')
     if (memberClaim === true || String(memberClaim).toLowerCase() === 'true') return true
@@ -130,21 +169,24 @@ export async function isMember(ctx: QueryCtx, targetUserId?: string): Promise<bo
     if (
       roleClaim === 'member' ||
       roleClaim === 'dragon' ||
-      roleClaim === 'admin' ||
-      roleClaim === 'voidmaster' ||
-      roleClaim === 'gamemaster'
+      roleClaim === 'admin'
     ) {
       return true
     }
-    if (await isAdmin(ctx)) return true
+    if (await isAdmin(ctx, effectiveUserId)) return true
   }
 
-  // Check users table
+  // 2. Check users table for explicit member or admin flag
   const userRecord = await ctx.db
     .query('users')
     .withIndex('by_userId', (q) => q.eq('userId', effectiveUserId))
     .first()
   if (userRecord?.isMember || userRecord?.isAdmin) return true
+
+  // 3. Active Game Masters (ran 1+ session in past 3 months) inherit full Member perks
+  if (await isActiveGameMaster(ctx, effectiveUserId)) {
+    return true
+  }
 
   return false
 }

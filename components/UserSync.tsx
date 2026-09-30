@@ -2,7 +2,7 @@
 
 import { useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
 
 /**
@@ -14,13 +14,47 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000 // Throttle sync to at most once per 5 mi
 export default function UserSync() {
   const { user, isLoaded, isSignedIn } = useUser()
   const syncUser = useMutation(api.users.syncUser)
+  const lastReloadRef = useRef<number>(0)
+
+  // Listen for window focus or tab visibility changes to instantly reload Clerk user metadata
+  // (e.g., if a user purchased a membership on tarragon.be in another tab and returned).
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user) return
+
+    const triggerReload = () => {
+      const now = Date.now()
+      if (now - lastReloadRef.current < 3000) return
+      lastReloadRef.current = now
+      user.reload().catch(console.error)
+    }
+
+    const handleFocus = () => {
+      triggerReload()
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        triggerReload()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isLoaded, isSignedIn, user])
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return
 
     const memberStatus = String(user.publicMetadata?.isMember)
     const roleStatus = String(user.publicMetadata?.role || '')
-    const key = `void_user_synced_${user.id}_${memberStatus}_${roleStatus}`
+    const adminStatus = String(user.publicMetadata?.admin || '')
+    const gmStatus = String(user.publicMetadata?.gamemaster || '')
+    const key = `void_user_synced_${user.id}_${memberStatus}_${roleStatus}_${adminStatus}_${gmStatus}`
     const lastSynced = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null
     const now = Date.now()
 
@@ -51,8 +85,7 @@ export default function UserSync() {
         String(user.publicMetadata?.isMember).toLowerCase() === 'true' ||
         user.publicMetadata?.role === 'member' ||
         user.publicMetadata?.role === 'dragon' ||
-        user.publicMetadata?.role === 'admin' ||
-        user.publicMetadata?.role === 'voidmaster'
+        user.publicMetadata?.role === 'admin'
       )
       const isAdmin = Boolean(
         user.publicMetadata?.admin === true ||
@@ -83,7 +116,16 @@ export default function UserSync() {
     }
 
     doSync().catch(console.error)
-  }, [isLoaded, isSignedIn, user?.id, syncUser])
+  }, [
+    isLoaded,
+    isSignedIn,
+    user?.id,
+    user?.publicMetadata?.isMember,
+    user?.publicMetadata?.role,
+    user?.publicMetadata?.admin,
+    user?.publicMetadata?.gamemaster,
+    syncUser,
+  ])
 
   return null
 }

@@ -3,6 +3,7 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { Doc, Id } from './_generated/dataModel'
 import { isAdmin } from './roles'
+import { adjustCharacterMoney } from './moneyHelpers'
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 const MAX_DEATHROLL_START = 1000000
@@ -570,12 +571,17 @@ export const toggleBetWinnerClaimed = mutation({
     }
 
     const currentClaimed = !!bet.winnerClaimed
+    const nextClaimed = !currentClaimed
     await ctx.db.patch(args.betId, {
-      winnerClaimed: !currentClaimed,
+      winnerClaimed: nextClaimed,
       updatedAt: Date.now(),
     })
 
-    return { success: true, claimed: !currentClaimed }
+    if (bet.wagerAmount > 0) {
+      await adjustCharacterMoney(ctx, args.characterId, nextClaimed ? bet.wagerAmount : -bet.wagerAmount)
+    }
+
+    return { success: true, claimed: nextClaimed }
   },
 })
 
@@ -602,11 +608,17 @@ export const toggleBetLoserClaimed = mutation({
     }
 
     const currentClaimed = !!bet.loserClaimed
+    const nextClaimed = !currentClaimed
     await ctx.db.patch(args.betId, {
-      loserClaimed: !currentClaimed,
+      loserClaimed: nextClaimed,
       updatedAt: Date.now(),
     })
 
-    return { success: true, claimed: !currentClaimed }
+    if (bet.wagerAmount > 0) {
+      // Loss is an expense deducted from purse
+      await adjustCharacterMoney(ctx, args.characterId, nextClaimed ? -bet.wagerAmount : bet.wagerAmount)
+    }
+
+    return { success: true, claimed: nextClaimed }
   },
 })

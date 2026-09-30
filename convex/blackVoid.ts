@@ -3,6 +3,7 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { Doc, Id } from './_generated/dataModel'
 import { isAdmin } from './roles'
+import { adjustCharacterMoney, parseGpAmount } from './moneyHelpers'
 
 // Helper function to decorate a listing with character info
 async function decorateListing(ctx: QueryCtx, listing: Doc<'blackVoidListings'>) {
@@ -883,9 +884,15 @@ export const toggleSellerClaimed = mutation({
             throw new Error('You do not own this listing.')
         }
 
+        const nextClaimed = !listing.sellerClaimed
         await ctx.db.patch(args.listingId, {
-            sellerClaimed: !listing.sellerClaimed,
+            sellerClaimed: nextClaimed,
         })
+
+        const amount = listing.winningAmount || 0
+        if (amount > 0) {
+            await adjustCharacterMoney(ctx, args.characterId, nextClaimed ? amount : -amount)
+        }
     },
 })
 
@@ -906,9 +913,16 @@ export const toggleBuyerClaimed = mutation({
             throw new Error('You are not the winning buyer of this listing.')
         }
 
+        const nextClaimed = !listing.buyerClaimed
         await ctx.db.patch(args.listingId, {
-            buyerClaimed: !listing.buyerClaimed,
+            buyerClaimed: nextClaimed,
         })
+
+        const amount = listing.winningAmount || 0
+        if (amount > 0) {
+            // Buyer spent this money when claimed, gets it back if unclaiming
+            await adjustCharacterMoney(ctx, args.characterId, nextClaimed ? -amount : amount)
+        }
     },
 })
 
@@ -927,6 +941,7 @@ export const markAllCharacterTransactionsClaimed = mutation({
         }
 
         let count = 0
+        let totalDeltaGp = 0
 
         // 1. Sold items created by this character
         const createdListings = await ctx.db
@@ -937,6 +952,7 @@ export const markAllCharacterTransactionsClaimed = mutation({
         for (const item of createdListings) {
             if (item.type === 'item' && item.status === 'completed' && item.winningAmount && !item.sellerClaimed) {
                 await ctx.db.patch(item._id, { sellerClaimed: true })
+                totalDeltaGp += item.winningAmount
                 count++
             }
         }
@@ -950,6 +966,8 @@ export const markAllCharacterTransactionsClaimed = mutation({
         for (const item of wonListings) {
             if (!item.buyerClaimed) {
                 await ctx.db.patch(item._id, { buyerClaimed: true })
+                const amt = item.winningAmount || 0
+                totalDeltaGp -= amt
                 count++
             }
         }
@@ -965,9 +983,11 @@ export const markAllCharacterTransactionsClaimed = mutation({
                 const patch: { reimbursementClaimed?: boolean; paymentClaimed?: boolean } = {}
                 if (quest.isSponsored && !quest.reimbursementClaimed) {
                     patch.reimbursementClaimed = true
+                    totalDeltaGp += parseGpAmount(quest.sponsoredAmount)
                 }
                 if (!quest.paymentClaimed) {
                     patch.paymentClaimed = true
+                    totalDeltaGp -= parseGpAmount(quest.netCost || quest.reward || quest.rewardMoneyGP)
                 }
                 if (Object.keys(patch).length > 0) {
                     await ctx.db.patch(quest._id, patch)
@@ -991,6 +1011,16 @@ export const markAllCharacterTransactionsClaimed = mutation({
                             claimed: true,
                         },
                     })
+
+                    const lootList = sess.loot || []
+                    const attendingCount = (sess.characters || []).length || 1
+                    const totalLootValue = lootList.reduce((sum, item) => {
+                        const baseVal = item.isGood ? item.valueGP : item.valueGP / 2
+                        const itemTotal = item.isPerCharacter ? baseVal * attendingCount : baseVal
+                        return sum + itemTotal
+                    }, 0)
+                    const cutVal = Math.round(totalLootValue * 0.2 * 100) / 100
+                    totalDeltaGp += cutVal
                     count++
                 }
             }
@@ -1005,6 +1035,7 @@ export const markAllCharacterTransactionsClaimed = mutation({
         for (const bet of wonBets) {
             if (bet.status === 'completed' && !bet.winnerClaimed) {
                 await ctx.db.patch(bet._id, { winnerClaimed: true })
+                totalDeltaGp += bet.wagerAmount
                 count++
             }
         }
@@ -1018,6 +1049,7 @@ export const markAllCharacterTransactionsClaimed = mutation({
         for (const bet of lostBets) {
             if (bet.status === 'completed' && !bet.loserClaimed) {
                 await ctx.db.patch(bet._id, { loserClaimed: true })
+                totalDeltaGp -= bet.wagerAmount
                 count++
             }
         }
@@ -1057,10 +1089,12 @@ export const markAllCharacterTransactionsClaimed = mutation({
 
             if (existingLog) {
                 if (existingLog.claimedMoneyAmount !== currentNetMoneyGP) {
+                    const diff = Math.round((currentNetMoneyGP - existingLog.claimedMoneyAmount) * 100) / 100
                     await ctx.db.patch(existingLog._id, {
                         claimedMoneyAmount: currentNetMoneyGP,
                         claimedAt: Date.now(),
                     })
+                    totalDeltaGp += diff
                     count++
                 }
             } else {
@@ -1070,11 +1104,16 @@ export const markAllCharacterTransactionsClaimed = mutation({
                     claimedMoneyAmount: currentNetMoneyGP,
                     claimedAt: Date.now(),
                 })
+                totalDeltaGp += currentNetMoneyGP
                 count++
             }
         }
 
-        return { success: true, count }
+        if (totalDeltaGp !== 0) {
+            await adjustCharacterMoney(ctx, args.characterId, totalDeltaGp)
+        }
+
+        return { success: true, count, totalDeltaGp }
     },
 })
 

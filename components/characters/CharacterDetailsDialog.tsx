@@ -152,7 +152,6 @@ export default function CharacterDetailsDialog({
     user?.publicMetadata?.role === 'member' ||
     user?.publicMetadata?.role === 'dragon' ||
     user?.publicMetadata?.role === 'admin' ||
-    user?.publicMetadata?.role === 'voidmaster' ||
     user?.publicMetadata?.admin === true ||
     String(user?.publicMetadata?.admin).toLowerCase() === 'true'
   )

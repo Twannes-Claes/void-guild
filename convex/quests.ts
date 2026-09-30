@@ -1,6 +1,7 @@
 import { query, mutation, QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { isAdmin } from './roles'
+import { adjustCharacterMoney, parseGpAmount } from './moneyHelpers'
 export const createQuest = mutation({
   args: {
     name: v.string(),
@@ -288,9 +289,15 @@ export const toggleQuestReimbursementClaimed = mutation({
       throw new Error('You do not own this quest.')
     }
 
+    const nextClaimed = !quest.reimbursementClaimed
     await ctx.db.patch(args.questId, {
-      reimbursementClaimed: !quest.reimbursementClaimed,
+      reimbursementClaimed: nextClaimed,
     })
+
+    const amount = parseGpAmount(quest.sponsoredAmount)
+    if (amount > 0) {
+      await adjustCharacterMoney(ctx, args.characterId, nextClaimed ? amount : -amount)
+    }
   },
 })
 
@@ -311,9 +318,16 @@ export const toggleQuestPaymentClaimed = mutation({
       throw new Error('You do not own this quest.')
     }
 
+    const nextClaimed = !quest.paymentClaimed
     await ctx.db.patch(args.questId, {
-      paymentClaimed: !quest.paymentClaimed,
+      paymentClaimed: nextClaimed,
     })
+
+    const amount = parseGpAmount(quest.netCost || quest.reward || quest.rewardMoneyGP)
+    if (amount > 0) {
+      // Payment to adventurers is an expense
+      await adjustCharacterMoney(ctx, args.characterId, nextClaimed ? -amount : amount)
+    }
   },
 })
 

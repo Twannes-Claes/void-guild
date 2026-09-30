@@ -365,7 +365,7 @@ export default function CharacterSheetLog({ characterId }: CharacterSheetLogProp
                 <span>Quick Transfer List</span>
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Consolidated overview of pending items and gold to record.
+                Consolidated overview of pending items and gold. Marking items automatically updates your character&apos;s tracked purse.
               </CardDescription>
             </div>
 

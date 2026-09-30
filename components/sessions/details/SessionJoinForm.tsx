@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Doc, Id } from '@/convex/_generated/dataModel'
-import { Loader2, LogOut, UserCheck, Lock, Sprout } from 'lucide-react'
+import { Loader2, LogOut, UserCheck, Lock, Sprout, Sparkles, ExternalLink } from 'lucide-react'
 
 interface SessionJoinFormProps {
   sessionLocked: boolean
@@ -44,6 +46,9 @@ export default function SessionJoinForm({
   leavingCharacterId,
   eligibility,
 }: SessionJoinFormProps) {
+  const { user } = useUser()
+  const [isRefreshingMembership, setIsRefreshingMembership] = useState(false)
+
   return (
     <Card className={sessionIsIntro && !hasUserCharacterInSession ? "border-emerald-500/30" : ""}>
       <CardHeader>
@@ -128,6 +133,44 @@ export default function SessionJoinForm({
           <div className="text-sm text-destructive italic text-center p-4 bg-destructive/5 rounded-md">
             This session is currently full.
           </div>
+        ) : eligibility && eligibility.eligible === false ? (
+          <div className="text-sm p-5 bg-gradient-to-b from-amber-500/15 to-amber-500/5 rounded-lg border border-amber-500/30 space-y-3.5 text-center shadow-inner">
+            <div className="flex items-center justify-center gap-2 font-bold text-amber-300 text-base">
+              <Sparkles className="h-5 w-5 text-amber-400 shrink-0" />
+              <span>Monthly Session Limit Reached</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed px-1">
+              {eligibility.reason || 'Free accounts are limited to 1 session per calendar month. Upgrade to a Kobold Membership on Tarragon.be to play unlimited sessions each month and unlock all member perks!'}
+            </p>
+            <a
+              href="https://tarragon.be"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs tracking-wide shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <Sparkles className="h-4 w-4 shrink-0" />
+              <span>Buy Kobold Membership on Tarragon.be (€10/year)</span>
+              <ExternalLink className="h-3.5 w-3.5 opacity-70 shrink-0" />
+            </a>
+            <div className="pt-0.5">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!user) return
+                  setIsRefreshingMembership(true)
+                  try {
+                    await user.reload()
+                  } finally {
+                    setIsRefreshingMembership(false)
+                  }
+                }}
+                disabled={isRefreshingMembership}
+                className="text-[11px] text-amber-400/90 hover:text-amber-300 underline cursor-pointer disabled:opacity-50 transition-colors"
+              >
+                {isRefreshingMembership ? 'Refreshing membership status...' : 'Already purchased? Click to refresh'}
+              </button>
+            </div>
+          </div>
         ) : availableCharacters.length === 0 ? (
           <div className="text-sm text-muted-foreground italic text-center p-4 bg-muted/10 rounded-md flex flex-col items-center gap-2">
             {sessionIsIntro ? (
@@ -169,9 +212,17 @@ export default function SessionJoinForm({
         ) : (
           <div className="space-y-4">
             {eligibility?.isFreeTier && (
-              <p className="text-[11px] text-muted-foreground/75 leading-tight px-1">
-                Notice: In the future, free accounts will be limited to 1 session per month with paid memberships available for additional sessions.
-              </p>
+              <div className="text-[11px] text-muted-foreground/80 leading-tight px-1 flex items-center justify-between gap-1">
+                <span>Free tier: 1 free session / month</span>
+                <a
+                  href="https://tarragon.be"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-400 hover:underline font-medium"
+                >
+                  Buy Membership
+                </a>
+              </div>
             )}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">Select Character</label>

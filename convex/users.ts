@@ -63,7 +63,6 @@ export const syncUser = mutation({
       roleClaim === 'member' ||
       roleClaim === 'dragon' ||
       roleClaim === 'admin' ||
-      roleClaim === 'voidmaster' ||
       isAdminUser
 
     const givenName = extractClaim(identity, 'given_name')

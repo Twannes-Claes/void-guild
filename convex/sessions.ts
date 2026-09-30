@@ -5,6 +5,7 @@ import { internal } from './_generated/api'
 import { isAdmin, isGameMaster, isMember, extractClaim } from './roles'
 import { applyContributionHelper } from './voidObjectives'
 import { formatUserDisplayName } from './users'
+import { adjustCharacterMoney } from './moneyHelpers'
 
 /**
  * XP gain based on session level and character level.
@@ -791,55 +792,21 @@ export const deleteSession = mutation({
  * and recent session participation.
  *
  * Rules:
- * 1. If user is a member (isMember claim = true / user.isMember = true) -> Unrestricted.
- * 2. If user is a Voidmaster (isAdmin or isGM) who ran at least 1 session in the past 3 months -> Unrestricted.
- * 3. Free non-members -> Can join max 1 session per calendar month.
+ * 1. If user is a member (isMember claim = true / user.isMember = true / active GM who ran a session in past 3 months / dragon / admin) -> Unrestricted.
+ * 2. Free non-members (including inactive GMs who have not run a session in past 3 months) -> Can join max 1 session per calendar month.
  */
 export async function checkUserMonthlySessionEligibility(
   ctx: QueryCtx,
   userId: string,
   targetSessionDate?: number
 ): Promise<{ eligible: boolean; reason?: string; isFreeTier?: boolean }> {
-  const identity = await ctx.auth.getUserIdentity()
-  
-  // 1. Check isMember claim from identity or database
-  const memberClaim = identity ? extractClaim(identity, 'isMember') : undefined
-  const roleClaim = identity ? String(extractClaim(identity, 'role') || '').toLowerCase() : ''
-  const isMemberClaim =
-    memberClaim === true ||
-    String(memberClaim).toLowerCase() === 'true' ||
-    roleClaim === 'member' ||
-    roleClaim === 'dragon'
-
-  const userRecord = await ctx.db
-    .query('users')
-    .withIndex('by_userId', (q) => q.eq('userId', userId))
-    .first()
-
-  const isMember = isMemberClaim || Boolean(userRecord?.isMember)
-  if (isMember) {
+  // 1. Check isMember claim from identity or database via canonical isMember helper (includes active GMs)
+  const userIsMember = await isMember(ctx, userId)
+  if (userIsMember) {
     return { eligible: true, isFreeTier: false }
   }
 
-  // 2. Check if Voidmaster (isAdmin / isGM) who ran 1+ session in past 3 months (90 days)
-  const isGM = await isGameMaster(ctx)
-  if (isGM) {
-    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
-    const recentGMSessions = await ctx.db
-      .query('sessions')
-      .withIndex('by_owner', (q) => q.eq('owner', userId))
-      .collect()
-
-    const hasActiveGMSessionInPast3Months = recentGMSessions.some(
-      (s) => (s.date || s._creationTime) >= ninetyDaysAgo
-    )
-
-    if (hasActiveGMSessionInPast3Months) {
-      return { eligible: true, isFreeTier: false }
-    }
-  }
-
-  // 3. Free non-member: Check limit of 1 session per calendar month
+  // 2. Free non-member: Check limit of 1 session per calendar month
   // Determine target month & year (use session date if set, otherwise current date)
   const targetDate = targetSessionDate ? new Date(targetSessionDate) : new Date()
   const targetYear = targetDate.getFullYear()
@@ -872,15 +839,14 @@ export async function checkUserMonthlySessionEligibility(
     return sDate.getFullYear() === targetYear && sDate.getMonth() === targetMonth
   })
 
-  // In the future: free non-members will be limited to 1 session per calendar month.
-  // Since memberships cannot be bought yet, sessions are not hard-blocked.
-  // We provide an informational note about the upcoming membership model.
+  // Non-members can only join 1 free session per calendar month.
+  // Members can play multiple sessions each month.
   if (sessionsInTargetMonth.length >= 1) {
     const monthName = targetDate.toLocaleString('en-US', { month: 'long' })
     return {
-      eligible: true,
+      eligible: false,
       isFreeTier: true,
-      reason: `You already have ${sessionsInTargetMonth.length} session${sessionsInTargetMonth.length > 1 ? 's' : ''} in ${monthName} ${targetYear}. In the future, free tier will include 1 session/month and additional sessions will require a Tarragon Kobold Membership or Voidmaster GM status.`,
+      reason: `You have already joined a session in ${monthName} ${targetYear}. Free accounts are limited to 1 session per calendar month. Upgrade to a Kobold Membership on Tarragon.be to play unlimited sessions!`,
     }
   }
 
@@ -1844,12 +1810,25 @@ export const toggleGuildmasterCutClaimed = mutation({
       throw new Error('You do not own this Guildmaster character')
     }
 
+    const nextClaimed = !session.guildmasterCut.claimed
     await ctx.db.patch(args.sessionId, {
       guildmasterCut: {
         ...session.guildmasterCut,
-        claimed: !session.guildmasterCut.claimed,
+        claimed: nextClaimed,
       },
     })
+
+    const lootList = session.loot || []
+    const attendingCount = (session.characters || []).length || 1
+    const totalLootValue = lootList.reduce((sum, item) => {
+      const baseVal = item.isGood ? item.valueGP : item.valueGP / 2
+      const itemTotal = item.isPerCharacter ? baseVal * attendingCount : baseVal
+      return sum + itemTotal
+    }, 0)
+    const cutVal = Math.round(totalLootValue * 0.2 * 100) / 100
+    if (cutVal > 0) {
+      await adjustCharacterMoney(ctx, args.characterId, nextClaimed ? cutVal : -cutVal)
+    }
   },
 })
 
@@ -1879,13 +1858,20 @@ export const toggleSessionMoneyClaimed = mutation({
     if (existingLog) {
       if (existingLog.claimedMoneyAmount !== args.currentNetMoneyGP) {
         // Outstanding adjustment: update to the new current net money amount
+        const diff = Math.round((args.currentNetMoneyGP - existingLog.claimedMoneyAmount) * 100) / 100
         await ctx.db.patch(existingLog._id, {
           claimedMoneyAmount: args.currentNetMoneyGP,
           claimedAt: Date.now(),
         })
+        if (diff !== 0) {
+          await adjustCharacterMoney(ctx, args.characterId, diff)
+        }
       } else {
         // Already fully claimed with no diff: toggle off
         await ctx.db.delete(existingLog._id)
+        if (existingLog.claimedMoneyAmount !== 0) {
+          await adjustCharacterMoney(ctx, args.characterId, -existingLog.claimedMoneyAmount)
+        }
       }
     } else {
       await ctx.db.insert('sessionClaimedLogs', {
@@ -1894,6 +1880,9 @@ export const toggleSessionMoneyClaimed = mutation({
         claimedMoneyAmount: args.currentNetMoneyGP,
         claimedAt: Date.now(),
       })
+      if (args.currentNetMoneyGP !== 0) {
+        await adjustCharacterMoney(ctx, args.characterId, args.currentNetMoneyGP)
+      }
     }
   },
 })
