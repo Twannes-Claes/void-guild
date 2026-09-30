@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useState, useEffect, useMemo } from 'react'
 import { Id, Doc } from '@/convex/_generated/dataModel'
 import Link from 'next/link'
-import { Book, Calendar, ChevronLeft, Lock as LockIcon, Shield, MapPin, Clock, Unlock, Globe, Scroll, Trophy, Menu, User, Target, UserPlus, Coins, Map, Sprout } from 'lucide-react'
+import { Book, Calendar, ChevronLeft, Lock as LockIcon, Shield, MapPin, Clock, Unlock, Globe, Scroll, Trophy, Menu, User, Target, UserPlus, Coins, Map, Sprout, Loader2 } from 'lucide-react'
 import { useAuth, SignInButton } from '@clerk/nextjs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatTime as formatTimeUtil, getLevelBadgeStyle, getDualLevelBadgeStyle, CharacterRankIcon, getSessionWikiUrl } from '@/lib/utils'
@@ -75,6 +75,7 @@ export default function SessionClient() {
   const xpGainsPreview = useQuery(api.sessions.previewXPGains, session?._id ? { sessionId: session._id } : "skip")
   const userCharacters = useQuery(api.characters.listCharacters)
   const joinSession = useMutation(api.sessions.joinSession)
+  const joinIntroSession = useMutation(api.sessions.joinIntroSession)
   const leaveSession = useMutation(api.sessions.leaveSession)
   const lockSession = useMutation(api.sessions.lockSession)
   const unlockSession = useMutation(api.sessions.unlockSession)
@@ -295,6 +296,24 @@ export default function SessionClient() {
     }
   }
 
+  const handleJoinIntro = async (event: React.MouseEvent) => {
+    setIsJoining(true)
+    fireJoinParticles(event.clientX, event.clientY);
+    try {
+        await joinIntroSession({
+            sessionId: session._id,
+            characterId: selectedCharacterId ? (selectedCharacterId as Id<'characters'>) : undefined,
+        })
+        track('session_joined', { worldName: session.worldName, isIntro: true })
+        setSelectedCharacterId('')
+        setIsJoinSuccessDialogOpen(true)
+    } catch (e) {
+        alert(e instanceof Error ? e.message : 'Failed to sign up for intro session')
+    } finally {
+        setIsJoining(false)
+    }
+  }
+
   const handleLeave = async (characterId: Id<'characters'>) => {
     setLeavingCharacterId(characterId)
     try {
@@ -448,6 +467,50 @@ export default function SessionClient() {
         <>
           <Authenticated>
             {!hasUserCharacterInSession && !session.isPrivate && (
+              session.isIntro && !session.planning ? (
+                <Card className="border-emerald-500/30 bg-emerald-500/5">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg text-emerald-400">
+                      <Sprout className="h-5 w-5 text-emerald-400" />
+                      Intro Session Sign Up
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {session.locked ? (
+                      <div className="text-sm text-muted-foreground italic text-center p-4 bg-muted/30 rounded-md">
+                        This session has ended.
+                      </div>
+                    ) : isFull ? (
+                      <div className="text-sm text-destructive italic text-center p-4 bg-destructive/5 rounded-md">
+                        This intro session is currently full.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          New players welcome! No existing character is required. Sign up to reserve your spot, and the Voidmaster will help you create your character during the session.
+                        </p>
+                        <Button
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-2"
+                          onClick={handleJoinIntro}
+                          disabled={isJoining}
+                        >
+                          {isJoining ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Signing up...
+                            </>
+                          ) : (
+                            <>
+                              <Sprout className="h-4 w-4" />
+                              Sign Up for Intro Session
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
                 <Card className={session.planning ? "border-purple-200 bg-purple-50/20" : ""}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
@@ -484,25 +547,28 @@ export default function SessionClient() {
                     )}
                 </CardContent>
                 </Card>
-                )}
+              )
+            )}
 
-                <SessionJoinForm 
-                  sessionLocked={session.locked}
-                  sessionPlanning={session.planning}
-                  sessionIsPrivate={session.isPrivate}
-                  isFull={isFull}
-                  availableCharacters={availableCharacters}
-                  userCharactersCount={userCharacters?.length ?? 0}
-                  selectedCharacterId={selectedCharacterId}
-                  hasUserCharacterInSession={hasUserCharacterInSession}
-                  userCharactersInSession={userCharactersInSession}
-                  onCharacterSelect={(id) => setSelectedCharacterId(id)}
-                  onJoin={handleJoin}
-                  onLeave={handleLeave}
-                  isJoining={isJoining}
-                  leavingCharacterId={leavingCharacterId}
-                  eligibility={eligibility}
-                />
+            <SessionJoinForm 
+              sessionLocked={session.locked}
+              sessionPlanning={session.planning}
+              sessionIsPrivate={session.isPrivate}
+              sessionIsIntro={session.isIntro}
+              isFull={isFull}
+              availableCharacters={availableCharacters}
+              userCharactersCount={userCharacters?.length ?? 0}
+              selectedCharacterId={selectedCharacterId}
+              hasUserCharacterInSession={hasUserCharacterInSession}
+              userCharactersInSession={userCharactersInSession}
+              onCharacterSelect={(id) => setSelectedCharacterId(id)}
+              onJoin={handleJoin}
+              onJoinIntro={handleJoinIntro}
+              onLeave={handleLeave}
+              isJoining={isJoining}
+              leavingCharacterId={leavingCharacterId}
+              eligibility={eligibility}
+            />
           </Authenticated>
 
           <Unauthenticated>

@@ -4,6 +4,7 @@ import { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { isAdmin, isGameMaster, isMember, extractClaim } from './roles'
 import { applyContributionHelper } from './voidObjectives'
+import { formatUserDisplayName } from './users'
 
 /**
  * XP gain based on session level and character level.
@@ -971,6 +972,123 @@ export const joinSession = mutation({
     await ctx.scheduler.runAfter(0, internal.discord.syncSessionToDiscord, {
         sessionId: args.sessionId
     })
+  },
+})
+
+export const joinIntroSession = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    characterId: v.optional(v.id('characters')),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) throw new Error('Session not found')
+
+    if (!session.isIntro) {
+      throw new Error('This session is not an intro session.')
+    }
+
+    // Enforce monthly session limit for non-members / inactive GMs
+    const eligibility = await checkUserMonthlySessionEligibility(ctx, user.subject, session.date)
+    if (!eligibility.eligible) {
+      throw new Error(eligibility.reason || 'Monthly session limit reached for free accounts.')
+    }
+
+    if (session.locked) {
+      throw new Error('This session is locked. You cannot join or leave.')
+    }
+
+    if (session.isPrivate) {
+      throw new Error("This session is private and unlisted. Characters can only be added manually by the session's owner.")
+    }
+
+    if (session.planning) {
+      throw new Error('This session is in planning and cannot be joined yet.')
+    }
+
+    if (session.characters.length >= session.maxPlayers) {
+      throw new Error('This session is full.')
+    }
+
+    // Check if the user already has a character in this session
+    const userCharactersInSession = await Promise.all(
+      session.characters.map((charId) => ctx.db.get(charId))
+    )
+    const hasUserCharacterAlready = userCharactersInSession.some(
+      (char) => char && char.userId === user.subject
+    )
+
+    if (hasUserCharacterAlready) {
+      throw new Error('You can only join with one character per session.')
+    }
+
+    let targetCharacterId = args.characterId
+
+    if (targetCharacterId) {
+      const character = await ctx.db.get(targetCharacterId)
+      if (!character || character.userId !== user.subject) {
+        throw new Error('Character not found or you do not own it')
+      }
+
+      if (character.system !== session.system) {
+        throw new Error(`This is a ${session.system} session, but your character is ${character.system}.`)
+      }
+    } else {
+      // Find or generate a unique placeholder character name for the user
+      const dbUser = await ctx.db
+        .query('users')
+        .withIndex('by_userId', (q) => q.eq('userId', user.subject))
+        .first()
+
+      const displayName = formatUserDisplayName(
+        dbUser?.name || user.name,
+        dbUser?.username || user.nickname,
+        user.subject
+      )
+
+      let candidateName = `${displayName} (Intro)`
+      let counter = 1
+      while (true) {
+        const existing = await ctx.db
+          .query('characters')
+          .withIndex('by_name', (q) => q.eq('name', candidateName))
+          .first()
+        if (!existing) break
+        counter++
+        candidateName = `${displayName} (Intro ${counter})`
+      }
+
+      const lvl = session.system === 'DnD' ? 3 : 1
+      targetCharacterId = await ctx.db.insert('characters', {
+        name: candidateName,
+        userId: user.subject,
+        lvl,
+        xp: 0,
+        rank: 'none',
+        system: session.system,
+      })
+
+      await ctx.scheduler.runAfter(0, internal.activity.logActivity, {
+        type: 'character_created',
+        message: `{user} created a new character: ${candidateName}!`,
+        userId: user.subject,
+        metadata: { characterId: targetCharacterId, name: candidateName },
+      })
+    }
+
+    await ctx.db.patch(args.sessionId, {
+      characters: [...session.characters, targetCharacterId],
+      interestedPlayers: (session.interestedPlayers || []).filter((p) => p.userId !== user.subject),
+    })
+
+    await ctx.scheduler.runAfter(0, internal.discord.syncSessionToDiscord, {
+      sessionId: args.sessionId,
+    })
+
+    return targetCharacterId
   },
 })
 

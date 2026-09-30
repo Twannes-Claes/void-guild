@@ -3,12 +3,13 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Doc, Id } from '@/convex/_generated/dataModel'
-import { Loader2, LogOut, UserCheck, Lock } from 'lucide-react'
+import { Loader2, LogOut, UserCheck, Lock, Sprout } from 'lucide-react'
 
 interface SessionJoinFormProps {
   sessionLocked: boolean
   sessionPlanning?: boolean
   sessionIsPrivate?: boolean
+  sessionIsIntro?: boolean
   isFull: boolean
   availableCharacters: Doc<'characters'>[]
   userCharactersCount: number
@@ -17,6 +18,7 @@ interface SessionJoinFormProps {
   userCharactersInSession?: Doc<'characters'>[]
   onCharacterSelect: (id: Id<'characters'> | '') => void
   onJoin: (e: React.MouseEvent) => void
+  onJoinIntro?: (e: React.MouseEvent) => void
   onLeave?: (characterId: Id<'characters'>) => void
   isJoining?: boolean
   leavingCharacterId?: string | null
@@ -27,6 +29,7 @@ export default function SessionJoinForm({
   sessionLocked,
   sessionPlanning,
   sessionIsPrivate,
+  sessionIsIntro,
   isFull,
   availableCharacters,
   userCharactersCount,
@@ -35,13 +38,14 @@ export default function SessionJoinForm({
   userCharactersInSession = [],
   onCharacterSelect,
   onJoin,
+  onJoinIntro,
   onLeave,
   isJoining,
   leavingCharacterId,
   eligibility,
 }: SessionJoinFormProps) {
   return (
-    <Card>
+    <Card className={sessionIsIntro && !hasUserCharacterInSession ? "border-emerald-500/30" : ""}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -54,6 +58,11 @@ export default function SessionJoinForm({
               <>
                 <Lock className="h-5 w-5 text-amber-500" />
                 Private Session
+              </>
+            ) : sessionIsIntro ? (
+              <>
+                <Sprout className="h-5 w-5 text-emerald-400" />
+                Join Intro Session
               </>
             ) : (
               'Join Session'
@@ -121,7 +130,32 @@ export default function SessionJoinForm({
           </div>
         ) : availableCharacters.length === 0 ? (
           <div className="text-sm text-muted-foreground italic text-center p-4 bg-muted/10 rounded-md flex flex-col items-center gap-2">
-            {userCharactersCount === 0 ? (
+            {sessionIsIntro ? (
+              <div className="space-y-3 not-italic text-center w-full">
+                <p className="text-xs text-muted-foreground">
+                  {userCharactersCount === 0 
+                    ? "You don't have a character yet. The Voidmaster will help you create one during the intro session!"
+                    : "You can sign up directly without selecting an existing character."}
+                </p>
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-2"
+                  onClick={onJoinIntro || onJoin}
+                  disabled={isJoining}
+                >
+                  {isJoining ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Signing up...
+                    </>
+                  ) : (
+                    <>
+                      <Sprout className="h-4 w-4" />
+                      Sign Up as New Player
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : userCharactersCount === 0 ? (
               <>
                 <p>You don&apos;t have any characters yet.</p>
                 <a href="/" className="text-primary hover:underline font-semibold not-italic">
@@ -155,13 +189,26 @@ export default function SessionJoinForm({
                 ))}
               </select>
             </div>
-            <Button
-              className="w-full"
-              disabled={!selectedCharacterId || isJoining}
-              onClick={onJoin}
-            >
-              {isJoining ? 'Joining...' : 'Join Session'}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                className="w-full"
+                disabled={!selectedCharacterId || isJoining}
+                onClick={onJoin}
+              >
+                {isJoining ? 'Joining...' : 'Join Session'}
+              </Button>
+              {sessionIsIntro && (
+                <Button
+                  variant="outline"
+                  className="w-full text-xs text-muted-foreground flex items-center justify-center gap-1.5"
+                  onClick={onJoinIntro || onJoin}
+                  disabled={isJoining}
+                >
+                  <Sprout className="h-3.5 w-3.5 text-emerald-400" />
+                  Or Sign Up as New Player (Intro)
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
