@@ -34,12 +34,12 @@ export function renderCosmeticLetters(
           const r3 = seededRandom(idx * 23 + 9)
           const r4 = seededRandom(idx * 29 + 13)
 
-          // Individual random timing & trajectory per letter
-          const delay = (r1 * 4.0).toFixed(2)
-          const duration = (2.2 + r2 * 1.8).toFixed(2) // 2.2s to 4.0s
-          const xAmp = ((r3 - 0.5) * 2.8).toFixed(1) // -1.4px to +1.4px
-          const yAmp = (1.5 + r4 * 2.5).toFixed(1) // 1.5px to 4.0px
-          const rotAmp = (1.5 + r1 * 3.5).toFixed(1) // 1.5deg to 5.0deg
+          // Subtle individual random timing & trajectory per letter
+          const delay = (r1 * 5.0).toFixed(2)
+          const duration = (3.2 + r2 * 2.2).toFixed(2) // 3.2s to 5.4s (gentle, relaxed float)
+          const xAmp = ((r3 - 0.5) * 1.2).toFixed(1) // -0.6px to +0.6px
+          const yAmp = (0.7 + r4 * 0.9).toFixed(1) // 0.7px to 1.6px
+          const rotAmp = (0.6 + r1 * 1.0).toFixed(1) // 0.6deg to 1.6deg
 
           return (
             <span

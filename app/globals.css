@@ -160,16 +160,16 @@
 
 @keyframes kobold-letter-float {
   0% {
-    transform: translate(calc(var(--x-amp, 1px) * -1), calc(var(--y-amp, 2px) * -1)) rotate(calc(var(--rot-amp, 2deg) * -1));
+    transform: translate(calc(var(--x-amp, 0.6px) * -1), calc(var(--y-amp, 1px) * -1)) rotate(calc(var(--rot-amp, 1deg) * -1));
   }
   33% {
-    transform: translate(calc(var(--x-amp, 1px) * 0.8), calc(var(--y-amp, 2px) * 0.5)) rotate(calc(var(--rot-amp, 2deg) * 0.7));
+    transform: translate(calc(var(--x-amp, 0.6px) * 0.7), calc(var(--y-amp, 1px) * 0.4)) rotate(calc(var(--rot-amp, 1deg) * 0.6));
   }
   66% {
-    transform: translate(calc(var(--x-amp, 1px) * -0.5), calc(var(--y-amp, 2px) * 1.1)) rotate(calc(var(--rot-amp, 2deg) * -0.6));
+    transform: translate(calc(var(--x-amp, 0.6px) * -0.4), calc(var(--y-amp, 1px) * 0.9)) rotate(calc(var(--rot-amp, 1deg) * -0.5));
   }
   100% {
-    transform: translate(calc(var(--x-amp, 1px) * 1.1), calc(var(--y-amp, 2px) * -0.8)) rotate(calc(var(--rot-amp, 2deg) * 1.1));
+    transform: translate(calc(var(--x-amp, 0.6px) * 0.9), calc(var(--y-amp, 1px) * -0.6)) rotate(calc(var(--rot-amp, 1deg) * 0.8));
   }
 }
 
