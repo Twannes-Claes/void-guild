@@ -123,10 +123,21 @@ export default function SessionJoinForm({
                 ))}
               </div>
               {userCharactersInSession.map((char) => (
-                <div key={char._id} className="flex flex-col sm:flex-row gap-2">
+                <div key={char._id} className="space-y-2">
+                  {onChangeCharacter && (
+                    <Button
+                      variant="outline"
+                      className="w-full flex items-center justify-center gap-2"
+                      onClick={() => handleOpenChangeDialog(char)}
+                      disabled={leavingCharacterId === char._id || isSwapping}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Change Character
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
-                    className="flex-1 flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-2"
                     onClick={() => onLeave?.(char._id)}
                     disabled={leavingCharacterId === char._id || isSwapping}
                   >
@@ -142,17 +153,6 @@ export default function SessionJoinForm({
                       </>
                     )}
                   </Button>
-                  {onChangeCharacter && (
-                    <Button
-                      variant="outline"
-                      className="flex-1 flex items-center justify-center gap-2"
-                      onClick={() => handleOpenChangeDialog(char)}
-                      disabled={leavingCharacterId === char._id || isSwapping}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Change Character
-                    </Button>
-                  )}
                 </div>
               ))}
             </div>
