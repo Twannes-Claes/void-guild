@@ -363,24 +363,28 @@ export default function WorldClient() {
         <div className="lg:col-span-4 space-y-8">
           <div>
             <div className="flex items-start sm:items-center gap-4 group min-w-0">
-              {/* World Emblem Avatar */}
+              {/* World Emblem */}
               {world.emblemUrl ? (
                 <div className="relative group/emblem shrink-0 mt-1 sm:mt-0">
                   <div
                     onClick={() => isOwner && emblemInputRef.current?.click()}
                     className={cn(
-                      "w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-2 ring-primary/40 ring-offset-2 ring-offset-background overflow-hidden bg-muted/30 shadow-md flex items-center justify-center transition-all",
-                      isOwner && "cursor-pointer hover:ring-primary hover:brightness-105"
+                      "flex items-center justify-center transition-all",
+                      isOwner && "cursor-pointer hover:brightness-110"
                     )}
                   >
-                    <img src={world.emblemUrl} alt={world.name} className="w-full h-full object-cover" />
+                    <img
+                      src={world.emblemUrl}
+                      alt={world.name}
+                      className="max-h-20 max-w-20 sm:max-h-24 sm:max-w-24 w-auto h-auto object-contain"
+                    />
                   </div>
                   {isOwner && (
                     <button
                       type="button"
                       onClick={() => emblemInputRef.current?.click()}
                       disabled={isUploadingEmblem}
-                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-all border-2 border-background"
+                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded bg-primary text-primary-foreground shadow-md flex items-center justify-center hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/emblem:opacity-100"
                       title="Change World Emblem"
                     >
                       <Camera className="h-3 w-3" />
@@ -392,7 +396,7 @@ export default function WorldClient() {
                   type="button"
                   onClick={() => emblemInputRef.current?.click()}
                   disabled={isUploadingEmblem}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center text-primary transition-all cursor-pointer group/upload shrink-0 shadow-sm mt-1 sm:mt-0"
+                  className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 flex flex-col items-center justify-center text-primary transition-all cursor-pointer group/upload shrink-0 mt-1 sm:mt-0"
                   title="Upload World Sigil / Emblem"
                 >
                   <Upload className="h-4 w-4 transition-transform group-hover/upload:scale-110" />
