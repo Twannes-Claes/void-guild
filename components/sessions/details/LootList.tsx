@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Edit2, Trash2, Coins, Link as LinkIcon, Check, X, User, Crown } from 'lucide-react'
+import { Plus, Edit2, Trash2, Coins, Link as LinkIcon, Check, X, User, Crown, CheckCheck, CheckCircle2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -40,12 +40,16 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
     const claimLoot = useMutation(api.sessions.claimLoot)
     const unclaimLoot = useMutation(api.sessions.unclaimLoot)
     const setSessionGuildmasterCut = useMutation(api.sessions.setSessionGuildmasterCut)
+    const toggleSessionMoneyClaimed = useMutation(api.sessions.toggleSessionMoneyClaimed)
+    const toggleGuildmasterCutClaimed = useMutation(api.sessions.toggleGuildmasterCutClaimed)
     const guildmasters = useQuery(api.characters.listGuildmasters)
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
     const [isGuildmasterDialogOpen, setIsGuildmasterDialogOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<LootItem | null>(null)
     const [selectedGmId, setSelectedGmId] = useState<string>(session.guildmasterCut?.characterId || '')
+    const [isTogglingClaim, setIsTogglingClaim] = useState(false)
+    const [isTogglingGmClaim, setIsTogglingGmClaim] = useState(false)
 
     const [name, setName] = useState('')
     const [link, setLink] = useState('')
@@ -55,6 +59,17 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
     const [quantity, setQuantity] = useState<string>('1')
 
     const loot = (session as any).loot as LootItem[] || []
+
+    const userCharacterInSession = useMemo(() => {
+        return session.attendingCharacters.find(c => userCharacterIds.has(c._id))
+    }, [session.attendingCharacters, userCharacterIds])
+
+    const claimStatus = useQuery(
+        api.sessions.getSessionClaimStatus,
+        session.locked && userCharacterInSession?._id
+            ? { sessionId: session._id, characterId: userCharacterInSession._id }
+            : "skip"
+    )
 
     const handleSetGuildmaster = async (charId: string) => {
         try {
@@ -147,10 +162,6 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
         }
     }
 
-    const userCharacterInSession = useMemo(() => {
-        return session.attendingCharacters.find(c => userCharacterIds.has(c._id))
-    }, [session.attendingCharacters, userCharacterIds])
-
     const formatGP = (val: number) => {
         const isNegative = val < 0
         const absVal = Math.abs(val)
@@ -198,6 +209,56 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
             guildmasterCutValue,
         }
     }, [loot, session.attendingCharacters.length, userCharacterIds])
+
+    const currentNetMoneyGP = calculations ? Math.round(calculations.userFinalShare * 100) / 100 : 0
+    const isClaimed = Boolean(claimStatus?.isClaimed)
+    const previousClaimedAmount = claimStatus?.claimedMoneyAmount ?? 0
+    const pendingMoneyAdjustmentGP = isClaimed
+        ? Math.round((currentNetMoneyGP - previousClaimedAmount) * 100) / 100
+        : currentNetMoneyGP
+
+    const handleToggleSessionMoneyClaim = async () => {
+        if (!userCharacterInSession || isTogglingClaim) return
+        setIsTogglingClaim(true)
+        try {
+            await toggleSessionMoneyClaimed({
+                sessionId: session._id,
+                characterId: userCharacterInSession._id,
+                currentNetMoneyGP,
+            })
+            toast.success(
+                !isClaimed
+                    ? `Marked ${formatGP(currentNetMoneyGP)} as added to ${userCharacterInSession.name}'s sheet!`
+                    : pendingMoneyAdjustmentGP !== 0
+                    ? `Updated ${userCharacterInSession.name}'s sheet with adjustment (${pendingMoneyAdjustmentGP > 0 ? '+' : ''}${formatGP(pendingMoneyAdjustmentGP)})!`
+                    : `Removed session loot from ${userCharacterInSession.name}'s sheet log`
+            )
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to update sheet status')
+        } finally {
+            setIsTogglingClaim(false)
+        }
+    }
+
+    const handleToggleGmCutClaim = async () => {
+        if (!session.guildmasterCutCharacterData || isTogglingGmClaim) return
+        setIsTogglingGmClaim(true)
+        try {
+            await toggleGuildmasterCutClaimed({
+                sessionId: session._id,
+                characterId: session.guildmasterCutCharacterData._id,
+            })
+            toast.success(
+                session.guildmasterCut?.claimed
+                    ? 'Removed GM compensation from sheet log'
+                    : `Marked GM compensation as added to ${session.guildmasterCutCharacterData.name}'s sheet!`
+            )
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to update Guildmaster compensation status')
+        } finally {
+            setIsTogglingGmClaim(false)
+        }
+    }
 
     return (
         <div className="flex flex-col gap-4 w-full">
@@ -280,7 +341,7 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
 
             {/* Guildmaster Cut Banner if assigned */}
             {session.guildmasterCutCharacterData && calculations && (
-                <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-950/20 px-3.5 py-2 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-amber-500/30 bg-amber-950/20 px-3.5 py-2 text-xs gap-2">
                     <div className="flex items-center gap-2">
                         <Crown className="h-4 w-4 text-amber-400 shrink-0" />
                         <div>
@@ -289,30 +350,97 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                             <span className="text-muted-foreground text-[11px] ml-1.5">(Lvl {session.guildmasterCutCharacterData.lvl})</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1.5 font-mono">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 font-mono">
                         <span className="text-muted-foreground text-[11px]">20% Compensation:</span>
                         <strong className="text-amber-300 font-bold">+{formatGP(calculations.guildmasterCutValue)}</strong>
+                        {session.locked && userCharacterIds.has(session.guildmasterCutCharacterData._id) && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isTogglingGmClaim}
+                                onClick={handleToggleGmCutClaim}
+                                className={cn(
+                                    "h-6 px-2 text-[10px] ml-1 font-semibold transition-all shrink-0 gap-1",
+                                    session.guildmasterCut?.claimed 
+                                        ? "border-emerald-500/40 text-emerald-300 bg-emerald-950/30 hover:bg-emerald-950/50" 
+                                        : "border-amber-500/40 text-amber-300 bg-amber-950/40 hover:bg-amber-950/60"
+                                )}
+                            >
+                                {isTogglingGmClaim ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : session.guildmasterCut?.claimed ? (
+                                    <>
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                        <span>Added to Sheet ✓</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCheck className="h-3 w-3" />
+                                        <span>Add to Sheet</span>
+                                    </>
+                                )}
+                            </Button>
+                        )}
                     </div>
                 </div>
             )}
 
             {userCharacterInSession && calculations && (
-                <Card className="bg-primary/5 border-primary/20">
+                <Card className={cn(
+                    "border transition-all overflow-hidden",
+                    session.locked 
+                        ? isClaimed && pendingMoneyAdjustmentGP === 0
+                            ? "bg-emerald-950/20 border-emerald-500/30"
+                            : isClaimed && pendingMoneyAdjustmentGP !== 0
+                            ? "bg-amber-950/20 border-amber-500/40"
+                            : "bg-purple-950/20 border-purple-500/30"
+                        : "bg-primary/5 border-primary/20"
+                )}>
                     <CardContent className="p-4 text-center">
-                        <div className="text-sm text-muted-foreground uppercase font-bold tracking-wider mb-1">Your Share</div>
-                        <div className="text-2xl font-black text-primary">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                                Your Share ({userCharacterInSession.name})
+                            </span>
+                            {session.locked && (
+                                <span className={cn(
+                                    "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                                    isClaimed && pendingMoneyAdjustmentGP === 0
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                        : isClaimed && pendingMoneyAdjustmentGP !== 0
+                                        ? "bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse"
+                                        : "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                                )}>
+                                    {isClaimed 
+                                        ? pendingMoneyAdjustmentGP !== 0 
+                                            ? "Adjustment Needed" 
+                                            : "On Sheet ✓" 
+                                        : "Not on Sheet"}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className={cn(
+                            "text-2xl font-black font-mono my-1",
+                            session.locked && isClaimed && pendingMoneyAdjustmentGP === 0
+                                ? "text-emerald-300"
+                                : session.locked && isClaimed && pendingMoneyAdjustmentGP !== 0
+                                ? "text-amber-300"
+                                : "text-primary"
+                        )}>
                             {formatGP(calculations.userFinalShare)}
                         </div>
 
                         {loot.filter(item => item.claimedBy && userCharacterIds.has(item.claimedBy)).length > 0 && (
-                            <div className="my-2.5 text-xs text-muted-foreground space-y-1">
+                            <div className="my-2.5 text-xs text-muted-foreground space-y-1 bg-background/40 p-2 rounded border border-border/30">
+                                <div className="font-semibold text-[11px] text-foreground/80 mb-1 text-left">Claimed Items (Deducted):</div>
                                 {loot
                                     .filter(item => item.claimedBy && userCharacterIds.has(item.claimedBy))
                                     .map((item) => {
                                         const val = item.isGood ? item.valueGP : item.valueGP / 2
                                         return (
-                                            <div key={item.id}>
-                                                - {item.name} (worth {formatGP(val)})
+                                            <div key={item.id} className="flex justify-between items-center text-muted-foreground">
+                                                <span>- {item.name}</span>
+                                                <span className="font-mono text-rose-300">-{formatGP(val)}</span>
                                             </div>
                                         )
                                     })}
@@ -320,8 +448,60 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                         )}
 
                         <div className="text-[10px] text-muted-foreground mt-2 italic">
-                            Based on {formatGP(calculations.sharePerPlayer)} share minus {formatGP(calculations.userClaimedValue)} in claimed items.
+                            Based on {formatGP(calculations.sharePerPlayer)} base share minus {formatGP(calculations.userClaimedValue)} in claimed items.
                         </div>
+
+                        {session.locked && (
+                            <div className="pt-3 mt-3 border-t border-border/30 flex flex-col gap-2">
+                                {isClaimed && pendingMoneyAdjustmentGP !== 0 && (
+                                    <div className="text-xs font-medium text-amber-300 bg-amber-950/30 border border-amber-500/30 p-2 rounded text-left">
+                                        {pendingMoneyAdjustmentGP > 0 ? (
+                                            <span>⚠️ Loot increased: <strong className="text-emerald-300 font-mono">+{formatGP(pendingMoneyAdjustmentGP)}</strong> pending (previously marked {formatGP(previousClaimedAmount)})</span>
+                                        ) : (
+                                            <span>⚠️ Loot decreased: <strong className="text-rose-300 font-mono">-{formatGP(Math.abs(pendingMoneyAdjustmentGP))}</strong> pending (previously marked {formatGP(previousClaimedAmount)})</span>
+                                        )}
+                                    </div>
+                                )}
+                                <Button
+                                    size="sm"
+                                    disabled={isTogglingClaim}
+                                    onClick={handleToggleSessionMoneyClaim}
+                                    className={cn(
+                                        "w-full h-8 text-xs font-semibold gap-1.5 transition-all shadow-sm cursor-pointer",
+                                        !isClaimed
+                                            ? "bg-purple-600 hover:bg-purple-500 text-white border border-purple-400/30"
+                                            : pendingMoneyAdjustmentGP !== 0
+                                            ? "bg-amber-600 hover:bg-amber-500 text-white border border-amber-400/30"
+                                            : "border border-emerald-500/40 text-emerald-300 bg-emerald-950/30 hover:bg-emerald-950/50 hover:text-emerald-200"
+                                    )}
+                                    variant={isClaimed && pendingMoneyAdjustmentGP === 0 ? "outline" : "default"}
+                                >
+                                    {isTogglingClaim ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            <span>Updating Sheet...</span>
+                                        </>
+                                    ) : !isClaimed ? (
+                                        <>
+                                            <CheckCheck className="h-3.5 w-3.5" />
+                                            <span>Add to Sheet ({formatGP(calculations.userFinalShare)})</span>
+                                        </>
+                                    ) : pendingMoneyAdjustmentGP !== 0 ? (
+                                        <>
+                                            <CheckCheck className="h-3.5 w-3.5" />
+                                            <span>
+                                                Adjust on Sheet ({pendingMoneyAdjustmentGP > 0 ? `+${formatGP(pendingMoneyAdjustmentGP)}` : `-${formatGP(Math.abs(pendingMoneyAdjustmentGP))}`})
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                            <span>Added to Sheet ✓</span>
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}

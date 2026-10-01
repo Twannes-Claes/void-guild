@@ -1967,6 +1967,39 @@ export const toggleSessionMoneyClaimed = mutation({
   },
 })
 
+export const getSessionClaimStatus = query({
+  args: {
+    sessionId: v.id('sessions'),
+    characterId: v.optional(v.id('characters')),
+  },
+  handler: async (ctx, args) => {
+    if (!args.characterId) return null
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) return null
+
+    const log = await ctx.db
+      .query('sessionClaimedLogs')
+      .withIndex('by_session_character', (q) =>
+        q.eq('sessionId', args.sessionId).eq('characterId', args.characterId!)
+      )
+      .first()
+
+    if (!log) {
+      return {
+        isClaimed: false,
+        claimedMoneyAmount: 0,
+        claimedAt: null,
+      }
+    }
+
+    return {
+      isClaimed: true,
+      claimedMoneyAmount: log.claimedMoneyAmount,
+      claimedAt: log.claimedAt,
+    }
+  },
+})
+
 export const getSessionState = query({
     args: { sessionId: v.id('sessions') },
     handler: async (ctx, args) => {
