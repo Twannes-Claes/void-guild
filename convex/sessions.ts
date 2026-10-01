@@ -941,6 +941,82 @@ export const joinSession = mutation({
   },
 })
 
+export const swapSessionCharacter = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    oldCharacterId: v.id('characters'),
+    newCharacterId: v.id('characters'),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) throw new Error('Session not found')
+
+    if (session.locked) {
+      throw new Error('This session is locked. You cannot change characters.')
+    }
+
+    if (!session.characters.includes(args.oldCharacterId)) {
+      throw new Error('Selected character is not in this session.')
+    }
+
+    const oldCharacter = await ctx.db.get(args.oldCharacterId)
+    if (!oldCharacter || oldCharacter.userId !== user.subject) {
+      throw new Error('You do not own the character being replaced.')
+    }
+
+    const newCharacter = await ctx.db.get(args.newCharacterId)
+    if (!newCharacter || newCharacter.userId !== user.subject) {
+      throw new Error('Character not found or you do not own it.')
+    }
+
+    if (newCharacter.system !== session.system) {
+      throw new Error(`This is a ${session.system} session, but your new character is ${newCharacter.system}.`)
+    }
+
+    if (session.characters.includes(args.newCharacterId)) {
+      throw new Error('New character is already in this session.')
+    }
+
+    // Replace oldCharacterId with newCharacterId preserving position
+    const updatedCharacters = session.characters.map((id) =>
+      id === args.oldCharacterId ? args.newCharacterId : id
+    )
+
+    await ctx.db.patch(args.sessionId, {
+      characters: updatedCharacters,
+    })
+
+    // Update initiative tracker in sessionStates if present
+    const sessionState = await ctx.db
+      .query('sessionStates')
+      .withIndex('by_sessionId', (q) => q.eq('sessionId', args.sessionId))
+      .first()
+
+    if (sessionState && sessionState.initiative) {
+      const updatedInitiative = sessionState.initiative.map((item) => {
+        if (item.id === args.oldCharacterId || item.id === String(args.oldCharacterId)) {
+          return {
+            ...item,
+            id: args.newCharacterId,
+            name: newCharacter.name,
+          }
+        }
+        return item
+      })
+      await ctx.db.patch(sessionState._id, {
+        initiative: updatedInitiative,
+      })
+    }
+
+    await ctx.scheduler.runAfter(0, internal.discord.syncSessionToDiscord, {
+      sessionId: args.sessionId,
+    })
+  },
+})
+
 export const joinIntroSession = mutation({
   args: {
     sessionId: v.id('sessions'),

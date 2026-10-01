@@ -77,6 +77,7 @@ export default function SessionClient() {
   const joinSession = useMutation(api.sessions.joinSession)
   const joinIntroSession = useMutation(api.sessions.joinIntroSession)
   const leaveSession = useMutation(api.sessions.leaveSession)
+  const swapSessionCharacter = useMutation(api.sessions.swapSessionCharacter)
   const lockSession = useMutation(api.sessions.lockSession)
   const unlockSession = useMutation(api.sessions.unlockSession)
   const forceLockSession = useMutation(api.sessions.forceLockSession)
@@ -325,6 +326,22 @@ export default function SessionClient() {
     }
   }
 
+  const handleSwapCharacter = async (oldCharacterId: Id<'characters'>, newCharacterId: Id<'characters'>) => {
+    try {
+      await swapSessionCharacter({
+        sessionId: session._id,
+        oldCharacterId,
+        newCharacterId,
+      })
+      const newChar = userCharacters?.find((c) => c._id === newCharacterId)
+      toast.success(`Changed character to ${newChar?.name || 'new character'}!`)
+      track('session_character_swapped', { worldName: session.worldName })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to change character')
+      throw e
+    }
+  }
+
   const handleLock = async () => {
     try { 
         await lockSession({ sessionId: session._id }) 
@@ -565,6 +582,7 @@ export default function SessionClient() {
               onJoin={handleJoin}
               onJoinIntro={handleJoinIntro}
               onLeave={handleLeave}
+              onChangeCharacter={handleSwapCharacter}
               isJoining={isJoining}
               leavingCharacterId={leavingCharacterId}
               eligibility={eligibility}

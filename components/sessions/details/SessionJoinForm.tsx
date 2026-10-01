@@ -4,8 +4,16 @@ import { useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Doc, Id } from '@/convex/_generated/dataModel'
-import { Loader2, LogOut, UserCheck, Lock, Sprout, Sparkles, ExternalLink } from 'lucide-react'
+import { Loader2, LogOut, UserCheck, Lock, Sprout, Sparkles, ExternalLink, RefreshCw } from 'lucide-react'
 
 interface SessionJoinFormProps {
   sessionLocked: boolean
@@ -22,6 +30,7 @@ interface SessionJoinFormProps {
   onJoin: (e: React.MouseEvent) => void
   onJoinIntro?: (e: React.MouseEvent) => void
   onLeave?: (characterId: Id<'characters'>) => void
+  onChangeCharacter?: (oldCharacterId: Id<'characters'>, newCharacterId: Id<'characters'>) => Promise<void>
   isJoining?: boolean
   leavingCharacterId?: string | null
   eligibility?: { eligible: boolean; reason?: string; isFreeTier?: boolean } | null
@@ -42,76 +51,111 @@ export default function SessionJoinForm({
   onJoin,
   onJoinIntro,
   onLeave,
+  onChangeCharacter,
   isJoining,
   leavingCharacterId,
   eligibility,
 }: SessionJoinFormProps) {
   const { user } = useUser()
   const [isRefreshingMembership, setIsRefreshingMembership] = useState(false)
+  const [changeDialogOpen, setChangeDialogOpen] = useState(false)
+  const [characterToChange, setCharacterToChange] = useState<Doc<'characters'> | null>(null)
+  const [targetCharacterId, setTargetCharacterId] = useState<Id<'characters'> | ''>('')
+  const [isSwapping, setIsSwapping] = useState(false)
+
+  const handleOpenChangeDialog = (char: Doc<'characters'>) => {
+    setCharacterToChange(char)
+    setTargetCharacterId(availableCharacters[0]?._id || '')
+    setChangeDialogOpen(true)
+  }
+
+  const handleConfirmChange = async () => {
+    if (!characterToChange || !targetCharacterId || !onChangeCharacter) return
+    setIsSwapping(true)
+    try {
+      await onChangeCharacter(characterToChange._id, targetCharacterId)
+      setChangeDialogOpen(false)
+    } finally {
+      setIsSwapping(false)
+    }
+  }
 
   return (
-    <Card className={sessionIsIntro && !hasUserCharacterInSession ? "border-emerald-500/30" : ""}>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {hasUserCharacterInSession ? (
-              <>
-                <UserCheck className="h-5 w-5 text-emerald-500" />
-                Joined Session
-              </>
-            ) : sessionIsPrivate ? (
-              <>
-                <Lock className="h-5 w-5 text-amber-500" />
-                Private Session
-              </>
-            ) : sessionIsIntro ? (
-              <>
-                <Sprout className="h-5 w-5 text-emerald-400" />
-                Join Intro Session
-              </>
-            ) : (
-              'Join Session'
-            )}
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {sessionLocked ? (
-          <div className="text-sm text-muted-foreground italic text-center p-4 bg-muted/30 rounded-md">
-            This session has ended.
-          </div>
-        ) : hasUserCharacterInSession ? (
-          <div className="space-y-4">
-            <div className="text-sm text-muted-foreground p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-md space-y-1">
-              <p className="font-medium text-emerald-700 dark:text-emerald-400">You are in this session!</p>
+    <>
+      <Card className={sessionIsIntro && !hasUserCharacterInSession ? "border-emerald-500/30" : ""}>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {hasUserCharacterInSession ? (
+                <>
+                  <UserCheck className="h-5 w-5 text-emerald-500" />
+                  Joined Session
+                </>
+              ) : sessionIsPrivate ? (
+                <>
+                  <Lock className="h-5 w-5 text-amber-500" />
+                  Private Session
+                </>
+              ) : sessionIsIntro ? (
+                <>
+                  <Sprout className="h-5 w-5 text-emerald-400" />
+                  Join Intro Session
+                </>
+              ) : (
+                'Join Session'
+              )}
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sessionLocked ? (
+            <div className="text-sm text-muted-foreground italic text-center p-4 bg-muted/30 rounded-md">
+              This session has ended.
+            </div>
+          ) : hasUserCharacterInSession ? (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-md space-y-1">
+                <p className="font-medium text-emerald-700 dark:text-emerald-400">You are in this session!</p>
+                {userCharactersInSession.map((char) => (
+                  <p key={char._id} className="text-xs text-foreground font-semibold">
+                    • {char.name} (Lvl {char.lvl})
+                  </p>
+                ))}
+              </div>
               {userCharactersInSession.map((char) => (
-                <p key={char._id} className="text-xs text-foreground font-semibold">
-                  • {char.name} (Lvl {char.lvl})
-                </p>
+                <div key={char._id} className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    variant="destructive"
+                    className="flex-1 flex items-center justify-center gap-2"
+                    onClick={() => onLeave?.(char._id)}
+                    disabled={leavingCharacterId === char._id || isSwapping}
+                  >
+                    {leavingCharacterId === char._id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Leaving...
+                      </>
+                    ) : (
+                      <>
+                        <LogOut className="h-4 w-4" />
+                        Leave Session
+                      </>
+                    )}
+                  </Button>
+                  {onChangeCharacter && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 flex items-center justify-center gap-2"
+                      onClick={() => handleOpenChangeDialog(char)}
+                      disabled={leavingCharacterId === char._id || isSwapping}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Change Character
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
-            {userCharactersInSession.map((char) => (
-              <Button
-                key={char._id}
-                variant="destructive"
-                className="w-full flex items-center justify-center gap-2"
-                onClick={() => onLeave?.(char._id)}
-                disabled={leavingCharacterId === char._id}
-              >
-                {leavingCharacterId === char._id ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Leaving...
-                  </>
-                ) : (
-                  <>
-                    <LogOut className="h-4 w-4" />
-                    Leave Session
-                  </>
-                )}
-              </Button>
-            ))}
-          </div>
         ) : sessionPlanning ? (
           <div className="text-sm text-purple-600 dark:text-purple-400 italic text-center p-4 bg-purple-500/10 rounded-md border border-purple-200 dark:border-purple-800">
             This session is currently in the <b>planning phase</b> and cannot be joined yet.
@@ -264,6 +308,70 @@ export default function SessionJoinForm({
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={changeDialogOpen} onOpenChange={setChangeDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5 text-primary" />
+            Change Character
+          </DialogTitle>
+          <DialogDescription>
+            Switch out <b>{characterToChange?.name}</b> (Lvl {characterToChange?.lvl}) for another one of your characters in this session.
+          </DialogDescription>
+        </DialogHeader>
+
+        {availableCharacters.length > 0 ? (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select New Character</label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={targetCharacterId}
+                onChange={(e) => setTargetCharacterId(e.target.value as Id<'characters'> | '')}
+                disabled={isSwapping}
+              >
+                {availableCharacters.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name} (Lvl {c.lvl}{c.class ? ` ${c.class}` : ''})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="ghost" onClick={() => setChangeDialogOpen(false)} disabled={isSwapping}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmChange} disabled={!targetCharacterId || isSwapping}>
+                {isSwapping ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Switching...
+                  </>
+                ) : (
+                  'Confirm Switch'
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              You do not have any other characters matching this session&apos;s system to switch to.
+            </p>
+            <div className="flex justify-between items-center pt-2">
+              <a href="/" className="text-sm text-primary hover:underline font-semibold">
+                Go to Home to create one →
+              </a>
+              <Button variant="ghost" onClick={() => setChangeDialogOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 
