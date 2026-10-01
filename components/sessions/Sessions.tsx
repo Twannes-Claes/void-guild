@@ -475,8 +475,8 @@ function FiveDayOverview({ sessions, userCharacterIds }: { sessions: SessionWith
     let numberOfDaysToShow = 5;
     let gridColsClass = "grid-cols-5";
 
-    // Adjust breakpoints based on window width
-    if (width > 0 && width < 520) {
+    // Adjust breakpoints based on window width and column split
+    if (width > 0 && (width < 640 || (width >= 768 && width < 1024))) {
       numberOfDaysToShow = 3;
       gridColsClass = "grid-cols-3";
     } else {
