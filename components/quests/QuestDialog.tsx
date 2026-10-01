@@ -146,7 +146,7 @@ export default function QuestDialog({ isOpen, onClose, worldId, isWorldOwner = f
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] border-border/40 bg-card/95 backdrop-blur-md">
+      <DialogContent className="sm:max-w-[500px] border-border/40 bg-card/95 backdrop-blur-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-bold">
             <Scroll className="h-5 w-5 text-primary" />
@@ -258,7 +258,7 @@ export default function QuestDialog({ isOpen, onClose, worldId, isWorldOwner = f
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What needs to be done?"
-              className="min-h-[100px] bg-muted/30"
+              className="min-h-[100px] max-h-[250px] bg-muted/30"
             />
           </div>
 
