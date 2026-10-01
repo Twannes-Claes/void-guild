@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Pencil, CheckCircle2, Shield, Send, Bell, XCircle, Scroll, Calendar, CalendarRange, Clock, Unlock, User, Globe, Target, Sprout } from 'lucide-react'
+import { Pencil, CheckCircle2, Shield, Send, Bell, XCircle, Scroll, Calendar, CalendarRange, Clock, Unlock, User, Globe, Target, Sprout, RefreshCw } from 'lucide-react'
 import SessionDialog from '@/components/sessions/SessionDialog'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -27,6 +27,9 @@ import {
 } from '@/components/ui/dialog'
 import { getLevelBadgeStyle, getDualLevelBadgeStyle, CharacterRankIcon, cn, formatInGameYear } from '@/lib/utils'
 import { Doc, Id } from '@/convex/_generated/dataModel'
+import { api } from '@/convex/_generated/api'
+import { useAction } from 'convex/react'
+import { toast } from 'sonner'
 import { useState, useMemo } from 'react'
 
 interface SessionManagementProps {
@@ -64,6 +67,20 @@ export default function SessionManagement({
 }: SessionManagementProps) {
   const [isQuestDialogOpen, setIsQuestDialogOpen] = useState(false)
   const [isInGameDateDialogOpen, setIsInGameDateDialogOpen] = useState(false)
+  const [isResyncing, setIsResyncing] = useState(false)
+  const resyncDiscord = useAction(api.discord.resyncSessionDiscord)
+
+  const handleResyncDiscord = async () => {
+    setIsResyncing(true)
+    try {
+      await resyncDiscord({ sessionId: session._id })
+      toast.success('Discord forum post refreshed and starter message pinned!')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to resync with Discord')
+    } finally {
+      setIsResyncing(false)
+    }
+  }
 
   const { eras, yearZeroExists } = useMemo(() => {
     if (!worldCalendar) return { eras: [], yearZeroExists: false }
@@ -408,6 +425,21 @@ export default function SessionManagement({
                         </Button>
                         <p className="text-[11px] text-muted-foreground px-1">
                             Notify everyone that the session is cancelled and will no longer happen. {!session.date && "(Requires a date)"}
+                        </p>
+                    </div>
+
+                    <div className="border-t pt-4 space-y-2">
+                        <Button 
+                            variant="secondary" 
+                            onClick={handleResyncDiscord} 
+                            disabled={isResyncing}
+                            className="w-full justify-start gap-2 border border-border/60"
+                        >
+                            <RefreshCw className={cn("h-4 w-4", isResyncing && "animate-spin")} />
+                            <span className="font-bold">{isResyncing ? "Syncing..." : "Resync Forum Post & Pin"}</span>
+                        </Button>
+                        <p className="text-[11px] text-muted-foreground px-1">
+                            Manually sync all session signups, title details, and ensure the starter message is pinned in the forum thread.
                         </p>
                     </div>
                 </div>

@@ -222,20 +222,47 @@ export const syncSessionToDiscord = internalAction({
     // 2. If we have a thread ID, update the first message and thread name
     if (session.discordThreadId) {
       try {
-        // Update thread name
+        // Update thread name & ensure thread is not archived
         // NOTE: Discord heavily rate limits thread renaming (2 changes per 10 minutes).
-        // We'll attempt it, but the message update is more important.
-        await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}`, {
+        const threadPatchRes = await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bot ${botToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name: threadName.substring(0, 100) }), // Ensure < 100 chars
+          body: JSON.stringify({ 
+            name: threadName.substring(0, 100),
+            archived: false,
+          }),
         });
 
+        if (!threadPatchRes.ok) {
+          const errStatus = threadPatchRes.status;
+          let retrySec = 0;
+          try {
+            const errData = await threadPatchRes.json();
+            console.warn(`Discord thread name PATCH failed with status ${errStatus}:`, errData);
+            if (errData?.retry_after) {
+              retrySec = Number(errData.retry_after);
+            }
+          } catch (_) {}
+
+          if (errStatus === 429 && retrySec > 0) {
+            const retryMs = Math.ceil(retrySec * 1000) + 1500;
+            console.log(`Scheduling Discord sync retry in ${Math.round(retryMs / 1000)}s due to thread name rate limit.`);
+            await ctx.scheduler.runAfter(retryMs, internal.discord.syncSessionToDiscord, {
+              sessionId: args.sessionId,
+            });
+          } else if (errStatus === 404) {
+            console.warn("Discord thread not found (404). Resetting thread ID to recreate...");
+            await ctx.runMutation(internal.discord.clearSessionThreadId, { sessionId: args.sessionId });
+            await ctx.scheduler.runAfter(1000, internal.discord.syncSessionToDiscord, { sessionId: args.sessionId });
+            return;
+          }
+        }
+
         // In forums, the first message has the same ID as the thread
-        await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}/messages/${session.discordThreadId}`, {
+        const msgPatchRes = await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}/messages/${session.discordThreadId}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bot ${botToken}`,
@@ -247,16 +274,54 @@ export const syncSessionToDiscord = internalAction({
           }),
         });
 
+        if (!msgPatchRes.ok) {
+          const msgErr = await msgPatchRes.text();
+          console.error("Failed to update Discord thread message:", msgPatchRes.status, msgErr);
+          if (msgPatchRes.status === 429) {
+            try {
+              const msgData = JSON.parse(msgErr);
+              if (msgData?.retry_after) {
+                const retryMs = Math.ceil(Number(msgData.retry_after) * 1000) + 1500;
+                await ctx.scheduler.runAfter(retryMs, internal.discord.syncSessionToDiscord, {
+                  sessionId: args.sessionId,
+                });
+              }
+            } catch (_) {}
+          }
+        }
+
         // Ensure root message is pinned in the forum thread
         try {
-          await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}/pins/${session.discordThreadId}`, {
-            method: "PUT",
+          const pinsRes = await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}/pins`, {
             headers: {
               Authorization: `Bot ${botToken}`,
             },
           });
+          let isAlreadyPinned = false;
+          if (pinsRes.ok) {
+            const pinnedList = await pinsRes.json();
+            if (Array.isArray(pinnedList)) {
+              isAlreadyPinned = pinnedList.some((p: any) => p.id === session.discordThreadId);
+            }
+          }
+
+          if (!isAlreadyPinned) {
+            const pinPutRes = await fetch(`${DISCORD_API_BASE}/channels/${session.discordThreadId}/pins/${session.discordThreadId}`, {
+              method: "PUT",
+              headers: {
+                Authorization: `Bot ${botToken}`,
+                "Content-Type": "application/json",
+              },
+            });
+            if (!pinPutRes.ok) {
+              const pinErrText = await pinPutRes.text();
+              console.warn(`Could not pin root message on thread update (${pinPutRes.status}):`, pinErrText);
+            } else {
+              console.log(`Successfully pinned starter message for thread ${session.discordThreadId}`);
+            }
+          }
         } catch (pinErr) {
-          console.warn("Could not pin root message on thread update:", pinErr);
+          console.warn("Could not check/pin root message on thread update:", pinErr);
         }
       } catch (e) {
         console.error("Failed to update Discord thread:", e);
@@ -323,18 +388,25 @@ export const syncSessionToDiscord = internalAction({
 
           // Pin the root/first message in the forum thread (message ID is thread.id)
           try {
-            await fetch(`${DISCORD_API_BASE}/channels/${thread.id}/pins/${thread.id}`, {
+            const pinPutRes = await fetch(`${DISCORD_API_BASE}/channels/${thread.id}/pins/${thread.id}`, {
               method: "PUT",
               headers: {
                 Authorization: `Bot ${botToken}`,
+                "Content-Type": "application/json",
               },
             });
+            if (!pinPutRes.ok) {
+              const pinErrText = await pinPutRes.text();
+              console.warn(`Failed to pin root message in newly created forum thread (${pinPutRes.status}):`, pinErrText);
+            } else {
+              console.log(`Successfully pinned starter message for new thread ${thread.id}`);
+            }
           } catch (pinErr) {
             console.error("Failed to pin root message in newly created forum thread:", pinErr);
           }
         } else {
           const err = await response.text();
-          console.error("Discord API error:", err);
+          console.error("Discord API error on thread creation:", err);
         }
       } catch (e) {
         console.error("Failed to create Discord thread:", e);
@@ -676,6 +748,22 @@ export const updateSessionThreadId = internalMutation({
   args: { sessionId: v.id("sessions"), threadId: v.string() },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.sessionId, { discordThreadId: args.threadId });
+  },
+});
+
+export const clearSessionThreadId = internalMutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.sessionId, { discordThreadId: undefined });
+  },
+});
+
+export const resyncSessionDiscord = action({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) throw new Error("Not authenticated");
+    await ctx.runAction(internal.discord.syncSessionToDiscord, { sessionId: args.sessionId });
   },
 });
 

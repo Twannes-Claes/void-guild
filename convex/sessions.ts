@@ -1569,6 +1569,10 @@ export const updateInGameDate = mutation({
     await ctx.db.patch(args.sessionId, {
       inGameDate: args.inGameDate,
     })
+
+    await ctx.scheduler.runAfter(0, internal.discord.syncSessionToDiscord, {
+      sessionId: args.sessionId
+    })
   },
 })
 
