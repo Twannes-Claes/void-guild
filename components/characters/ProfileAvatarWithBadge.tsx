@@ -109,22 +109,24 @@ export default function ProfileAvatarWithBadge({
 
       <div
         className={cn(
-          'rounded-full shrink-0 flex items-center justify-center relative z-10 overflow-hidden',
+          'rounded-full shrink-0 flex items-center justify-center relative z-10',
           sizeClasses[size],
           ringClass
         )}
       >
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={name}
-            className="w-full h-full rounded-full object-cover shrink-0 relative z-10"
-          />
-        ) : (
-          <div className="w-full h-full rounded-full bg-purple-500/20 flex items-center justify-center font-bold shrink-0 relative z-10">
-            {name ? name[0]?.toUpperCase() : 'C'}
-          </div>
-        )}
+        <div className="w-full h-full rounded-full overflow-hidden shrink-0 flex items-center justify-center relative z-0">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={name}
+              className="w-full h-full rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-full h-full rounded-full bg-purple-500/20 flex items-center justify-center font-bold shrink-0">
+              {name ? name[0]?.toUpperCase() : 'C'}
+            </div>
+          )}
+        </div>
       </div>
 
       {activeCommendation && (

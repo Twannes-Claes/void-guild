@@ -615,32 +615,64 @@
 .void-avatar-ring {
   position: relative !important;
   border-color: transparent !important;
+  box-shadow: 0 0 14px rgba(147, 51, 234, 0.45) !important;
 }
 
-.void-avatar-ring::before {
+/* Outer expanding cosmic void glow */
+.void-avatar-ring::after {
   content: '' !important;
   position: absolute !important;
-  inset: -3.5px !important;
+  inset: -6.5px !important;
   border-radius: 9999px !important;
-  padding: 3.5px !important;
+  padding: 6.5px !important;
   background: conic-gradient(
     from var(--void-angle, 0deg),
     #05000a 0%,
-    #2e044d 20%,
-    #9333ea 40%,
+    #3b0764 20%,
+    #a855f7 42%,
     #ffffff 50%,
-    #9333ea 60%,
-    #2e044d 80%,
+    #a855f7 58%,
+    #3b0764 80%,
     #05000a 100%
   ) !important;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
   -webkit-mask-composite: xor !important;
   mask-composite: exclude !important;
-  animation: void-rotate 7s linear infinite !important;
+  animation: void-rotate 7s linear infinite reverse !important;
+  will-change: --void-angle !important;
+  pointer-events: none !important;
+  z-index: 9 !important;
+  filter: blur(2px) drop-shadow(0 0 12px rgba(168, 85, 247, 0.85)) drop-shadow(0 0 20px rgba(147, 51, 234, 0.6)) !important;
+  opacity: 0.85 !important;
+}
+
+/* Primary rotating void ribbon */
+.void-avatar-ring::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: -4.5px !important;
+  border-radius: 9999px !important;
+  padding: 4.5px !important;
+  background: conic-gradient(
+    from var(--void-angle, 0deg),
+    #05000a 0%,
+    #3b0764 15%,
+    #9333ea 35%,
+    #c084fc 46%,
+    #ffffff 50%,
+    #c084fc 54%,
+    #9333ea 65%,
+    #3b0764 85%,
+    #05000a 100%
+  ) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  animation: void-rotate 4.5s linear infinite !important;
   will-change: --void-angle !important;
   pointer-events: none !important;
   z-index: 10 !important;
-  filter: drop-shadow(0 0 8px rgba(147, 51, 234, 0.6)) !important;
+  filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 12px rgba(168, 85, 247, 1)) drop-shadow(0 0 22px rgba(147, 51, 234, 0.85)) !important;
 }
 
 @keyframes void-rotate {
