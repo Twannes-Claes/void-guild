@@ -4,6 +4,7 @@ import { internal } from './_generated/api'
 import { Id } from './_generated/dataModel'
 import { isAdmin, isMember } from './roles'
 import { formatUserDisplayName } from './users'
+import { getUserWorldStreaksMap } from './worlds'
 
 export const listCharacters = query({
   args: {},
@@ -218,6 +219,126 @@ export const createCharacter = mutation({
   },
 })
 
+const COSMETIC_ACHIEVEMENT_REQUIREMENTS: Record<string, string> = {
+  // Fonts
+  sabon_serif: 'first_session',
+  'font-sabon': 'first_session',
+  medieval_sharp: 'veteran_player_5',
+  'font-medieval': 'veteran_player_5',
+  taroca_fantasy: 'master_player_10',
+  'font-taroca': 'master_player_10',
+  kobold_font: 'kobold_member',
+  'font-kobold': 'kobold_member',
+  rounded_sans: 'link_discord',
+  'font-rounded': 'link_discord',
+  cinzel_decorative: 'system_polymath',
+  'font-cinzel-dec': 'system_polymath',
+
+  // Colors
+  purple_text: 'tutorial_completed',
+  '#D8B4FE': 'tutorial_completed',
+  teal_text: 'character_trio',
+  '#2DD4BF': 'character_trio',
+  tangerine_text: 'express_interest',
+  '#FB923C': 'express_interest',
+  emerald_text: 'availability_5_days',
+  '#34D399': 'availability_5_days',
+  sky_blue_text: 'visit_world',
+  '#38BDF8': 'visit_world',
+  amber_text: 'first_commendation',
+  '#FBBF24': 'first_commendation',
+  ruby_text: 'loot_hoarder_5',
+  '#EF4444': 'loot_hoarder_5',
+  gold_text: 'rank_guildmaster',
+  'gold-text': 'rank_guildmaster',
+  rainbow: 'secret_logo_clicks',
+  'rainbow-text': 'secret_logo_clicks',
+  blaze_text: 'character_streak_5',
+  'blaze-fire-text': 'character_streak_5',
+  platinum_text: 'black_void_bet_create',
+  'platinum-text': 'black_void_bet_create',
+  velvet_violet_text: 'black_void_bet_accept',
+  'velvet-violet-text': 'black_void_bet_accept',
+
+  // Borders
+  bronze_border: 'loot_first',
+  'bronze-card-border': 'loot_first',
+  purple_border: 'tutorial_completed',
+  'purple-card-border': 'tutorial_completed',
+  silver_border: 'rank_journeyman',
+  'silver-card-border': 'rank_journeyman',
+  gold_border: 'rank_guildmaster',
+  'gold-card-border': 'rank_guildmaster',
+  void_border: 'first_gm_session',
+  'void-rotating-border': 'first_gm_session',
+  rainbow_border: 'secret_logo_clicks',
+  'rainbow-border': 'secret_logo_clicks',
+  in_sync_border: 'character_streak_3',
+  'in-sync-card-border': 'character_streak_3',
+  quest_beacon_border: 'create_character_quest',
+  'quest-beacon-border': 'create_character_quest',
+  jackpot_border: 'black_void_bet_win',
+  'jackpot-card-border': 'black_void_bet_win',
+
+  // Profile Rings
+  sprout_ring: 'first_character',
+  'sprout-avatar-ring': 'first_character',
+  compass_ring: 'worlds_played_3',
+  'compass-avatar-ring': 'worlds_played_3',
+  multiverse_compass_ring: 'worlds_played_5',
+  'multiverse-compass-avatar-ring': 'worlds_played_5',
+  laurel_spirit_ring: 'give_1_commendation',
+  'laurel-spirit-avatar-ring': 'give_1_commendation',
+  laurel_patron_ring: 'give_5_commendations',
+  'laurel-patron-avatar-ring': 'give_5_commendations',
+  laurel_ring: 'give_10_commendations',
+  'laurel-avatar-ring': 'give_10_commendations',
+  silver_ring: 'rank_journeyman',
+  'silver-avatar-ring': 'rank_journeyman',
+  gold_ring: 'rank_guildmaster',
+  'gold-avatar-ring': 'rank_guildmaster',
+  void_ring: 'veteran_gm_5',
+  'void-avatar-ring': 'veteran_gm_5',
+  jack_of_all_trades: 'comm_jack_of_all_trades',
+  'jack-seal-ring': 'comm_jack_of_all_trades',
+  leaderboard_rank: 'visit_leaderboard',
+  'leaderboard-rank-badge': 'visit_leaderboard',
+  comm_roleplay: 'comm_roleplay',
+  'comm-roleplay-badge': 'comm_roleplay',
+  comm_tactics: 'comm_tactics',
+  'comm-tactics-badge': 'comm_tactics',
+  comm_clutch: 'comm_clutch',
+  'comm-clutch-badge': 'comm_clutch',
+  comm_heroic: 'comm_heroic',
+  'comm-heroic-badge': 'comm_heroic',
+  gm_favor: 'gm_favor',
+  'comm-gm-badge': 'gm_favor',
+
+  // Background Tints
+  parchment_bg: 'visit_wiki',
+  'parchment-bg-tint': 'visit_wiki',
+  purple_tint: 'tutorial_completed',
+  'rgba(147, 51, 234, 0.15)': 'tutorial_completed',
+  cyan_particles: 'level_5_char',
+  'cyan-particle-bg': 'level_5_char',
+  crimson_particles: 'level_10_char',
+  'crimson-particle-bg': 'level_10_char',
+  silver_tint: 'rank_journeyman',
+  'silver-bg-tint': 'rank_journeyman',
+  gold_tint: 'rank_guildmaster',
+  'gold-bg-tint': 'rank_guildmaster',
+  void_nebula: 'void_objective_contribution',
+  'void-nebula-bg': 'void_objective_contribution',
+  blaze_inferno_bg: 'character_streak_10',
+  'blaze-inferno-bg': 'character_streak_10',
+  gold_coins_bg: 'black_void_auction_listing',
+  'gold-coins-bg': 'black_void_auction_listing',
+  arcane_runes_bg: 'black_void_service_listing',
+  'arcane-runes-bg': 'black_void_service_listing',
+  phantom_smoke_bg: 'black_void_bet_lose',
+  'phantom-smoke-bg': 'black_void_bet_lose',
+}
+
 export const updateCharacter = mutation({
   args: {
     characterId: v.id('characters'),
@@ -255,6 +376,86 @@ export const updateCharacter = mutation({
       await assertUniqueCharacterName(ctx, trimmedName, args.characterId)
     }
 
+    if (args.cosmetics) {
+      // Validate cosmetics are naturally unlocked for this user
+      const userAchievements = await ctx.db
+        .query('unlockedAchievements')
+        .withIndex('by_userId', (q) => q.eq('userId', user.subject))
+        .collect()
+      const unlockedAchSet = new Set(userAchievements.map((u) => u.achievementId))
+      const userIsMember = await isMember(ctx, user.subject)
+      if (userIsMember) {
+        unlockedAchSet.add('kobold_member')
+      }
+
+      const hasWorldCosmetic =
+        args.cosmetics.borderShape?.startsWith('world_border_') ||
+        args.cosmetics.profileBorder?.startsWith('world_ring_') ||
+        args.cosmetics.bgColor?.startsWith('world_bg_')
+
+      let worldStreaksMap: Record<string, { streak: number; isOwner: boolean }> = {}
+      if (hasWorldCosmetic) {
+        worldStreaksMap = await getUserWorldStreaksMap(ctx, user.subject)
+      }
+
+      const validateItem = (val: string | undefined, category: string) => {
+        if (!val || val === 'default' || val === '' || val === 'font-sans' || val === 'rounded-lg border border-border' || val === 'border border-border') {
+          return
+        }
+
+        // Check world streak cosmetics
+        if (category === 'borderShape' && val.startsWith('world_border_')) {
+          const wId = val.replace('world_border_', '')
+          const w = worldStreaksMap[wId]
+          const isUnlocked = Boolean(w?.isOwner || (w?.streak ?? 0) >= 10)
+          if (!isUnlocked) {
+            throw new Error(`Locked cosmetic equipped: World Sigil Sparkles Border (requires World Streak 10). Cannot save locked cosmetics.`)
+          }
+          return
+        }
+
+        if (category === 'profileBorder' && val.startsWith('world_ring_')) {
+          const wId = val.replace('world_ring_', '')
+          const w = worldStreaksMap[wId]
+          const isUnlocked = Boolean(w?.isOwner || (w?.streak ?? 0) >= 3)
+          if (!isUnlocked) {
+            throw new Error(`Locked cosmetic equipped: World Sigil Ring (requires World Streak 3). Cannot save locked cosmetics.`)
+          }
+          return
+        }
+
+        if (category === 'bgColor' && val.startsWith('world_bg_')) {
+          const wId = val.replace('world_bg_', '')
+          const w = worldStreaksMap[wId]
+          const isUnlocked = Boolean(w?.isOwner || (w?.streak ?? 0) >= 5)
+          if (!isUnlocked) {
+            throw new Error(`Locked cosmetic equipped: World Sigil Starlight Tint (requires World Streak 5). Cannot save locked cosmetics.`)
+          }
+          return
+        }
+
+        // Check achievement requirements
+        const reqAch = COSMETIC_ACHIEVEMENT_REQUIREMENTS[val]
+        if (reqAch && !unlockedAchSet.has(reqAch)) {
+          throw new Error(`Locked cosmetic equipped: ${val} (requires achievement "${reqAch}"). Cannot save locked cosmetics.`)
+        }
+      }
+
+      validateItem(args.cosmetics.nameFont, 'font')
+      validateItem(args.cosmetics.titleFont, 'font')
+      validateItem(args.cosmetics.subtitleFont, 'font')
+      validateItem(args.cosmetics.nameColor, 'color')
+      validateItem(args.cosmetics.titleColor, 'color')
+      validateItem(args.cosmetics.subtitleColor, 'color')
+      validateItem(args.cosmetics.borderShape, 'borderShape')
+      validateItem(args.cosmetics.profileBorder, 'profileBorder')
+      validateItem(args.cosmetics.bgColor, 'bgColor')
+
+      if (args.cosmetics.avatarUrl && !userIsMember) {
+        throw new Error('Custom character portrait is a Member benefit. Cannot save without active membership.')
+      }
+    }
+
     await ctx.db.patch(args.characterId, {
       name: trimmedName !== undefined ? trimmedName : character.name,
       ancestry: args.ancestry,
@@ -265,6 +466,7 @@ export const updateCharacter = mutation({
     })
   },
 })
+
 
 export const adminUpdateCharacter = mutation({
   args: {

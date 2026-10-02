@@ -46,7 +46,7 @@ import { toast } from 'sonner'
 import { track } from '@vercel/analytics'
 import Link from 'next/link'
 import { cn, getLevelBadgeStyle, getXPBarStyles, formatDate, CharacterRankIcon } from '@/lib/utils'
-import { CharacterCosmetics } from '@/lib/cosmetics'
+import { CharacterCosmetics, getLockedCosmeticsEquipped } from '@/lib/cosmetics'
 import CharacterCallingCard from './CharacterCallingCard'
 import CharacterCosmeticsTab from './CharacterCosmeticsTab'
 import { MembershipBadge } from './MembershipBadge'
@@ -70,6 +70,7 @@ export default function CharacterDetailsDialog({
     characterId ? { characterId } : 'skip'
   )
   const unlockedAchievementIds = useQuery(api.achievements.getUserUnlockedAchievementIds) || []
+  const userWorldStreaks = useQuery(api.worlds.getUserWorldStreaks) || []
   const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
 
   const updateCharacter = useMutation(api.characters.updateCharacter)
@@ -161,8 +162,8 @@ export default function CharacterDetailsDialog({
     (profile?.isOwner && isCurrentUserMember)
   )
 
-  async function handleUpdate(e: FormEvent) {
-    e.preventDefault()
+  async function handleUpdate(e?: React.SyntheticEvent) {
+    if (e) e.preventDefault()
     if (!char) return
 
     const newErrors: { name?: string } = {}
@@ -174,6 +175,20 @@ export default function CharacterDetailsDialog({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
+      return
+    }
+
+    // Guard against saving locked cosmetics (e.g. previewed while in admin view)
+    const lockedCosmetics = getLockedCosmeticsEquipped(
+      editedCosmetics,
+      unlockedAchievementIds,
+      userWorldStreaks,
+      isEffectiveMember
+    )
+    if (lockedCosmetics.length > 0) {
+      toast.error(
+        `Cannot save locked cosmetics (${lockedCosmetics.join(', ')}). Admin Mode allows previewing only; revert to unlocked options before saving.`
+      )
       return
     }
 

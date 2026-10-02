@@ -678,6 +678,62 @@ export const getAllWorlds = query({
   },
 })
 
+export async function getUserWorldStreaksMap(
+  ctx: { db: any },
+  userId: string
+): Promise<Record<string, { streak: number; isOwner: boolean }>> {
+  const worlds = await ctx.db.query('worlds').collect()
+  const characters = await ctx.db
+    .query('characters')
+    .withIndex('by_userId', (q: any) => q.eq('userId', userId))
+    .collect()
+
+  const allSessions = await ctx.db.query('sessions').collect()
+  const lockedSessions = allSessions.filter((s: any) => s.locked)
+  const sortedLockedSessions = [...lockedSessions].sort((a: any, b: any) => {
+    const dateA = a.date || a._creationTime
+    const dateB = b.date || b._creationTime
+    return dateA - dateB
+  })
+
+  const worldStreaksMap: Record<string, number> = {}
+  for (const w of worlds) {
+    worldStreaksMap[w._id] = 0
+  }
+
+  for (const char of characters) {
+    const charSessions = sortedLockedSessions.filter(
+      (s: any) => s.characters && s.characters.includes(char._id)
+    )
+
+    let currentWorld: string | null = null
+    let currentStreak = 0
+
+    for (const s of charSessions) {
+      const wId = s.world ? s.world.toString() : null
+      if (wId && wId === currentWorld) {
+        currentStreak++
+      } else {
+        currentWorld = wId
+        currentStreak = wId ? 1 : 0
+      }
+
+      if (wId && currentStreak > (worldStreaksMap[wId] || 0)) {
+        worldStreaksMap[wId] = currentStreak
+      }
+    }
+  }
+
+  const result: Record<string, { streak: number; isOwner: boolean }> = {}
+  for (const w of worlds) {
+    result[w._id] = {
+      streak: worldStreaksMap[w._id] || 0,
+      isOwner: w.owner === userId,
+    }
+  }
+  return result
+}
+
 export const getUserWorldStreaks = query({
   args: {},
   handler: async (ctx) => {
@@ -695,61 +751,22 @@ export const getUserWorldStreaks = query({
       }))
     }
 
-    const characters = await ctx.db
-      .query('characters')
-      .withIndex('by_userId', (q) => q.eq('userId', user.subject))
-      .collect()
-
-    const allSessions = await ctx.db.query('sessions').collect()
-    const lockedSessions = allSessions.filter((s) => s.locked)
-    const sortedLockedSessions = [...lockedSessions].sort((a, b) => {
-      const dateA = a.date || a._creationTime
-      const dateB = b.date || b._creationTime
-      return dateA - dateB
-    })
-
-    const worldStreaksMap: Record<string, number> = {}
-    for (const w of worlds) {
-      worldStreaksMap[w._id] = 0
-    }
-
-    for (const char of characters) {
-      const charSessions = sortedLockedSessions.filter(
-        (s) => s.characters && s.characters.includes(char._id)
-      )
-
-      let currentWorld: string | null = null
-      let currentStreak = 0
-
-      for (const s of charSessions) {
-        const wId = s.world ? s.world.toString() : null
-        if (wId && wId === currentWorld) {
-          currentStreak++
-        } else {
-          currentWorld = wId
-          currentStreak = wId ? 1 : 0
-        }
-
-        if (wId && currentStreak > (worldStreaksMap[wId] || 0)) {
-          worldStreaksMap[wId] = currentStreak
-        }
-      }
-    }
+    const streaksMap = await getUserWorldStreaksMap(ctx, user.subject)
 
     return worlds.map((w) => {
-      const isOwner = w.owner === user.subject
-      const streak = worldStreaksMap[w._id] || 0
+      const info = streaksMap[w._id] || { streak: 0, isOwner: false }
       return {
         _id: w._id,
         name: w.name,
         emblemUrl: w.emblemUrl,
-        isOwner,
-        userMaxStreak: streak,
-        unlockedStreak3: isOwner || streak >= 3,
-        unlockedStreak5: isOwner || streak >= 5,
-        unlockedStreak10: isOwner || streak >= 10,
+        isOwner: info.isOwner,
+        userMaxStreak: info.streak,
+        unlockedStreak3: info.isOwner || info.streak >= 3,
+        unlockedStreak5: info.isOwner || info.streak >= 5,
+        unlockedStreak10: info.isOwner || info.streak >= 10,
       }
     })
   },
 })
+
 

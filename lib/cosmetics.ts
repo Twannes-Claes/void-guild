@@ -779,3 +779,119 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     profileRingClassName,
   }
 }
+
+export interface WorldStreakInfo {
+  _id: string
+  name?: string
+  isOwner?: boolean
+  userMaxStreak?: number
+  unlockedStreak3?: boolean
+  unlockedStreak5?: boolean
+  unlockedStreak10?: boolean
+}
+
+export function getLockedCosmeticsEquipped(
+  cosmetics: CharacterCosmetics | undefined,
+  unlockedAchievementIds: string[],
+  userWorldStreaks: WorldStreakInfo[] = [],
+  isMember: boolean = false
+): string[] {
+  if (!cosmetics) return []
+  const locked: string[] = []
+
+  const isAchUnlocked = (achId?: string) => {
+    if (!achId) return true
+    if (achId === 'kobold_member') return isMember || unlockedAchievementIds.includes('kobold_member')
+    return unlockedAchievementIds.includes(achId)
+  }
+
+  // Fonts
+  const checkFont = (val?: string, fieldName = 'Font') => {
+    if (!val || val === 'default' || val === '' || val === 'font-sans') return
+    const opt = FONT_OPTIONS.find((f) => f.id === val || f.value === val)
+    if (opt && !opt.unlockedByDefault && !isAchUnlocked(opt.requiredAchievementId)) {
+      locked.push(`${opt.name} (${fieldName})`)
+    }
+  }
+  checkFont(cosmetics.nameFont, 'Name Font')
+  checkFont(cosmetics.titleFont, 'Title Font')
+  checkFont(cosmetics.subtitleFont, 'Subtitle Font')
+
+  // Colors
+  const checkColor = (val?: string, fieldName = 'Color') => {
+    if (!val || val === 'default' || val === '') return
+    const opt = COLOR_OPTIONS.find((c) => c.id === val || c.value === val)
+    if (opt && !opt.unlockedByDefault && !isAchUnlocked(opt.requiredAchievementId)) {
+      locked.push(`${opt.name} (${fieldName})`)
+    }
+  }
+  checkColor(cosmetics.nameColor, 'Name Color')
+  checkColor(cosmetics.titleColor, 'Title Color')
+  checkColor(cosmetics.subtitleColor, 'Subtitle Color')
+
+  // Border Shape
+  if (
+    cosmetics.borderShape &&
+    cosmetics.borderShape !== 'default' &&
+    cosmetics.borderShape !== 'rounded-lg border border-border'
+  ) {
+    if (cosmetics.borderShape.startsWith('world_border_')) {
+      const wId = cosmetics.borderShape.replace('world_border_', '')
+      const w = userWorldStreaks.find((x) => x._id === wId)
+      const isNaturallyUnlocked = Boolean(w?.isOwner) || Boolean(w?.unlockedStreak10) || (w?.userMaxStreak ?? 0) >= 10
+      if (!isNaturallyUnlocked) {
+        locked.push(`${w?.name || 'World'} Sigil Sparkles Border`)
+      }
+    } else {
+      const opt = BORDER_SHAPE_OPTIONS.find((b) => b.id === cosmetics.borderShape || b.value === cosmetics.borderShape)
+      if (opt && !opt.unlockedByDefault && !isAchUnlocked(opt.requiredAchievementId)) {
+        locked.push(`${opt.name} (Border)`)
+      }
+    }
+  }
+
+  // Profile Border (Ring)
+  if (
+    cosmetics.profileBorder &&
+    cosmetics.profileBorder !== 'default' &&
+    cosmetics.profileBorder !== 'border border-border'
+  ) {
+    if (cosmetics.profileBorder.startsWith('world_ring_')) {
+      const wId = cosmetics.profileBorder.replace('world_ring_', '')
+      const w = userWorldStreaks.find((x) => x._id === wId)
+      const isNaturallyUnlocked = Boolean(w?.isOwner) || Boolean(w?.unlockedStreak3) || (w?.userMaxStreak ?? 0) >= 3
+      if (!isNaturallyUnlocked) {
+        locked.push(`${w?.name || 'World'} Sigil Ring`)
+      }
+    } else {
+      const opt = PROFILE_BORDER_OPTIONS.find((p) => p.id === cosmetics.profileBorder || p.value === cosmetics.profileBorder)
+      if (opt && !opt.unlockedByDefault && !isAchUnlocked(opt.requiredAchievementId)) {
+        locked.push(`${opt.name} (Profile Ring)`)
+      }
+    }
+  }
+
+  // Background Tint
+  if (cosmetics.bgColor && cosmetics.bgColor !== 'default' && cosmetics.bgColor !== '') {
+    if (cosmetics.bgColor.startsWith('world_bg_')) {
+      const wId = cosmetics.bgColor.replace('world_bg_', '')
+      const w = userWorldStreaks.find((x) => x._id === wId)
+      const isNaturallyUnlocked = Boolean(w?.isOwner) || Boolean(w?.unlockedStreak5) || (w?.userMaxStreak ?? 0) >= 5
+      if (!isNaturallyUnlocked) {
+        locked.push(`${w?.name || 'World'} Sigil Starlight Tint`)
+      }
+    } else {
+      const opt = BG_COLOR_OPTIONS.find((b) => b.id === cosmetics.bgColor || b.value === cosmetics.bgColor)
+      if (opt && !opt.unlockedByDefault && !isAchUnlocked(opt.requiredAchievementId)) {
+        locked.push(`${opt.name} (Background Tint)`)
+      }
+    }
+  }
+
+  // Avatar URL
+  if (cosmetics.avatarUrl && !isMember) {
+    locked.push('Custom Character Portrait (Member Benefit)')
+  }
+
+  return Array.from(new Set(locked))
+}

@@ -16,6 +16,7 @@ import {
   Link2,
   ExternalLink,
   Globe,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUser } from '@clerk/nextjs'
@@ -44,6 +45,7 @@ import {
   CharacterCosmetics,
   CosmeticOption,
   ACHIEVEMENT_INFO,
+  getLockedCosmeticsEquipped,
 } from '@/lib/cosmetics'
 
 interface CharacterCosmeticsTabProps {
@@ -205,56 +207,73 @@ export default function CharacterCosmeticsTab({
 
   const isEffectiveAdmin = Boolean(isAdmin && adminView)
 
+  const lockedCosmeticsEquipped = useMemo(() => {
+    return getLockedCosmeticsEquipped(
+      cosmetics,
+      unlockedAchievementIds,
+      userWorldStreaks,
+      isEffectiveMember
+    )
+  }, [cosmetics, unlockedAchievementIds, userWorldStreaks, isEffectiveMember])
+
   function getOptionLockStatus(opt: CosmeticOption) {
-    if (opt.unlockedByDefault) return { isUnlocked: true, label: '', badgeLabel: '', isHidden: false, title: '' }
+    if (opt.unlockedByDefault) {
+      return { isUnlocked: true, isNaturallyUnlocked: true, label: '', badgeLabel: '', isHidden: false, title: '' }
+    }
     
-    // Per-world streak dynamic checks
+    // Per-world streak dynamic checks (Hidden by default unless unlocked or in admin view)
     if (opt.id.startsWith('world_ring_')) {
       const worldId = opt.id.replace('world_ring_', '')
       const w = userWorldStreaks.find((x) => x._id === worldId)
       const currentStreak = w?.userMaxStreak ?? 0
-      const isUnlocked = isEffectiveAdmin || Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak3) || currentStreak >= 3
+      const isNaturallyUnlocked = Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak3) || currentStreak >= 3
+      const isUnlocked = isEffectiveAdmin || isNaturallyUnlocked
       const title = (w as any)?.isOwner ? `${w?.name || 'World'} Owner` : `${w?.name || 'World'} Streak 3`
-      const label = isUnlocked ? '' : `Requires World Streak 3 in ${w?.name || 'this world'} (Current: ${currentStreak}/3)`
-      const badgeLabel = isUnlocked ? '' : `Streak 3 (${currentStreak}/3)`
-      return { isUnlocked, isHidden: false, label, badgeLabel, title }
+      const label = isNaturallyUnlocked ? '' : `Requires World Streak 3 in ${w?.name || 'this world'} (Current: ${currentStreak}/3)`
+      const badgeLabel = isNaturallyUnlocked ? '' : `Streak 3 (${currentStreak}/3)`
+      return { isUnlocked, isNaturallyUnlocked, isHidden: true, label, badgeLabel, title }
     }
 
     if (opt.id.startsWith('world_bg_')) {
       const worldId = opt.id.replace('world_bg_', '')
       const w = userWorldStreaks.find((x) => x._id === worldId)
       const currentStreak = w?.userMaxStreak ?? 0
-      const isUnlocked = isEffectiveAdmin || Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak5) || currentStreak >= 5
+      const isNaturallyUnlocked = Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak5) || currentStreak >= 5
+      const isUnlocked = isEffectiveAdmin || isNaturallyUnlocked
       const title = (w as any)?.isOwner ? `${w?.name || 'World'} Owner` : `${w?.name || 'World'} Streak 5`
-      const label = isUnlocked ? '' : `Requires World Streak 5 in ${w?.name || 'this world'} (Current: ${currentStreak}/5)`
-      const badgeLabel = isUnlocked ? '' : `Streak 5 (${currentStreak}/5)`
-      return { isUnlocked, isHidden: false, label, badgeLabel, title }
+      const label = isNaturallyUnlocked ? '' : `Requires World Streak 5 in ${w?.name || 'this world'} (Current: ${currentStreak}/5)`
+      const badgeLabel = isNaturallyUnlocked ? '' : `Streak 5 (${currentStreak}/5)`
+      return { isUnlocked, isNaturallyUnlocked, isHidden: true, label, badgeLabel, title }
     }
 
     if (opt.id.startsWith('world_border_')) {
       const worldId = opt.id.replace('world_border_', '')
       const w = userWorldStreaks.find((x) => x._id === worldId)
       const currentStreak = w?.userMaxStreak ?? 0
-      const isUnlocked = isEffectiveAdmin || Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak10) || currentStreak >= 10
+      const isNaturallyUnlocked = Boolean((w as any)?.isOwner) || Boolean(w?.unlockedStreak10) || currentStreak >= 10
+      const isUnlocked = isEffectiveAdmin || isNaturallyUnlocked
       const title = (w as any)?.isOwner ? `${w?.name || 'World'} Owner` : `${w?.name || 'World'} Streak 10`
-      const label = isUnlocked ? '' : `Requires World Streak 10 in ${w?.name || 'this world'} (Current: ${currentStreak}/10)`
-      const badgeLabel = isUnlocked ? '' : `Streak 10 (${currentStreak}/10)`
-      return { isUnlocked, isHidden: false, label, badgeLabel, title }
+      const label = isNaturallyUnlocked ? '' : `Requires World Streak 10 in ${w?.name || 'this world'} (Current: ${currentStreak}/10)`
+      const badgeLabel = isNaturallyUnlocked ? '' : `Streak 10 (${currentStreak}/10)`
+      return { isUnlocked, isNaturallyUnlocked, isHidden: true, label, badgeLabel, title }
     }
 
-    if (!opt.requiredAchievementId) return { isUnlocked: true, label: '', badgeLabel: '', isHidden: false, title: '' }
-    const isUnlocked = unlockedAchievementIds.includes(opt.requiredAchievementId)
+    if (!opt.requiredAchievementId) {
+      return { isUnlocked: true, isNaturallyUnlocked: true, label: '', badgeLabel: '', isHidden: false, title: '' }
+    }
+    const isNaturallyUnlocked = unlockedAchievementIds.includes(opt.requiredAchievementId)
+    const isUnlocked = isEffectiveAdmin || isNaturallyUnlocked
     const info = ACHIEVEMENT_INFO[opt.requiredAchievementId]
     const isHidden = info?.category === 'hidden'
     const title = info?.title || opt.requiredAchievementId
-    const label = isUnlocked
+    const label = isNaturallyUnlocked
       ? ''
       : isEffectiveAdmin
         ? `Requires achievement: ${title}${isHidden ? ' (Secret)' : ''}`
         : isHidden
           ? 'Locked (Secret Achievement)'
           : `Requires achievement: ${title}`
-    const badgeLabel = isUnlocked
+    const badgeLabel = isNaturallyUnlocked
       ? ''
       : isEffectiveAdmin
         ? `Requires: ${title}${isHidden ? ' (Secret)' : ''}`
@@ -262,22 +281,21 @@ export default function CharacterCosmeticsTab({
           ? 'Locked'
           : `Requires: ${title}`
 
-    return { isUnlocked, isHidden, label, badgeLabel, title }
+    return { isUnlocked, isNaturallyUnlocked, isHidden, label, badgeLabel, title }
   }
 
   function isOptionVisible(opt: CosmeticOption) {
+    if (isEffectiveAdmin) return true
     const { isUnlocked, isHidden } = getOptionLockStatus(opt)
     if (isUnlocked) return true
-    if (isHidden && !isEffectiveAdmin) return false
+    if (isHidden) return false
     return true
   }
 
   function handleSelectOption(category: keyof CharacterCosmetics, opt: CosmeticOption) {
     const { isUnlocked, isHidden, title } = getOptionLockStatus(opt)
     if (!isUnlocked) {
-      if (isEffectiveAdmin) {
-        toast.error(`Locked cosmetic! Requires achievement: "${title}"${isHidden ? ' (Secret)' : ''}`)
-      } else if (isHidden) {
+      if (isHidden) {
         toast.error('Locked cosmetic! Unlocked by a secret achievement.')
       } else {
         toast.error(`Locked cosmetic! Requires achievement: "${title}"`)
@@ -317,7 +335,7 @@ export default function CharacterCosmeticsTab({
 
         {/* Preset Color Swatches */}
         {COLOR_OPTIONS.filter((c) => c.id !== 'default' && isOptionVisible(c)).map((opt) => {
-          const { isUnlocked, label } = getOptionLockStatus(opt)
+          const { isUnlocked, isNaturallyUnlocked, label } = getOptionLockStatus(opt)
           const isSelected = cosmetics[colorKey] === opt.value || cosmetics[colorKey] === opt.id
           const isRainbowOpt = opt.value === 'rainbow-text' || opt.id === 'rainbow'
           const isGoldOpt = opt.value === 'gold-text' || opt.id === 'gold_text'
@@ -328,7 +346,13 @@ export default function CharacterCosmeticsTab({
               key={opt.id}
               type="button"
               onClick={() => handleSelectOption(colorKey, opt)}
-              title={!isUnlocked ? label : opt.name}
+              title={
+                !isNaturallyUnlocked && isEffectiveAdmin
+                  ? `${opt.name} (Admin Preview - ${label})`
+                  : !isUnlocked
+                    ? label
+                    : opt.name
+              }
               className={cn(
                 'w-8 h-8 rounded-full transition-all flex items-center justify-center relative border overflow-hidden shrink-0',
                 isRainbowOpt && 'bg-gradient-to-r from-red-500 via-green-500 to-purple-500',
@@ -377,28 +401,44 @@ export default function CharacterCosmeticsTab({
     <div className="flex flex-col gap-6">
       {/* Admin View Toggle Bar */}
       {isAdmin && (
-        <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-purple-400 shrink-0" />
-            <div>
-              <span className="font-semibold text-foreground">Admin Mode</span>
-              <p className="text-[11px] text-muted-foreground">Reveal and inspect locked secret cosmetics</p>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-purple-400 shrink-0" />
+              <div>
+                <span className="font-semibold text-foreground">Admin Mode</span>
+                <p className="text-[11px] text-muted-foreground">Reveal, test and preview all secret, world and achievement cosmetics</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setAdminView(!adminView)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all',
+                adminView
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                  : 'bg-muted/60 hover:bg-muted text-muted-foreground border-border/70'
+              )}
+            >
+              <span>{adminView ? 'Admin View: ON' : 'Admin View: OFF'}</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setAdminView(!adminView)}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all',
-              adminView
-                ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                : 'bg-muted/60 hover:bg-muted text-muted-foreground border-border/70'
-            )}
-          >
-            <span>{adminView ? 'Admin View: ON' : 'Admin View: OFF'}</span>
-          </button>
+
+          {adminView && lockedCosmeticsEquipped.length > 0 && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 text-xs">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+              <div className="space-y-0.5">
+                <span className="font-bold text-foreground">Previewing Locked Cosmetics (Test Mode)</span>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Currently previewed locked cosmetics: <strong className="text-foreground">{lockedCosmeticsEquipped.join(', ')}</strong>.
+                  You can freely test all cosmetics in the Calling Card, but characters cannot be saved with locked cosmetics.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
 
       {/* Live Calling Card Preview (Pinned at top) */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md pt-1 pb-3 -mx-1 px-1 border-b border-border/60 shadow-md">
@@ -532,11 +572,13 @@ export default function CharacterCosmeticsTab({
             }}
           >
             {FONT_OPTIONS.filter(isOptionVisible).map((f) => {
-              const { isUnlocked, isHidden, title: reqTitle } = getOptionLockStatus(f)
+              const { isUnlocked, isNaturallyUnlocked, isHidden, title: reqTitle } = getOptionLockStatus(f)
               return (
                 <option key={f.id} value={f.id} disabled={!isUnlocked}>
                   {isUnlocked
-                    ? f.name
+                    ? isEffectiveAdmin && !isNaturallyUnlocked
+                      ? `${f.name} [Preview Only - Requires: ${reqTitle}]`
+                      : f.name
                     : isAdmin
                       ? `🔒 ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
                       : isHidden
@@ -589,11 +631,13 @@ export default function CharacterCosmeticsTab({
             }}
           >
             {FONT_OPTIONS.filter(isOptionVisible).map((f) => {
-              const { isUnlocked, isHidden, title: reqTitle } = getOptionLockStatus(f)
+              const { isUnlocked, isNaturallyUnlocked, isHidden, title: reqTitle } = getOptionLockStatus(f)
               return (
                 <option key={f.id} value={f.id} disabled={!isUnlocked}>
                   {isUnlocked
-                    ? f.name
+                    ? isEffectiveAdmin && !isNaturallyUnlocked
+                      ? `${f.name} [Preview Only - Requires: ${reqTitle}]`
+                      : f.name
                     : isAdmin
                       ? `🔒 ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
                       : isHidden
@@ -645,11 +689,13 @@ export default function CharacterCosmeticsTab({
             }}
           >
             {FONT_OPTIONS.filter(isOptionVisible).map((f) => {
-              const { isUnlocked, isHidden, title: reqTitle } = getOptionLockStatus(f)
+              const { isUnlocked, isNaturallyUnlocked, isHidden, title: reqTitle } = getOptionLockStatus(f)
               return (
                 <option key={f.id} value={f.id} disabled={!isUnlocked}>
                   {isUnlocked
-                    ? f.name
+                    ? isEffectiveAdmin && !isNaturallyUnlocked
+                      ? `${f.name} [Preview Only - Requires: ${reqTitle}]`
+                      : f.name
                     : isAdmin
                       ? `🔒 ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
                       : isHidden
@@ -682,7 +728,7 @@ export default function CharacterCosmeticsTab({
         </label>
         <div className="flex flex-col gap-2">
           {allBorderShapeOptions.filter(isOptionVisible).map((opt) => {
-            const { isUnlocked, label, badgeLabel } = getOptionLockStatus(opt)
+            const { isUnlocked, isNaturallyUnlocked, label, badgeLabel } = getOptionLockStatus(opt)
             const isSelected = cosmetics.borderShape === opt.id || cosmetics.borderShape === opt.value
             const isSpecialBorder =
               opt.value.includes('-card-border') ||
@@ -697,7 +743,13 @@ export default function CharacterCosmeticsTab({
                 type="button"
                 data-selected={isSelected}
                 onClick={() => handleSelectOption('borderShape', opt)}
-                title={!isUnlocked ? label : opt.name}
+                title={
+                  !isNaturallyUnlocked && isEffectiveAdmin
+                    ? `${opt.name} (Admin Preview - ${label})`
+                    : !isUnlocked
+                      ? label
+                      : opt.name
+                }
                 className={cn(
                   'w-full p-3 text-left text-xs transition-all flex items-center justify-between relative rounded-lg',
                   opt.value,
@@ -734,7 +786,7 @@ export default function CharacterCosmeticsTab({
         </label>
         <div className="flex flex-col gap-2">
           {allBgColorOptions.filter(isOptionVisible).map((opt) => {
-            const { isUnlocked, label, badgeLabel } = getOptionLockStatus(opt)
+            const { isUnlocked, isNaturallyUnlocked, label, badgeLabel } = getOptionLockStatus(opt)
             const isSelected =
               cosmetics.bgColor === opt.id ||
               cosmetics.bgColor === opt.value ||
@@ -750,7 +802,13 @@ export default function CharacterCosmeticsTab({
                 type="button"
                 data-selected={isSelected}
                 onClick={() => handleSelectOption('bgColor', opt)}
-                title={!isUnlocked ? label : opt.name}
+                title={
+                  !isNaturallyUnlocked && isEffectiveAdmin
+                    ? `${opt.name} (Admin Preview - ${label})`
+                    : !isUnlocked
+                      ? label
+                      : opt.name
+                }
                 className={cn(
                   'w-full p-3 rounded-lg text-left text-xs transition-all flex items-center justify-between border relative overflow-hidden',
                   isClassTint && opt.value,
@@ -809,7 +867,7 @@ export default function CharacterCosmeticsTab({
         </label>
         <div className="flex flex-wrap gap-2.5 items-center">
           {allProfileBorderOptions.filter(isOptionVisible).map((opt) => {
-            const { isUnlocked, label } = getOptionLockStatus(opt)
+            const { isUnlocked, isNaturallyUnlocked, label } = getOptionLockStatus(opt)
             const isSelected =
               cosmetics.profileBorder === opt.id ||
               cosmetics.profileBorder === opt.value ||
@@ -820,7 +878,13 @@ export default function CharacterCosmeticsTab({
                 key={opt.id}
                 type="button"
                 onClick={() => handleSelectOption('profileBorder', opt)}
-                title={!isUnlocked ? label : opt.name}
+                title={
+                  !isNaturallyUnlocked && isEffectiveAdmin
+                    ? `${opt.name} (Admin Preview - ${label})`
+                    : !isUnlocked
+                      ? label
+                      : opt.name
+                }
                 className={cn(
                   'p-2 rounded-xl border transition-all flex items-center justify-center relative shrink-0',
                   isSelected
