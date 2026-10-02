@@ -1432,6 +1432,11 @@ export default function CharacterSheetLog({ characterId }: CharacterSheetLogProp
                     <p className="text-xs text-amber-300/80 font-mono mt-0.5 break-words">
                       Price: {svc.priceDetails || 'Custom'} | Level: {svc.minLevel ? `Lvl ${svc.minLevel} - ${svc.maxLevel ?? 'Any'}` : `Up to Lvl ${svc.maxLevel ?? 'Any'}`}
                     </p>
+                    {svc.description && (
+                      <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line break-words">
+                        {svc.description}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
                     <Button

@@ -56,6 +56,36 @@ import { useAuth } from '@clerk/nextjs'
 import { cn, CharacterRankIcon } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
+function ServiceDescription({ description }: { description: string }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isLong = description.length > 120 || description.includes('\n')
+
+  return (
+    <div className="space-y-1">
+      <p
+        className={cn(
+          'text-xs text-muted-foreground leading-relaxed whitespace-pre-line break-words',
+          !isExpanded && isLong && 'line-clamp-3'
+        )}
+      >
+        {description}
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsExpanded(!isExpanded)
+          }}
+          className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors inline-block"
+        >
+          {isExpanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function BlackVoidPage() {
   const { userId } = useAuth()
   const [activeTab, setActiveTab] = useState<'items' | 'services' | 'quests' | 'log' | 'gambling'>('items')
@@ -719,9 +749,7 @@ export default function BlackVoidPage() {
                     </div>
 
                     {svc.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                        {svc.description}
-                      </p>
+                      <ServiceDescription description={svc.description} />
                     )}
                   </div>
 
