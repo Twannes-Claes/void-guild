@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
@@ -86,9 +87,40 @@ function ServiceDescription({ description }: { description: string }) {
   )
 }
 
-export default function BlackVoidPage() {
+type BlackVoidTab = 'items' | 'services' | 'quests' | 'log' | 'gambling'
+
+function parseTab(tabParam: string | null): BlackVoidTab | null {
+  if (!tabParam) return null
+  const lower = tabParam.toLowerCase().trim()
+  if (['bets', 'bet', 'gambling', 'deathroll', 'arena'].includes(lower)) return 'gambling'
+  if (['services', 'service', 'crafting'].includes(lower)) return 'services'
+  if (['quests', 'quest'].includes(lower)) return 'quests'
+  if (['log', 'sheet', 'logs'].includes(lower)) return 'log'
+  if (['items', 'item', 'auction', 'auctions'].includes(lower)) return 'items'
+  return null
+}
+
+function BlackVoidContent() {
   const { userId } = useAuth()
-  const [activeTab, setActiveTab] = useState<'items' | 'services' | 'quests' | 'log' | 'gambling'>('items')
+  const searchParams = useSearchParams()
+  const tabQuery = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<BlackVoidTab>(() => parseTab(tabQuery) || 'items')
+
+  useEffect(() => {
+    const parsed = parseTab(tabQuery)
+    if (parsed) {
+      setActiveTab(parsed)
+    }
+  }, [tabQuery])
+
+  const handleTabChange = (tab: BlackVoidTab) => {
+    setActiveTab(tab)
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('tab', tab === 'gambling' ? 'bets' : tab)
+      window.history.replaceState({}, '', url.toString())
+    } catch {}
+  }
   const [selectedCharacterId, setSelectedCharacterId] = useState<Id<'characters'> | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [serviceLevelFilter, setServiceLevelFilter] = useState<number | null>(null)
@@ -298,7 +330,7 @@ export default function BlackVoidPage() {
           <Button
             variant={activeTab === 'items' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setActiveTab('items')}
+            onClick={() => handleTabChange('items')}
             className={cn(
               "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all",
               activeTab === 'items' && "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/20"
@@ -316,7 +348,7 @@ export default function BlackVoidPage() {
           <Button
             variant={activeTab === 'services' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setActiveTab('services')}
+            onClick={() => handleTabChange('services')}
             className={cn(
               "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all",
               activeTab === 'services' && "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/20"
@@ -334,7 +366,7 @@ export default function BlackVoidPage() {
           <Button
             variant={activeTab === 'quests' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setActiveTab('quests')}
+            onClick={() => handleTabChange('quests')}
             className={cn(
               "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all",
               activeTab === 'quests' && "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
@@ -347,7 +379,7 @@ export default function BlackVoidPage() {
           <Button
             variant={activeTab === 'log' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setActiveTab('log')}
+            onClick={() => handleTabChange('log')}
             className={cn(
               "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all relative",
               activeTab === 'log' && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
@@ -366,7 +398,7 @@ export default function BlackVoidPage() {
           <Button
             variant={activeTab === 'gambling' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setActiveTab('gambling')}
+            onClick={() => handleTabChange('gambling')}
             className={cn(
               "gap-2 text-xs font-bold h-9 px-4 rounded-lg transition-all relative",
               activeTab === 'gambling' && "bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20"
@@ -1081,6 +1113,14 @@ export default function BlackVoidPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+export default function BlackVoidPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <BlackVoidContent />
+    </Suspense>
   )
 }
 

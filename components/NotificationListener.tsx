@@ -310,8 +310,8 @@ export default function NotificationListener() {
               : 'New Open Deathroll Challenge!'
 
             const desc = bet.isDirect
-              ? `${bet.senderName} challenged ${bet.targetName || 'your character'} for ${bet.wagerAmount} GP (/roll ${bet.deathrollValue})!`
-              : `${bet.senderName} posted an open ${bet.wagerAmount} GP challenge (/roll ${bet.deathrollValue})!`
+              ? `${bet.senderName} challenged ${bet.targetName || 'your character'} for ${bet.wagerAmount} GP (Max: ${bet.deathrollValue})!`
+              : `${bet.senderName} posted an open ${bet.wagerAmount} GP challenge (Max: ${bet.deathrollValue})!`
 
             dispatchAlert({
               categoryTitle: 'Deathroll Wager',
