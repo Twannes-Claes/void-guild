@@ -350,7 +350,7 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                             <span className="text-muted-foreground text-[11px] ml-1.5">(Lvl {session.guildmasterCutCharacterData.lvl})</span>
                         </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-2 font-mono">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 font-mono flex-wrap">
                         <span className="text-muted-foreground text-[11px]">20% Compensation:</span>
                         <strong className="text-amber-300 font-bold">+{formatGP(calculations.guildmasterCutValue)}</strong>
                         {session.locked && userCharacterIds.has(session.guildmasterCutCharacterData._id) && (
@@ -360,23 +360,23 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                                 disabled={isTogglingGmClaim}
                                 onClick={handleToggleGmCutClaim}
                                 className={cn(
-                                    "h-6 px-2 text-[10px] ml-1 font-semibold transition-all shrink-0 gap-1",
+                                    "h-auto min-h-7 py-1 px-2.5 text-[10px] font-semibold transition-all shrink-0 gap-1 whitespace-normal break-words text-center",
                                     session.guildmasterCut?.claimed 
                                         ? "border-emerald-500/40 text-emerald-300 bg-emerald-950/30 hover:bg-emerald-950/50" 
                                         : "border-amber-500/40 text-amber-300 bg-amber-950/40 hover:bg-amber-950/60"
                                 )}
                             >
                                 {isTogglingGmClaim ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    <Loader2 className="h-3 w-3 animate-spin shrink-0" />
                                 ) : session.guildmasterCut?.claimed ? (
                                     <>
-                                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                                        <span>Added to Sheet ✓</span>
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0" />
+                                        <span>Marked as Added to Sheet ✓</span>
                                     </>
                                 ) : (
                                     <>
-                                        <CheckCheck className="h-3 w-3" />
-                                        <span>Add to Sheet</span>
+                                        <CheckCheck className="h-3 w-3 shrink-0" />
+                                        <span>Mark as Added to Sheet</span>
                                     </>
                                 )}
                             </Button>
@@ -398,12 +398,12 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                 )}>
                     <CardContent className="p-4 text-center">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                            <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider truncate text-left">
                                 Your Share ({userCharacterInSession.name})
                             </span>
                             {session.locked && (
                                 <span className={cn(
-                                    "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                                    "text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0",
                                     isClaimed && pendingMoneyAdjustmentGP === 0
                                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
                                         : isClaimed && pendingMoneyAdjustmentGP !== 0
@@ -420,7 +420,7 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                         </div>
 
                         <div className={cn(
-                            "text-2xl font-black font-mono my-1",
+                            "text-2xl font-black font-mono my-1 break-words",
                             session.locked && isClaimed && pendingMoneyAdjustmentGP === 0
                                 ? "text-emerald-300"
                                 : session.locked && isClaimed && pendingMoneyAdjustmentGP !== 0
@@ -431,30 +431,30 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                         </div>
 
                         {loot.filter(item => item.claimedBy && userCharacterIds.has(item.claimedBy)).length > 0 && (
-                            <div className="my-2.5 text-xs text-muted-foreground space-y-1 bg-background/40 p-2 rounded border border-border/30">
-                                <div className="font-semibold text-[11px] text-foreground/80 mb-1 text-left">Claimed Items (Deducted):</div>
+                            <div className="my-2.5 text-xs text-muted-foreground space-y-1 bg-background/40 p-2.5 rounded border border-border/30 text-left">
+                                <div className="font-semibold text-[11px] text-foreground/80 mb-1">Claimed Items (Deducted):</div>
                                 {loot
                                     .filter(item => item.claimedBy && userCharacterIds.has(item.claimedBy))
                                     .map((item) => {
                                         const val = item.isGood ? item.valueGP : item.valueGP / 2
                                         return (
-                                            <div key={item.id} className="flex justify-between items-center text-muted-foreground">
-                                                <span>- {item.name}</span>
-                                                <span className="font-mono text-rose-300">-{formatGP(val)}</span>
+                                            <div key={item.id} className="flex justify-between items-center gap-2 text-muted-foreground">
+                                                <span className="truncate">- {item.name}</span>
+                                                <span className="font-mono text-rose-300 shrink-0">-{formatGP(val)}</span>
                                             </div>
                                         )
                                     })}
                             </div>
                         )}
 
-                        <div className="text-[10px] text-muted-foreground mt-2 italic">
+                        <div className="text-[10px] text-muted-foreground mt-2 italic leading-normal">
                             Based on {formatGP(calculations.sharePerPlayer)} base share minus {formatGP(calculations.userClaimedValue)} in claimed items.
                         </div>
 
                         {session.locked && (
                             <div className="pt-3 mt-3 border-t border-border/30 flex flex-col gap-2">
                                 {isClaimed && pendingMoneyAdjustmentGP !== 0 && (
-                                    <div className="text-xs font-medium text-amber-300 bg-amber-950/30 border border-amber-500/30 p-2 rounded text-left">
+                                    <div className="text-xs font-medium text-amber-300 bg-amber-950/30 border border-amber-500/30 p-2.5 rounded text-left">
                                         {pendingMoneyAdjustmentGP > 0 ? (
                                             <span>⚠️ Loot increased: <strong className="text-emerald-300 font-mono">+{formatGP(pendingMoneyAdjustmentGP)}</strong> pending (previously marked {formatGP(previousClaimedAmount)})</span>
                                         ) : (
@@ -467,7 +467,7 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                                     disabled={isTogglingClaim}
                                     onClick={handleToggleSessionMoneyClaim}
                                     className={cn(
-                                        "w-full h-8 text-xs font-semibold gap-1.5 transition-all shadow-sm cursor-pointer",
+                                        "w-full h-auto min-h-9 py-2 px-3 text-xs font-semibold gap-1.5 transition-all shadow-sm cursor-pointer whitespace-normal break-words text-center flex items-center justify-center",
                                         !isClaimed
                                             ? "bg-purple-600 hover:bg-purple-500 text-white border border-purple-400/30"
                                             : pendingMoneyAdjustmentGP !== 0
@@ -478,25 +478,23 @@ export default function LootList({ session, userCharacterIds }: LootListProps) {
                                 >
                                     {isTogglingClaim ? (
                                         <>
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
                                             <span>Updating Sheet...</span>
                                         </>
                                     ) : !isClaimed ? (
                                         <>
-                                            <CheckCheck className="h-3.5 w-3.5" />
-                                            <span>Add to Sheet ({formatGP(calculations.userFinalShare)})</span>
+                                            <CheckCheck className="h-3.5 w-3.5 shrink-0" />
+                                            <span>Mark as Added to Sheet</span>
                                         </>
                                     ) : pendingMoneyAdjustmentGP !== 0 ? (
                                         <>
-                                            <CheckCheck className="h-3.5 w-3.5" />
-                                            <span>
-                                                Adjust on Sheet ({pendingMoneyAdjustmentGP > 0 ? `+${formatGP(pendingMoneyAdjustmentGP)}` : `-${formatGP(Math.abs(pendingMoneyAdjustmentGP))}`})
-                                            </span>
+                                            <CheckCheck className="h-3.5 w-3.5 shrink-0" />
+                                            <span>Mark Adjustment on Sheet</span>
                                         </>
                                     ) : (
                                         <>
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                                            <span>Added to Sheet ✓</span>
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                            <span>Marked as Added to Sheet ✓</span>
                                         </>
                                     )}
                                 </Button>
