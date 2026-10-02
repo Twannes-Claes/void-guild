@@ -457,6 +457,15 @@
   .in-sync-border::before {
     filter: drop-shadow(0 0 8px rgba(249, 115, 22, 1)) !important;
   }
+
+  .quest-beacon-border::after {
+    filter: blur(2px) drop-shadow(0 0 10px rgba(251, 191, 36, 0.8)) !important;
+    animation: quest-beacon-rotate 3.2s linear infinite !important;
+  }
+
+  .quest-beacon-border::before {
+    filter: drop-shadow(0 0 5px #ffffff) drop-shadow(0 0 10px rgba(251, 191, 36, 0.85)) !important;
+  }
 }
 
 /* Radiant Quest Beacon Border (Quest Benefactor - Create a Character Quest) */
@@ -468,63 +477,78 @@
 
 .quest-beacon-border {
   position: relative !important;
-  border-color: transparent !important;
+  border: 1px solid rgba(245, 158, 11, 0.22) !important;
   background: var(--card-bg, var(--card)) !important;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.4), inset 0 0 8px rgba(217, 119, 6, 0.2) !important;
-  animation: quest-beacon-pulse 3s ease-in-out infinite alternate !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.15), inset 0 0 8px rgba(217, 119, 6, 0.08) !important;
+  animation: quest-beacon-ambient-pulse 3.5s ease-in-out infinite alternate !important;
 }
 
-/* Outer Orbiting Radiant Quest Beam */
+/* Traveling Beacon Head & Radiant Beam Tail */
 .quest-beacon-border::before {
   content: '' !important;
   position: absolute !important;
-  inset: -2.5px !important;
+  inset: -3px !important;
   border-radius: inherit !important;
-  padding: 2.5px !important;
+  padding: 3px !important;
   background: conic-gradient(
     from var(--quest-beacon-angle, 0deg),
-    #78350f 0%,
-    #d97706 18%,
-    #f59e0b 35%,
-    #fef08a 48%,
-    #ffffff 50%,
-    #fef08a 52%,
-    #f59e0b 65%,
-    #d97706 82%,
-    #78350f 100%
+    #ffffff 0deg,
+    #fffbeb 4deg,
+    #fef08a 8deg,
+    rgba(251, 191, 36, 0.7) 16deg,
+    rgba(245, 158, 11, 0.2) 24deg,
+    transparent 32deg,
+    transparent 270deg,
+    rgba(217, 119, 6, 0.05) 285deg,
+    rgba(245, 158, 11, 0.35) 310deg,
+    rgba(251, 191, 36, 0.8) 335deg,
+    #fef08a 350deg,
+    #ffffff 360deg
   ) !important;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
   -webkit-mask-composite: xor !important;
   mask-composite: exclude !important;
-  animation: quest-beacon-rotate 3.6s linear infinite !important;
+  animation: quest-beacon-rotate 3.2s linear infinite !important;
   will-change: --quest-beacon-angle !important;
   pointer-events: none !important;
   z-index: 10 !important;
-  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.85)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.55)) !important;
+  filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 14px rgba(251, 191, 36, 0.95)) drop-shadow(0 0 24px rgba(245, 158, 11, 0.85)) !important;
 }
 
-/* Corner Quest Beacon Glints */
+/* Orbiting Radiant Beacon Flare & Outward Light Bloom */
 .quest-beacon-border::after {
   content: '' !important;
   position: absolute !important;
-  inset: -3.5px !important;
+  inset: -7px !important;
   border-radius: inherit !important;
-  padding: 3.5px !important;
-  background: radial-gradient(circle at top left, rgba(254, 240, 138, 0.85) 0%, transparent 22%),
-              radial-gradient(circle at top right, rgba(254, 240, 138, 0.85) 0%, transparent 22%),
-              radial-gradient(circle at bottom left, rgba(254, 240, 138, 0.85) 0%, transparent 22%),
-              radial-gradient(circle at bottom right, rgba(254, 240, 138, 0.85) 0%, transparent 22%) !important;
+  padding: 7px !important;
+  background: conic-gradient(
+    from var(--quest-beacon-angle, 0deg),
+    rgba(255, 255, 255, 0.95) 0deg,
+    rgba(254, 240, 138, 0.85) 8deg,
+    rgba(251, 191, 36, 0.5) 18deg,
+    rgba(245, 158, 11, 0.15) 30deg,
+    transparent 42deg,
+    transparent 260deg,
+    rgba(217, 119, 6, 0.08) 280deg,
+    rgba(245, 158, 11, 0.35) 305deg,
+    rgba(251, 191, 36, 0.7) 330deg,
+    rgba(254, 240, 138, 0.9) 350deg,
+    rgba(255, 255, 255, 0.95) 360deg
+  ) !important;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
   -webkit-mask-composite: xor !important;
   mask-composite: exclude !important;
-  animation: quest-beacon-corner-glint 3s ease-in-out infinite alternate !important;
+  animation: quest-beacon-rotate 3.2s linear infinite, quest-beacon-flare-pulse 1.6s ease-in-out infinite alternate !important;
+  will-change: --quest-beacon-angle !important;
   pointer-events: none !important;
   z-index: 9 !important;
+  filter: blur(4px) drop-shadow(0 0 16px rgba(251, 191, 36, 0.95)) drop-shadow(0 0 32px rgba(245, 158, 11, 0.75)) !important;
 }
 
 .quest-beacon-border[data-selected="true"] {
   background: linear-gradient(#1f1300, #1f1300) padding-box !important;
-  box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), 0 0 32px rgba(251, 191, 36, 0.6) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.65), 0 0 36px rgba(251, 191, 36, 0.45) !important;
 }
 
 @keyframes quest-beacon-rotate {
@@ -536,21 +560,23 @@
   }
 }
 
-@keyframes quest-beacon-pulse {
+@keyframes quest-beacon-ambient-pulse {
   0% {
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3), inset 0 0 6px rgba(217, 119, 6, 0.1);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.12), inset 0 0 6px rgba(217, 119, 6, 0.06);
   }
   100% {
-    box-shadow: 0 0 22px rgba(245, 158, 11, 0.7), inset 0 0 12px rgba(217, 119, 6, 0.3);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.35), inset 0 0 10px rgba(217, 119, 6, 0.15);
   }
 }
 
-@keyframes quest-beacon-corner-glint {
+@keyframes quest-beacon-flare-pulse {
   0% {
-    opacity: 0.35;
+    opacity: 0.7;
+    filter: blur(3px) drop-shadow(0 0 12px rgba(251, 191, 36, 0.8)) drop-shadow(0 0 24px rgba(245, 158, 11, 0.6));
   }
   100% {
     opacity: 1;
+    filter: blur(4.5px) drop-shadow(0 0 20px rgba(251, 191, 36, 1)) drop-shadow(0 0 36px rgba(245, 158, 11, 0.9));
   }
 }
 
@@ -897,11 +923,51 @@
 }
 
 .gold-bg-tint {
-  background: linear-gradient(135deg, rgba(191,149,63,0.22) 0%, rgba(252,246,186,0.14) 50%, rgba(170,119,28,0.22) 100%), var(--card) !important;
+  position: relative !important;
+  background:
+    radial-gradient(ellipse at 20% 25%, rgba(254, 240, 138, 0.28) 0%, rgba(212, 175, 55, 0.16) 40%, transparent 70%),
+    radial-gradient(ellipse at 85% 75%, rgba(202, 138, 4, 0.26) 0%, rgba(161, 98, 7, 0.12) 45%, transparent 75%),
+    linear-gradient(135deg, rgba(202, 138, 4, 0.2) 0%, rgba(253, 224, 71, 0.22) 32%, rgba(161, 98, 7, 0.12) 65%, rgba(234, 179, 8, 0.24) 100%),
+    var(--card) !important;
+  background-size: 150% 150%, 150% 150%, 200% 200%, 100% 100% !important;
+  animation: gold-tint-shimmer 8s ease-in-out infinite alternate !important;
+  box-shadow: inset 0 0 20px rgba(234, 179, 8, 0.08) !important;
+}
+
+@keyframes gold-tint-shimmer {
+  0% {
+    background-position: 0% 0%, 100% 100%, 0% 50%, 0% 0%;
+  }
+  50% {
+    background-position: 50% 30%, 80% 90%, 50% 100%, 0% 0%;
+  }
+  100% {
+    background-position: 100% 50%, 50% 60%, 100% 50%, 0% 0%;
+  }
 }
 
 .silver-bg-tint {
-  background: linear-gradient(135deg, rgba(148,163,184,0.22) 0%, rgba(241,245,249,0.14) 50%, rgba(71,85,105,0.22) 100%), var(--card) !important;
+  position: relative !important;
+  background:
+    radial-gradient(ellipse at 25% 20%, rgba(255, 255, 255, 0.28) 0%, rgba(226, 232, 240, 0.16) 42%, transparent 70%),
+    radial-gradient(ellipse at 85% 80%, rgba(148, 163, 184, 0.24) 0%, rgba(71, 85, 105, 0.14) 48%, transparent 75%),
+    linear-gradient(135deg, rgba(148, 163, 184, 0.2) 0%, rgba(248, 250, 252, 0.25) 30%, rgba(100, 116, 139, 0.12) 62%, rgba(226, 232, 240, 0.24) 100%),
+    var(--card) !important;
+  background-size: 150% 150%, 150% 150%, 200% 200%, 100% 100% !important;
+  animation: silver-tint-shimmer 8s ease-in-out infinite alternate !important;
+  box-shadow: inset 0 0 20px rgba(226, 232, 240, 0.08) !important;
+}
+
+@keyframes silver-tint-shimmer {
+  0% {
+    background-position: 0% 0%, 100% 100%, 0% 50%, 0% 0%;
+  }
+  50% {
+    background-position: 30% 50%, 90% 70%, 50% 100%, 0% 0%;
+  }
+  100% {
+    background-position: 100% 50%, 60% 50%, 100% 50%, 0% 0%;
+  }
 }
 
 .purple-bg-tint {

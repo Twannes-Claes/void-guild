@@ -204,12 +204,6 @@ export function HomeClient({ skeleton }: { skeleton: React.ReactNode }) {
                 Get Started
               </Button>
             </SignInButton>
-            <a href="https://tarragon.be" target="_blank" rel="noopener noreferrer">
-              <Button size="lg" variant="outline" className="px-8 py-6 text-lg rounded-full border-amber-500/50 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
-                <DragonHeadIcon className="h-5 w-5 text-amber-400" />
-                Buy Membership
-              </Button>
-            </a>
           </div>
         </div>
       </Unauthenticated>

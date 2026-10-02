@@ -19,7 +19,7 @@ export default function TintParticlesEffect({
   variant,
   className,
 }: {
-  variant: 'cyan' | 'crimson'
+  variant: 'cyan' | 'crimson' | 'gold' | 'silver'
   className?: string
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -139,15 +139,42 @@ export default function TintParticlesEffect({
         const fadeInOut = Math.sin(progress * Math.PI)
         const alpha = p.baseAlpha * fadeInOut * (0.6 + pulse * 0.4)
 
+        const isHighlight = i % 3 === 0
+
         if (variant === 'cyan') {
           ctx.fillStyle = `rgba(103, 232, 249, ${alpha})`
-        } else {
+        } else if (variant === 'crimson') {
           ctx.fillStyle = `rgba(252, 165, 165, ${alpha})`
+        } else if (variant === 'gold') {
+          ctx.fillStyle = isHighlight
+            ? `rgba(254, 249, 195, ${alpha * 1.15})`
+            : `rgba(234, 179, 8, ${alpha * 0.95})`
+        } else {
+          // silver
+          ctx.fillStyle = isHighlight
+            ? `rgba(255, 255, 255, ${alpha * 1.2})`
+            : `rgba(203, 213, 225, ${alpha * 0.95})`
         }
 
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size * (0.85 + pulse * 0.25), 0, Math.PI * 2)
         ctx.fill()
+
+        // Subtle 4-point diamond sparkle for highlighted gold/silver motes at peak pulse
+        if ((variant === 'gold' || variant === 'silver') && isHighlight && pulse > 0.6) {
+          const arm = p.size * (1.5 + pulse * 0.9)
+          ctx.strokeStyle =
+            variant === 'gold'
+              ? `rgba(254, 240, 138, ${alpha * 0.85})`
+              : `rgba(255, 255, 255, ${alpha * 0.9})`
+          ctx.lineWidth = 0.75
+          ctx.beginPath()
+          ctx.moveTo(p.x - arm, p.y)
+          ctx.lineTo(p.x + arm, p.y)
+          ctx.moveTo(p.x, p.y - arm)
+          ctx.lineTo(p.x, p.y + arm)
+          ctx.stroke()
+        }
       }
 
       ctx.restore()

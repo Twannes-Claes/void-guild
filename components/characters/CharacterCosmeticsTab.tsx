@@ -26,6 +26,7 @@ import { getLevelBadgeStyle, CharacterRankIcon, cn } from '@/lib/utils'
 import ProfileAvatarWithBadge from '@/components/characters/ProfileAvatarWithBadge'
 import { renderCosmeticLetters } from '@/components/characters/CosmeticText'
 import InSyncPlasmaEffect from '@/components/characters/InSyncPlasmaEffect'
+import QuestBeaconBorderEffect from '@/components/characters/QuestBeaconBorderEffect'
 import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
@@ -467,6 +468,7 @@ export default function CharacterCosmeticsTab({
             style={previewStyles.cardStyle}
           >
           {previewStyles.cardClassName.includes('in-sync') && <InSyncPlasmaEffect />}
+          {previewStyles.cardClassName.includes('quest-beacon') && <QuestBeaconBorderEffect />}
           {(previewStyles.cardClassName.includes('void-nebula') || cosmetics.bgColor === 'void_nebula' || cosmetics.bgColor === 'void-nebula-bg') && (
             <VoidNebulaEffect />
           )}
@@ -478,6 +480,12 @@ export default function CharacterCosmeticsTab({
           )}
           {(previewStyles.cardClassName.includes('crimson-particle') || cosmetics.bgColor === 'crimson_particles' || cosmetics.bgColor === 'crimson-particle-bg') && (
             <TintParticlesEffect variant="crimson" />
+          )}
+          {(previewStyles.cardClassName.includes('gold-bg-tint') || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') && (
+            <TintParticlesEffect variant="gold" />
+          )}
+          {(previewStyles.cardClassName.includes('silver-bg-tint') || cosmetics.bgColor === 'silver_tint' || cosmetics.bgColor === 'silver-bg-tint') && (
+            <TintParticlesEffect variant="silver" />
           )}
           {(previewStyles.cardClassName.includes('gold-coins') || cosmetics.bgColor === 'gold_coins_bg' || cosmetics.bgColor === 'gold-coins-bg') && (
             <FallingCoinsEffect />
@@ -773,6 +781,7 @@ export default function CharacterCosmeticsTab({
                 )}
               >
                 {opt.id === 'in_sync_border' && isUnlocked && <InSyncPlasmaEffect />}
+                {opt.id === 'quest_beacon_border' && isUnlocked && <QuestBeaconBorderEffect />}
                 <span className="font-semibold relative z-10">{opt.name}</span>
                 <div className="flex items-center gap-2 relative z-10">
                   {!isUnlocked && (
@@ -852,6 +861,12 @@ export default function CharacterCosmeticsTab({
                 )}
                 {(opt.id === 'crimson_particles' || opt.value === 'crimson-particle-bg') && isUnlocked && (
                   <TintParticlesEffect variant="crimson" />
+                )}
+                {(opt.id === 'gold_tint' || opt.value === 'gold-bg-tint') && isUnlocked && (
+                  <TintParticlesEffect variant="gold" />
+                )}
+                {(opt.id === 'silver_tint' || opt.value === 'silver-bg-tint') && isUnlocked && (
+                  <TintParticlesEffect variant="silver" />
                 )}
                 {(opt.id === 'gold_coins_bg' || opt.value === 'gold-coins-bg') && isUnlocked && (
                   <FallingCoinsEffect />

@@ -228,32 +228,36 @@ export default function CharacterDetailsDialog({
         {/* Header with character summary */}
         <DialogHeader className="p-6 pb-2 border-b border-border/50 shrink-0">
           <div className="flex items-center justify-between gap-2">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              {char ? char.name : <Skeleton className="h-6 w-32" />}
+            <DialogTitle asChild>
+              <div className="flex items-center gap-2 text-xl font-semibold">
+                {char ? char.name : <Skeleton className="h-6 w-32" />}
+              </div>
             </DialogTitle>
           </div>
-          <DialogDescription className="flex items-center gap-2 mt-1">
-            {char ? (
-              <>
-                <CharacterRankIcon rank={char.rank} />
-                {char.system && (
-                  <img
-                    src={char.system === 'PF' ? '/PFVoid.svg' : '/DnDVoid.svg'}
-                    alt={char.system}
-                    className="h-4 w-4"
-                  />
-                )}
-                <span
-                  className="inline-flex align-middle justify-center w-14 rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"
-                  style={getLevelBadgeStyle(char.lvl)}
-                >
-                  Lvl {char.lvl}
-                </span>
-                <span>{char.xp} XP</span>
-              </>
-            ) : (
-              <Skeleton className="h-4 w-48" />
-            )}
+          <DialogDescription asChild>
+            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+              {char ? (
+                <>
+                  <CharacterRankIcon rank={char.rank} />
+                  {char.system && (
+                    <img
+                      src={char.system === 'PF' ? '/PFVoid.svg' : '/DnDVoid.svg'}
+                      alt={char.system}
+                      className="h-4 w-4"
+                    />
+                  )}
+                  <span
+                    className="inline-flex align-middle justify-center w-14 rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"
+                    style={getLevelBadgeStyle(char.lvl)}
+                  >
+                    Lvl {char.lvl}
+                  </span>
+                  <span>{char.xp} XP</span>
+                </>
+              ) : (
+                <Skeleton className="h-4 w-48" />
+              )}
+            </div>
           </DialogDescription>
 
           {/* Navigation Tabs */}

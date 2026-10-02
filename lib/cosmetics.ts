@@ -570,14 +570,14 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
     }
   } else if (bgObj?.value === 'gold-bg-tint' || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') {
     const goldPaddingLayer =
-      'linear-gradient(135deg, rgba(191,149,63,0.22) 0%, rgba(252,246,186,0.14) 50%, rgba(170,119,28,0.22) 100%), linear-gradient(var(--card), var(--card))'
+      'radial-gradient(ellipse at 20% 25%, rgba(254, 240, 138, 0.28) 0%, rgba(212, 175, 55, 0.16) 40%, transparent 70%), radial-gradient(ellipse at 85% 75%, rgba(202, 138, 4, 0.26) 0%, rgba(161, 98, 7, 0.12) 45%, transparent 75%), linear-gradient(135deg, rgba(202, 138, 4, 0.2) 0%, rgba(253, 224, 71, 0.22) 32%, rgba(161, 98, 7, 0.12) 65%, rgba(234, 179, 8, 0.24) 100%), linear-gradient(var(--card), var(--card))'
     cardBgStyle = { '--card-bg': goldPaddingLayer } as React.CSSProperties
     if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} gold-bg-tint` : 'gold-bg-tint'
     }
   } else if (bgObj?.value === 'silver-bg-tint' || cosmetics.bgColor === 'silver_tint' || cosmetics.bgColor === 'silver-bg-tint') {
     const silverPaddingLayer =
-      'linear-gradient(135deg, rgba(148,163,184,0.22) 0%, rgba(241,245,249,0.14) 50%, rgba(71,85,105,0.22) 100%), linear-gradient(var(--card), var(--card))'
+      'radial-gradient(ellipse at 25% 20%, rgba(255, 255, 255, 0.28) 0%, rgba(226, 232, 240, 0.16) 42%, transparent 70%), radial-gradient(ellipse at 85% 80%, rgba(148, 163, 184, 0.24) 0%, rgba(71, 85, 105, 0.14) 48%, transparent 75%), linear-gradient(135deg, rgba(148, 163, 184, 0.2) 0%, rgba(248, 250, 252, 0.25) 30%, rgba(100, 116, 139, 0.12) 62%, rgba(226, 232, 240, 0.24) 100%), linear-gradient(var(--card), var(--card))'
     cardBgStyle = { '--card-bg': silverPaddingLayer } as React.CSSProperties
     if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} silver-bg-tint` : 'silver-bg-tint'

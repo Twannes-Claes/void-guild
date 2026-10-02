@@ -6,6 +6,7 @@ import { resolveCosmeticsStyles, CharacterCosmetics } from '@/lib/cosmetics'
 import { renderCosmeticLetters } from '@/components/characters/CosmeticText'
 import ProfileAvatarWithBadge from '@/components/characters/ProfileAvatarWithBadge'
 import InSyncPlasmaEffect from '@/components/characters/InSyncPlasmaEffect'
+import QuestBeaconBorderEffect from '@/components/characters/QuestBeaconBorderEffect'
 import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
@@ -79,6 +80,7 @@ export default function CharacterCallingCard({
       style={styles.cardStyle}
     >
       {styles.cardClassName.includes('in-sync') && <InSyncPlasmaEffect />}
+      {styles.cardClassName.includes('quest-beacon') && <QuestBeaconBorderEffect />}
       {(styles.cardClassName.includes('void-nebula') ||
         cosmetics?.bgColor === 'void_nebula' ||
         cosmetics?.bgColor === 'void-nebula-bg') && <VoidNebulaEffect />}
@@ -91,6 +93,12 @@ export default function CharacterCallingCard({
       {(styles.cardClassName.includes('crimson-particle') ||
         cosmetics?.bgColor === 'crimson_particles' ||
         cosmetics?.bgColor === 'crimson-particle-bg') && <TintParticlesEffect variant="crimson" />}
+      {(styles.cardClassName.includes('gold-bg-tint') ||
+        cosmetics?.bgColor === 'gold_tint' ||
+        cosmetics?.bgColor === 'gold-bg-tint') && <TintParticlesEffect variant="gold" />}
+      {(styles.cardClassName.includes('silver-bg-tint') ||
+        cosmetics?.bgColor === 'silver_tint' ||
+        cosmetics?.bgColor === 'silver-bg-tint') && <TintParticlesEffect variant="silver" />}
       {(styles.cardClassName.includes('gold-coins') ||
         cosmetics?.bgColor === 'gold_coins_bg' ||
         cosmetics?.bgColor === 'gold-coins-bg') && <FallingCoinsEffect />}

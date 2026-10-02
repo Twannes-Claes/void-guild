@@ -25,6 +25,7 @@ import { resolveCosmeticsStyles } from '@/lib/cosmetics'
 import { renderCosmeticLetters } from '@/components/characters/CosmeticText'
 import ProfileAvatarWithBadge from '@/components/characters/ProfileAvatarWithBadge'
 import InSyncPlasmaEffect from '@/components/characters/InSyncPlasmaEffect'
+import QuestBeaconBorderEffect from '@/components/characters/QuestBeaconBorderEffect'
 import BlazeTextParticles from '@/components/characters/BlazeTextParticles'
 import VoidNebulaEffect from '@/components/characters/VoidNebulaEffect'
 import InfernoFireEffect from '@/components/characters/InfernoFireEffect'
@@ -509,6 +510,7 @@ export default function AttendingCharactersList({
                 style={cosmeticsStyles.cardStyle}
             >
               {cosmeticsStyles.cardClassName.includes('in-sync') && <InSyncPlasmaEffect />}
+              {cosmeticsStyles.cardClassName.includes('quest-beacon') && <QuestBeaconBorderEffect />}
               {(cosmeticsStyles.cardClassName.includes('void-nebula') || char.cosmetics?.bgColor === 'void_nebula' || char.cosmetics?.bgColor === 'void-nebula-bg') && (
                 <VoidNebulaEffect />
               )}
@@ -520,6 +522,12 @@ export default function AttendingCharactersList({
               )}
               {(cosmeticsStyles.cardClassName.includes('crimson-particle') || char.cosmetics?.bgColor === 'crimson_particles' || char.cosmetics?.bgColor === 'crimson-particle-bg') && (
                 <TintParticlesEffect variant="crimson" />
+              )}
+              {(cosmeticsStyles.cardClassName.includes('gold-bg-tint') || char.cosmetics?.bgColor === 'gold_tint' || char.cosmetics?.bgColor === 'gold-bg-tint') && (
+                <TintParticlesEffect variant="gold" />
+              )}
+              {(cosmeticsStyles.cardClassName.includes('silver-bg-tint') || char.cosmetics?.bgColor === 'silver_tint' || char.cosmetics?.bgColor === 'silver-bg-tint') && (
+                <TintParticlesEffect variant="silver" />
               )}
               {(cosmeticsStyles.cardClassName.includes('gold-coins') || char.cosmetics?.bgColor === 'gold_coins_bg' || char.cosmetics?.bgColor === 'gold-coins-bg') && (
                 <FallingCoinsEffect />
