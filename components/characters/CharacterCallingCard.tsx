@@ -102,20 +102,16 @@ export default function CharacterCallingCard({
         cosmetics?.bgColor === 'phantom-smoke-bg') && <PhantomSmokeEffect />}
       {isWorldBg && <WorldStreakBackgroundEffect emblemUrl={bgWorld?.emblemUrl} />}
 
-      {isWorldBorder && (
+      {isWorldBorder && borderWorld?.emblemUrl && (
         <div
-          className="absolute -bottom-1.5 -right-1.5 z-20 w-7 h-7 rounded-full p-0.5 bg-slate-950 border border-amber-400/80 shadow-[0_0_10px_rgba(245,158,11,0.6)] flex items-center justify-center overflow-hidden"
-          title={borderWorld ? `${borderWorld.name} Sigil` : 'World Sigil'}
+          className="absolute -bottom-2.5 -right-2.5 z-20 pointer-events-none select-none"
+          title={borderWorld.name ? `${borderWorld.name} Sigil` : 'World Sigil'}
         >
-          {borderWorld?.emblemUrl ? (
-            <img
-              src={borderWorld.emblemUrl}
-              alt={borderWorld.name}
-              className="w-full h-full object-contain"
-            />
-          ) : (
-            <span className="text-[10px] font-bold text-amber-300">✨</span>
-          )}
+          <img
+            src={borderWorld.emblemUrl}
+            alt={borderWorld.name || 'World Sigil'}
+            className="w-12 h-12 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+          />
         </div>
       )}
 

@@ -490,20 +490,16 @@ export default function CharacterCosmeticsTab({
           )}
           {isPreviewWorldBg && <WorldStreakBackgroundEffect emblemUrl={previewBgWorld?.emblemUrl} />}
 
-          {isPreviewWorldBorder && (
+          {isPreviewWorldBorder && previewBorderWorld?.emblemUrl && (
             <div
-              className="absolute -bottom-1.5 -right-1.5 z-20 w-7 h-7 rounded-full p-0.5 bg-slate-950 border border-amber-400/80 shadow-[0_0_10px_rgba(245,158,11,0.6)] flex items-center justify-center overflow-hidden"
-              title={previewBorderWorld ? `${previewBorderWorld.name} Sigil` : 'World Sigil'}
+              className="absolute -bottom-2.5 -right-2.5 z-20 pointer-events-none select-none"
+              title={previewBorderWorld.name ? `${previewBorderWorld.name} Sigil` : 'World Sigil'}
             >
-              {previewBorderWorld?.emblemUrl ? (
-                <img
-                  src={previewBorderWorld.emblemUrl}
-                  alt={previewBorderWorld.name}
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <span className="text-[10px] font-bold text-amber-300">✨</span>
-              )}
+              <img
+                src={previewBorderWorld.emblemUrl}
+                alt={previewBorderWorld.name || 'World Sigil'}
+                className="w-12 h-12 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+              />
             </div>
           )}
           <div className="flex items-center gap-3 min-w-0 relative z-10">
@@ -743,6 +739,12 @@ export default function CharacterCosmeticsTab({
               opt.value.includes('in-sync-border') ||
               opt.value.includes('world-streak-border')
 
+            const isWorldBorderOpt = opt.id.startsWith('world_border_')
+            const worldOpt = isWorldBorderOpt
+              ? (allWorlds?.find((w) => w._id === opt.id.replace('world_border_', '')) ||
+                 userWorldStreaks?.find((w) => w._id === opt.id.replace('world_border_', '')))
+              : null
+
             return (
               <button
                 key={opt.id}
@@ -771,12 +773,23 @@ export default function CharacterCosmeticsTab({
                 )}
               >
                 {opt.id === 'in_sync_border' && isUnlocked && <InSyncPlasmaEffect />}
-                <span className="font-semibold">{opt.name}</span>
-                {!isUnlocked && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 shrink-0">
-                    <Lock className="h-3 w-3" />
-                    {badgeLabel}
-                  </span>
+                <span className="font-semibold relative z-10">{opt.name}</span>
+                <div className="flex items-center gap-2 relative z-10">
+                  {!isUnlocked && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 shrink-0">
+                      <Lock className="h-3 w-3" />
+                      {badgeLabel}
+                    </span>
+                  )}
+                </div>
+                {isWorldBorderOpt && worldOpt?.emblemUrl && (
+                  <div className="absolute -bottom-2 -right-2 z-20 pointer-events-none select-none">
+                    <img
+                      src={worldOpt.emblemUrl}
+                      alt={worldOpt.name}
+                      className="w-10 h-10 object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]"
+                    />
+                  </div>
                 )}
               </button>
             )

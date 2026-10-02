@@ -555,123 +555,88 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
   // Card Background
   const bgObj = BG_COLOR_OPTIONS.find((b) => b.id === cosmetics.bgColor || b.value === cosmetics.bgColor)
   let cardBgStyle: React.CSSProperties = {}
-  const isGradientBorder =
+  const isDualLayerBorder =
     cardClassName.includes('gold-card-border') ||
     cardClassName.includes('silver-card-border') ||
     cardClassName.includes('bronze-card-border') ||
-    cardClassName.includes('purple-card-border') ||
-    cardClassName.includes('in-sync-card-border') ||
-    cardClassName.includes('quest-beacon-border') ||
-    cardClassName.includes('jackpot-card-border') ||
-    cardClassName.includes('world-streak-border')
+    cardClassName.includes('purple-card-border')
 
   if (cosmetics.bgColor?.startsWith('world_bg_')) {
-    if (isGradientBorder) {
-      const starlightPaddingLayer =
-        'radial-gradient(ellipse at 80% 50%, rgba(226, 232, 240, 0.16) 0%, rgba(148, 163, 184, 0.08) 50%, transparent 80%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': starlightPaddingLayer } as React.CSSProperties
-    } else {
+    const starlightPaddingLayer =
+      'radial-gradient(ellipse at 80% 50%, rgba(226, 232, 240, 0.16) 0%, rgba(148, 163, 184, 0.08) 50%, transparent 80%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': starlightPaddingLayer } as React.CSSProperties
+    if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} bg-slate-950/80` : 'bg-slate-950/80'
     }
   } else if (bgObj?.value === 'gold-bg-tint' || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') {
-    if (isGradientBorder) {
-      const goldPaddingLayer =
-        'linear-gradient(135deg, rgba(191,149,63,0.18) 0%, rgba(252,246,186,0.12) 50%, rgba(170,119,28,0.18) 100%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': goldPaddingLayer } as React.CSSProperties
-    } else {
+    const goldPaddingLayer =
+      'linear-gradient(135deg, rgba(191,149,63,0.22) 0%, rgba(252,246,186,0.14) 50%, rgba(170,119,28,0.22) 100%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': goldPaddingLayer } as React.CSSProperties
+    if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} gold-bg-tint` : 'gold-bg-tint'
     }
   } else if (bgObj?.value === 'silver-bg-tint' || cosmetics.bgColor === 'silver_tint' || cosmetics.bgColor === 'silver-bg-tint') {
-    if (isGradientBorder) {
-      const silverPaddingLayer =
-        'linear-gradient(135deg, rgba(148,163,184,0.18) 0%, rgba(241,245,249,0.14) 50%, rgba(71,85,105,0.18) 100%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': silverPaddingLayer } as React.CSSProperties
-    } else {
+    const silverPaddingLayer =
+      'linear-gradient(135deg, rgba(148,163,184,0.22) 0%, rgba(241,245,249,0.14) 50%, rgba(71,85,105,0.22) 100%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': silverPaddingLayer } as React.CSSProperties
+    if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} silver-bg-tint` : 'silver-bg-tint'
     }
   } else if (bgObj?.value === 'cyan-particle-bg' || cosmetics.bgColor === 'cyan_particles' || cosmetics.bgColor === 'cyan-particle-bg') {
-    if (isGradientBorder) {
-      const cyanPaddingLayer =
-        'radial-gradient(circle at 50% 20%, rgba(6, 182, 212, 0.22) 0%, rgba(8, 145, 178, 0.08) 50%, transparent 100%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': cyanPaddingLayer } as React.CSSProperties
-    } else {
+    const cyanPaddingLayer =
+      'radial-gradient(circle at 50% 20%, rgba(6, 182, 212, 0.26) 0%, rgba(8, 145, 178, 0.1) 50%, transparent 100%), radial-gradient(circle at 15% 85%, rgba(34, 211, 238, 0.18) 0%, transparent 40%), radial-gradient(circle at 85% 75%, rgba(6, 182, 212, 0.2) 0%, transparent 40%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': cyanPaddingLayer } as React.CSSProperties
+    if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} cyan-particle-bg` : 'cyan-particle-bg'
     }
   } else if (bgObj?.value === 'crimson-particle-bg' || cosmetics.bgColor === 'crimson_particles' || cosmetics.bgColor === 'crimson-particle-bg') {
-    if (isGradientBorder) {
-      const crimsonPaddingLayer =
-        'radial-gradient(circle at 50% 20%, rgba(220, 38, 38, 0.25) 0%, rgba(153, 27, 27, 0.1) 50%, transparent 100%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': crimsonPaddingLayer } as React.CSSProperties
-    } else {
+    const crimsonPaddingLayer =
+      'radial-gradient(circle at 50% 20%, rgba(220, 38, 38, 0.28) 0%, rgba(153, 27, 27, 0.12) 50%, transparent 100%), radial-gradient(circle at 20% 80%, rgba(239, 68, 68, 0.2) 0%, transparent 40%), radial-gradient(circle at 80% 70%, rgba(220, 38, 38, 0.22) 0%, transparent 40%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': crimsonPaddingLayer } as React.CSSProperties
+    if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} crimson-particle-bg` : 'crimson-particle-bg'
     }
   } else if (bgObj?.value === 'parchment-bg-tint' || cosmetics.bgColor === 'parchment_bg' || cosmetics.bgColor === 'parchment-bg-tint') {
-    if (isGradientBorder) {
-      const parchmentPaddingLayer =
-        'radial-gradient(circle at 50% 30%, rgba(217, 180, 130, 0.22) 0%, rgba(160, 120, 70, 0.1) 60%, transparent 100%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': parchmentPaddingLayer } as React.CSSProperties
-    } else {
+    const parchmentPaddingLayer =
+      'radial-gradient(circle at 50% 30%, rgba(217, 180, 130, 0.28) 0%, rgba(160, 120, 70, 0.14) 60%, transparent 100%), linear-gradient(135deg, rgba(200, 160, 110, 0.16) 0%, rgba(120, 80, 40, 0.08) 100%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': parchmentPaddingLayer } as React.CSSProperties
+    if (!isDualLayerBorder) {
       cardClassName = cardClassName ? `${cardClassName} parchment-bg-tint` : 'parchment-bg-tint'
     }
   } else if (bgObj?.value === 'void-nebula-bg' || cosmetics.bgColor === 'void_nebula' || cosmetics.bgColor === 'void-nebula-bg') {
-    if (isGradientBorder) {
-      const voidPaddingLayer =
-        'radial-gradient(ellipse at 25% 25%, rgba(168, 85, 247, 0.28) 0%, transparent 55%), radial-gradient(ellipse at 75% 75%, rgba(147, 51, 234, 0.24) 0%, transparent 55%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': voidPaddingLayer } as React.CSSProperties
-      cardClassName = cardClassName ? `${cardClassName} void-nebula-bg` : 'void-nebula-bg'
-    } else {
-      cardClassName = cardClassName ? `${cardClassName} void-nebula-bg` : 'void-nebula-bg'
-    }
+    const voidPaddingLayer =
+      'radial-gradient(ellipse at 25% 25%, rgba(168, 85, 247, 0.28) 0%, transparent 55%), radial-gradient(ellipse at 75% 75%, rgba(147, 51, 234, 0.24) 0%, transparent 55%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': voidPaddingLayer } as React.CSSProperties
+    cardClassName = cardClassName ? `${cardClassName} void-nebula-bg` : 'void-nebula-bg'
   } else if (bgObj?.value === 'blaze-inferno-bg' || cosmetics.bgColor === 'blaze_inferno_bg' || cosmetics.bgColor === 'blaze-inferno-bg') {
-    if (isGradientBorder) {
-      const firePaddingLayer =
-        'radial-gradient(ellipse at 50% 100%, rgba(234, 88, 12, 0.35) 0%, rgba(185, 28, 28, 0.2) 50%, transparent 80%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': firePaddingLayer } as React.CSSProperties
-      cardClassName = cardClassName ? `${cardClassName} blaze-inferno-bg` : 'blaze-inferno-bg'
-    } else {
-      cardClassName = cardClassName ? `${cardClassName} blaze-inferno-bg` : 'blaze-inferno-bg'
-    }
+    const firePaddingLayer =
+      'radial-gradient(ellipse at 50% 100%, rgba(234, 88, 12, 0.35) 0%, rgba(185, 28, 28, 0.2) 50%, transparent 80%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': firePaddingLayer } as React.CSSProperties
+    cardClassName = cardClassName ? `${cardClassName} blaze-inferno-bg` : 'blaze-inferno-bg'
   } else if (bgObj?.value === 'gold-coins-bg' || cosmetics.bgColor === 'gold_coins_bg' || cosmetics.bgColor === 'gold-coins-bg') {
-    if (isGradientBorder) {
-      const goldCoinsPaddingLayer =
-        'radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.12) 60%, transparent 100%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': goldCoinsPaddingLayer } as React.CSSProperties
-      cardClassName = cardClassName ? `${cardClassName} gold-coins-bg` : 'gold-coins-bg'
-    } else {
-      cardClassName = cardClassName ? `${cardClassName} gold-coins-bg` : 'gold-coins-bg'
-    }
+    const goldCoinsPaddingLayer =
+      'radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.12) 60%, transparent 100%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': goldCoinsPaddingLayer } as React.CSSProperties
+    cardClassName = cardClassName ? `${cardClassName} gold-coins-bg` : 'gold-coins-bg'
   } else if (bgObj?.value === 'arcane-runes-bg' || cosmetics.bgColor === 'arcane_runes_bg' || cosmetics.bgColor === 'arcane-runes-bg') {
-    if (isGradientBorder) {
-      const arcanePaddingLayer =
-        'radial-gradient(ellipse at 85% 50%, rgba(56, 189, 248, 0.2) 0%, rgba(168, 85, 247, 0.18) 50%, transparent 90%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': arcanePaddingLayer } as React.CSSProperties
-      cardClassName = cardClassName ? `${cardClassName} arcane-runes-bg` : 'arcane-runes-bg'
-    } else {
-      cardClassName = cardClassName ? `${cardClassName} arcane-runes-bg` : 'arcane-runes-bg'
-    }
+    const arcanePaddingLayer =
+      'radial-gradient(ellipse at 85% 50%, rgba(56, 189, 248, 0.2) 0%, rgba(168, 85, 247, 0.18) 50%, transparent 90%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': arcanePaddingLayer } as React.CSSProperties
+    cardClassName = cardClassName ? `${cardClassName} arcane-runes-bg` : 'arcane-runes-bg'
   } else if (bgObj?.value === 'phantom-smoke-bg' || cosmetics.bgColor === 'phantom_smoke_bg' || cosmetics.bgColor === 'phantom-smoke-bg') {
-    if (isGradientBorder) {
-      const smokePaddingLayer =
-        'radial-gradient(ellipse at 50% 100%, rgba(15, 23, 42, 0.45) 0%, rgba(30, 41, 59, 0.2) 65%, transparent 100%), linear-gradient(var(--card), var(--card))'
-      cardBgStyle = { '--card-bg': smokePaddingLayer } as React.CSSProperties
-      cardClassName = cardClassName ? `${cardClassName} phantom-smoke-bg` : 'phantom-smoke-bg'
-    } else {
-      cardClassName = cardClassName ? `${cardClassName} phantom-smoke-bg` : 'phantom-smoke-bg'
-    }
+    const smokePaddingLayer =
+      'radial-gradient(ellipse at 50% 100%, rgba(15, 23, 42, 0.45) 0%, rgba(30, 41, 59, 0.2) 65%, transparent 100%), linear-gradient(var(--card), var(--card))'
+    cardBgStyle = { '--card-bg': smokePaddingLayer } as React.CSSProperties
+    cardClassName = cardClassName ? `${cardClassName} phantom-smoke-bg` : 'phantom-smoke-bg'
   } else if (bgObj && bgObj.value) {
-    if (isGradientBorder) {
-      const tintPaddingLayer = `linear-gradient(${bgObj.value}, ${bgObj.value}), linear-gradient(var(--card), var(--card))`
-      cardBgStyle = { '--card-bg': tintPaddingLayer } as React.CSSProperties
-    } else {
-      cardBgStyle = { backgroundColor: bgObj.value }
+    const tintPaddingLayer = `linear-gradient(${bgObj.value}, ${bgObj.value}), linear-gradient(var(--card), var(--card))`
+    cardBgStyle = { '--card-bg': tintPaddingLayer, backgroundColor: bgObj.value } as React.CSSProperties
+    if (bgObj.id === 'purple_tint' && !isDualLayerBorder) {
+      cardClassName = cardClassName ? `${cardClassName} purple-bg-tint` : 'purple-bg-tint'
     }
   } else if (cosmetics.bgColor) {
-    if (isGradientBorder) {
-      const tintPaddingLayer = `linear-gradient(${cosmetics.bgColor}, ${cosmetics.bgColor}), linear-gradient(var(--card), var(--card))`
-      cardBgStyle = { '--card-bg': tintPaddingLayer } as React.CSSProperties
-    } else {
-      cardBgStyle = { backgroundColor: cosmetics.bgColor }
-    }
+    const tintPaddingLayer = `linear-gradient(${cosmetics.bgColor}, ${cosmetics.bgColor}), linear-gradient(var(--card), var(--card))`
+    cardBgStyle = { '--card-bg': tintPaddingLayer, backgroundColor: cosmetics.bgColor } as React.CSSProperties
   }
 
   // Card Border Color
