@@ -99,17 +99,33 @@ export const renameWorld = mutation({
 export const getWorld = query({
   args: { worldId: v.id('worlds') },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.worldId)
+    const world = await ctx.db.get(args.worldId)
+    if (!world) return null
+    let emblemUrl = world.emblemStorageId
+      ? (await ctx.storage.getUrl(world.emblemStorageId)) || world.emblemUrl
+      : world.emblemUrl
+    return {
+      ...world,
+      emblemUrl,
+    }
   },
 })
 
 export const getWorldByName = query({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const world = await ctx.db
       .query('worlds')
       .withIndex('by_name', (q) => q.eq('name', args.name))
       .first()
+    if (!world) return null
+    let emblemUrl = world.emblemStorageId
+      ? (await ctx.storage.getUrl(world.emblemStorageId)) || world.emblemUrl
+      : world.emblemUrl
+    return {
+      ...world,
+      emblemUrl,
+    }
   },
 })
 
@@ -156,9 +172,21 @@ export const getSessionsByWorld = query({
 export const listAllWorlds = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query('worlds').collect()
+    const worlds = await ctx.db.query('worlds').collect()
+    return await Promise.all(
+      worlds.map(async (w) => {
+        let emblemUrl = w.emblemStorageId
+          ? (await ctx.storage.getUrl(w.emblemStorageId)) || w.emblemUrl
+          : w.emblemUrl
+        return {
+          ...w,
+          emblemUrl,
+        }
+      })
+    )
   },
 })
+
 
 export const getReputationData = query({
   args: { worldName: v.string() },
@@ -669,12 +697,19 @@ export const getAllWorlds = query({
   args: {},
   handler: async (ctx) => {
     const worlds = await ctx.db.query('worlds').collect()
-    return worlds.map((w) => ({
-      _id: w._id,
-      name: w.name,
-      owner: w.owner,
-      emblemUrl: w.emblemUrl,
-    }))
+    return await Promise.all(
+      worlds.map(async (w) => {
+        let emblemUrl = w.emblemStorageId
+          ? (await ctx.storage.getUrl(w.emblemStorageId)) || w.emblemUrl
+          : w.emblemUrl
+        return {
+          _id: w._id,
+          name: w.name,
+          owner: w.owner,
+          emblemUrl,
+        }
+      })
+    )
   },
 })
 
@@ -740,33 +775,46 @@ export const getUserWorldStreaks = query({
     const user = await ctx.auth.getUserIdentity()
     const worlds = await ctx.db.query('worlds').collect()
     if (!user) {
-      return worlds.map((w) => ({
-        _id: w._id,
-        name: w.name,
-        emblemUrl: w.emblemUrl,
-        userMaxStreak: 0,
-        unlockedStreak3: false,
-        unlockedStreak5: false,
-        unlockedStreak10: false,
-      }))
+      return await Promise.all(
+        worlds.map(async (w) => {
+          let emblemUrl = w.emblemStorageId
+            ? (await ctx.storage.getUrl(w.emblemStorageId)) || w.emblemUrl
+            : w.emblemUrl
+          return {
+            _id: w._id,
+            name: w.name,
+            emblemUrl,
+            userMaxStreak: 0,
+            unlockedStreak3: false,
+            unlockedStreak5: false,
+            unlockedStreak10: false,
+          }
+        })
+      )
     }
 
     const streaksMap = await getUserWorldStreaksMap(ctx, user.subject)
 
-    return worlds.map((w) => {
-      const info = streaksMap[w._id] || { streak: 0, isOwner: false }
-      return {
-        _id: w._id,
-        name: w.name,
-        emblemUrl: w.emblemUrl,
-        isOwner: info.isOwner,
-        userMaxStreak: info.streak,
-        unlockedStreak3: info.isOwner || info.streak >= 3,
-        unlockedStreak5: info.isOwner || info.streak >= 5,
-        unlockedStreak10: info.isOwner || info.streak >= 10,
-      }
-    })
+    return await Promise.all(
+      worlds.map(async (w) => {
+        const info = streaksMap[w._id] || { streak: 0, isOwner: false }
+        let emblemUrl = w.emblemStorageId
+          ? (await ctx.storage.getUrl(w.emblemStorageId)) || w.emblemUrl
+          : w.emblemUrl
+        return {
+          _id: w._id,
+          name: w.name,
+          emblemUrl,
+          isOwner: info.isOwner,
+          userMaxStreak: info.streak,
+          unlockedStreak3: info.isOwner || info.streak >= 3,
+          unlockedStreak5: info.isOwner || info.streak >= 5,
+          unlockedStreak10: info.isOwner || info.streak >= 10,
+        }
+      })
+    )
   },
 })
+
 
 

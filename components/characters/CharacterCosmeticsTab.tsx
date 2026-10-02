@@ -91,6 +91,7 @@ export default function CharacterCosmeticsTab({
   const effectiveAvatarUrl = (isEffectiveMember && cosmetics.avatarUrl) ? cosmetics.avatarUrl : profileImageUrl
   const characterRanks = useQuery(api.characters.getCharacterLeaderboardRanks)
   const userWorldStreaks = useQuery(api.worlds.getUserWorldStreaks) || []
+  const allWorlds = useQuery(api.worlds.getAllWorlds) || []
   const rankNumber = (characterId ? characterRanks?.[characterId] : undefined) ?? 1
   const [adminView, setAdminView] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -100,7 +101,7 @@ export default function CharacterCosmeticsTab({
   const allBorderShapeOptions: CosmeticOption[] = useMemo(() => {
     const worldBorderOptions: CosmeticOption[] = userWorldStreaks.map((w) => ({
       id: `world_border_${w._id}`,
-      name: `${w.name} Sigil Sparkles Border ✨`,
+      name: `${w.name} Sigil Sparkles Border`,
       unlockedByDefault: false,
       value: 'rounded-lg world-streak-border',
     }))
@@ -110,7 +111,7 @@ export default function CharacterCosmeticsTab({
   const allBgColorOptions: CosmeticOption[] = useMemo(() => {
     const worldBgOptions: CosmeticOption[] = userWorldStreaks.map((w) => ({
       id: `world_bg_${w._id}`,
-      name: `${w.name} Sigil Starlight Tint 🌟`,
+      name: `${w.name} Sigil Starlight Tint`,
       unlockedByDefault: false,
       value: `world_bg_${w._id}`,
     }))
@@ -120,12 +121,13 @@ export default function CharacterCosmeticsTab({
   const allProfileBorderOptions: CosmeticOption[] = useMemo(() => {
     const worldRingOptions: CosmeticOption[] = userWorldStreaks.map((w) => ({
       id: `world_ring_${w._id}`,
-      name: `${w.name} Sigil Ring 🌀`,
+      name: `${w.name} Sigil Ring`,
       unlockedByDefault: false,
       value: `world_ring_${w._id}`,
     }))
     return [...PROFILE_BORDER_OPTIONS, ...worldRingOptions]
   }, [userWorldStreaks])
+
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -393,9 +395,13 @@ export default function CharacterCosmeticsTab({
   const isPreviewWorldBg = Boolean(cosmetics.bgColor?.startsWith('world_bg_'))
   const isPreviewWorldBorder = Boolean(cosmetics.borderShape?.startsWith('world_border_'))
   const previewBgWorldId = isPreviewWorldBg ? cosmetics.bgColor?.replace('world_bg_', '') : null
-  const previewBgWorld = isPreviewWorldBg && userWorldStreaks ? userWorldStreaks.find((w) => w._id === previewBgWorldId) : null
+  const previewBgWorld =
+    (isPreviewWorldBg && allWorlds ? allWorlds.find((w) => w._id === previewBgWorldId) : null) ||
+    (isPreviewWorldBg && userWorldStreaks ? userWorldStreaks.find((w) => w._id === previewBgWorldId) : null)
   const previewBorderWorldId = isPreviewWorldBorder ? cosmetics.borderShape?.replace('world_border_', '') : null
-  const previewBorderWorld = isPreviewWorldBorder && userWorldStreaks ? userWorldStreaks.find((w) => w._id === previewBorderWorldId) : null
+  const previewBorderWorld =
+    (isPreviewWorldBorder && allWorlds ? allWorlds.find((w) => w._id === previewBorderWorldId) : null) ||
+    (isPreviewWorldBorder && userWorldStreaks ? userWorldStreaks.find((w) => w._id === previewBorderWorldId) : null)
 
   return (
     <div className="flex flex-col gap-6">
@@ -486,17 +492,17 @@ export default function CharacterCosmeticsTab({
 
           {isPreviewWorldBorder && (
             <div
-              className="absolute -bottom-1.5 -right-1.5 z-20 w-6 h-6 rounded-full p-0.5 bg-slate-900 border border-slate-300 shadow-[0_0_8px_rgba(203,213,225,0.7)] flex items-center justify-center overflow-hidden"
+              className="absolute -bottom-1.5 -right-1.5 z-20 w-7 h-7 rounded-full p-0.5 bg-slate-950 border border-amber-400/80 shadow-[0_0_10px_rgba(245,158,11,0.6)] flex items-center justify-center overflow-hidden"
               title={previewBorderWorld ? `${previewBorderWorld.name} Sigil` : 'World Sigil'}
             >
               {previewBorderWorld?.emblemUrl ? (
                 <img
                   src={previewBorderWorld.emblemUrl}
                   alt={previewBorderWorld.name}
-                  className="w-full h-full object-cover rounded-full"
+                  className="w-full h-full object-contain"
                 />
               ) : (
-                <span className="text-[9px] font-bold text-slate-200">✨</span>
+                <span className="text-[10px] font-bold text-amber-300">✨</span>
               )}
             </div>
           )}
@@ -580,10 +586,10 @@ export default function CharacterCosmeticsTab({
                       ? `${f.name} [Preview Only - Requires: ${reqTitle}]`
                       : f.name
                     : isAdmin
-                      ? `🔒 ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
+                      ? `[Locked] ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
                       : isHidden
-                        ? `🔒 ${f.name} (Secret Achievement)`
-                        : `🔒 ${f.name} (Requires: ${reqTitle})`}
+                        ? `[Locked] ${f.name} (Secret Achievement)`
+                        : `[Locked] ${f.name} (Requires: ${reqTitle})`}
                 </option>
               )
             })}
@@ -639,10 +645,10 @@ export default function CharacterCosmeticsTab({
                       ? `${f.name} [Preview Only - Requires: ${reqTitle}]`
                       : f.name
                     : isAdmin
-                      ? `🔒 ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
+                      ? `[Locked] ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
                       : isHidden
-                        ? `🔒 ${f.name} (Secret Achievement)`
-                        : `🔒 ${f.name} (Requires: ${reqTitle})`}
+                        ? `[Locked] ${f.name} (Secret Achievement)`
+                        : `[Locked] ${f.name} (Requires: ${reqTitle})`}
                 </option>
               )
             })}
@@ -697,10 +703,10 @@ export default function CharacterCosmeticsTab({
                       ? `${f.name} [Preview Only - Requires: ${reqTitle}]`
                       : f.name
                     : isAdmin
-                      ? `🔒 ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
+                      ? `[Locked] ${f.name} (Requires: ${reqTitle}${isHidden ? ' - Secret' : ''})`
                       : isHidden
-                        ? `🔒 ${f.name} (Secret Achievement)`
-                        : `🔒 ${f.name} (Requires: ${reqTitle})`}
+                        ? `[Locked] ${f.name} (Secret Achievement)`
+                        : `[Locked] ${f.name} (Requires: ${reqTitle})`}
                 </option>
               )
             })}

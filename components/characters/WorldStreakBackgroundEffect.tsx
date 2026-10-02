@@ -24,25 +24,6 @@ export default function WorldStreakBackgroundEffect({
   className,
 }: WorldStreakBackgroundEffectProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const imageRef = useRef<HTMLImageElement | null>(null)
-
-  useEffect(() => {
-    if (emblemUrl) {
-      const img = new Image()
-      img.onload = () => {
-        imageRef.current = img
-      }
-      img.onerror = () => {
-        imageRef.current = null
-      }
-      img.src = emblemUrl
-      if (img.complete && img.naturalWidth > 0) {
-        imageRef.current = img
-      }
-    } else {
-      imageRef.current = null
-    }
-  }, [emblemUrl])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -121,41 +102,7 @@ export default function WorldStreakBackgroundEffect({
 
       ctx.save()
 
-      // 1. Scaled Up & Cropped World Emblem on Right Side (28% opacity)
-      if (imageRef.current) {
-        ctx.save()
-        const img = imageRef.current
-        const imgW = img.naturalWidth || img.width || 1
-        const imgH = img.naturalHeight || img.height || 1
-        const aspect = imgW / imgH
-
-        const baseSize = Math.max(height * 1.6, width * 0.45)
-        let drawW = baseSize
-        let drawH = baseSize
-        if (aspect > 1) {
-          drawW = baseSize * aspect
-        } else {
-          drawH = baseSize / aspect
-        }
-
-        const imgX = width - drawW * 0.72
-        const imgY = height * 0.5 - drawH * 0.5
-
-        ctx.globalAlpha = 0.28
-        ctx.drawImage(img, imgX, imgY, drawW, drawH)
-
-        // Soft gradient mask so left edge blends into card
-        const maskGrad = ctx.createLinearGradient(width - drawW * 0.75, 0, width, 0)
-        maskGrad.addColorStop(0, 'rgba(15, 23, 42, 0.95)')
-        maskGrad.addColorStop(0.35, 'rgba(15, 23, 42, 0.25)')
-        maskGrad.addColorStop(1, 'rgba(15, 23, 42, 0)')
-        ctx.globalCompositeOperation = 'destination-out'
-        ctx.fillStyle = maskGrad
-        ctx.fillRect(0, 0, width, height)
-        ctx.restore()
-      }
-
-      // 2. Silver & Starlight Ambient Background Vignette
+      // Silver & Starlight Ambient Background Vignette
       const bgGrad = ctx.createLinearGradient(0, 0, width, height)
       bgGrad.addColorStop(0, 'rgba(241, 245, 249, 0.04)')
       bgGrad.addColorStop(0.6, 'rgba(148, 163, 184, 0.03)')
@@ -163,7 +110,7 @@ export default function WorldStreakBackgroundEffect({
       ctx.fillStyle = bgGrad
       ctx.fillRect(0, 0, width, height)
 
-      // 3. Floating Silver Sparkles
+      // Floating Silver Sparkles
       ctx.globalCompositeOperation = 'screen'
       for (const s of sparkles) {
         s.y += s.vy * (dt * 60)
@@ -217,10 +164,29 @@ export default function WorldStreakBackgroundEffect({
   }, [])
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 rounded-[inherit] z-0 overflow-hidden ${className || ''}`}
-    />
+    >
+      {emblemUrl && (
+        <div className="absolute right-0 top-0 bottom-0 w-3/4 flex items-center justify-end pointer-events-none select-none pr-2 overflow-hidden">
+          <img
+            src={emblemUrl}
+            alt="World Sigil"
+            className="h-[140%] max-h-[180px] w-auto max-w-[260px] object-contain opacity-40 filter drop-shadow-[0_0_16px_rgba(255,255,255,0.35)]"
+            style={{
+              maskImage: 'radial-gradient(ellipse at 70% 50%, black 65%, transparent 100%)',
+              WebkitMaskImage: 'radial-gradient(ellipse at 70% 50%, black 65%, transparent 100%)',
+            }}
+          />
+        </div>
+      )}
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 w-full h-full"
+      />
+    </div>
   )
 }
+

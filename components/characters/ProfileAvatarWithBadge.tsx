@@ -82,32 +82,63 @@ export default function ProfileAvatarWithBadge({
     xl: 'w-8 h-8 text-base -bottom-1.5 -left-1.5',
   }
 
+  const worldHaloSizeClasses = {
+    sm: '-inset-1.5',
+    md: '-inset-2',
+    lg: '-inset-2.5',
+    xl: '-inset-3.5',
+  }
+
+  const worldCrestSizeClasses = {
+    sm: 'w-4 h-4 -top-1 -right-1',
+    md: 'w-5 h-5 -top-1.5 -right-1.5',
+    lg: 'w-6 h-6 -top-2 -right-2',
+    xl: 'w-7 h-7 -top-2.5 -right-2.5',
+  }
+
   return (
     <div className="relative shrink-0 inline-flex items-center justify-center">
       {isWorldRing && (
         <div
-          className="absolute -inset-1 rounded-full overflow-hidden z-0 pointer-events-none p-0.5 bg-slate-900 border border-slate-300/50 shadow-[0_0_10px_rgba(203,213,225,0.4)]"
+          className={cn(
+            'absolute rounded-full overflow-hidden z-0 pointer-events-none p-0.5 bg-slate-950 border border-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.5)] flex items-center justify-center',
+            worldHaloSizeClasses[size]
+          )}
           title={worldRing ? `${worldRing.name} Sigil Ring` : 'World Sigil Ring'}
         >
           {worldEmblem ? (
             <img
               src={worldEmblem}
               alt={worldRing?.name || 'World Sigil'}
-              className="w-full h-full object-cover rounded-full opacity-90 scale-105"
+              className="w-full h-full object-cover rounded-full opacity-85 scale-110"
             />
           ) : (
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center text-[10px] text-slate-300 font-bold">
-              ✨
-            </div>
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500/20 via-slate-900 to-amber-900/30" />
           )}
-          <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/30" />
+          <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-amber-300/40" />
+        </div>
+      )}
+
+      {isWorldRing && worldEmblem && (
+        <div
+          className={cn(
+            'absolute rounded-full z-20 bg-slate-950 border border-amber-400/90 shadow-[0_0_8px_rgba(245,158,11,0.6)] flex items-center justify-center overflow-hidden p-0.5 pointer-events-none select-none',
+            worldCrestSizeClasses[size]
+          )}
+          title={worldRing ? `${worldRing.name} Sigil` : 'World Sigil'}
+        >
+          <img
+            src={worldEmblem}
+            alt={worldRing?.name || 'World Sigil'}
+            className="w-full h-full object-contain"
+          />
         </div>
       )}
 
       <div
         className={cn(
           'rounded-full shrink-0 flex items-center justify-center relative z-10 overflow-hidden',
-          isWorldRing && 'p-[2px]',
+          isWorldRing && 'p-[1.5px] ring-2 ring-amber-400/90 ring-offset-1 ring-offset-slate-950',
           sizeClasses[size],
           ringClass
         )}

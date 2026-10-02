@@ -267,7 +267,7 @@ export const BORDER_SHAPE_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'quest_beacon_border',
-    name: 'Radiant Quest Beacon Border ❗',
+    name: 'Radiant Quest Beacon Border',
     unlockedByDefault: false,
     requiredAchievementId: 'create_character_quest',
     value: 'rounded-lg quest-beacon-border',
@@ -275,7 +275,7 @@ export const BORDER_SHAPE_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'jackpot_border',
-    name: 'Lucky Jackpot Neon Border 🎰',
+    name: 'Lucky Jackpot Neon Border',
     unlockedByDefault: false,
     requiredAchievementId: 'black_void_bet_win',
     value: 'rounded-lg jackpot-card-border',
@@ -287,7 +287,7 @@ export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
   { id: 'default', name: 'Default Ring', unlockedByDefault: true, value: 'border border-border' },
   {
     id: 'sprout_ring',
-    name: 'Newbie Sprout Ring 🌱',
+    name: 'Newbie Sprout Ring',
     unlockedByDefault: false,
     requiredAchievementId: 'first_character',
     value: 'sprout-avatar-ring',
@@ -295,7 +295,7 @@ export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'compass_ring',
-    name: 'Compass Rose Ring 🧭',
+    name: 'Compass Rose Ring',
     unlockedByDefault: false,
     requiredAchievementId: 'worlds_played_3',
     value: 'compass-avatar-ring',
@@ -303,7 +303,7 @@ export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'multiverse_compass_ring',
-    name: 'Multiverse Astrolabe Ring 🌌',
+    name: 'Multiverse Astrolabe Ring',
     unlockedByDefault: false,
     requiredAchievementId: 'worlds_played_5',
     value: 'multiverse-compass-avatar-ring',
@@ -311,7 +311,7 @@ export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'laurel_spirit_ring',
-    name: 'Silver Laurel Twig Ring 🌿',
+    name: 'Silver Laurel Twig Ring',
     unlockedByDefault: false,
     requiredAchievementId: 'give_1_commendation',
     value: 'laurel-spirit-avatar-ring',
@@ -319,7 +319,7 @@ export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'laurel_patron_ring',
-    name: 'Silver Laurel Circlet Ring 🌿',
+    name: 'Silver Laurel Circlet Ring',
     unlockedByDefault: false,
     requiredAchievementId: 'give_5_commendations',
     value: 'laurel-patron-avatar-ring',
@@ -327,7 +327,7 @@ export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'laurel_ring',
-    name: 'Grand Silver Laurel Wreath Ring 🌿',
+    name: 'Grand Silver Laurel Wreath Ring',
     unlockedByDefault: false,
     requiredAchievementId: 'give_10_commendations',
     value: 'laurel-avatar-ring',
@@ -375,40 +375,41 @@ export const PROFILE_BORDER_OPTIONS: CosmeticOption[] = [
   },
   {
     id: 'comm_roleplay',
-    name: 'Roleplay Badge (🎭)',
+    name: 'Roleplay Badge',
     unlockedByDefault: false,
     requiredAchievementId: 'comm_roleplay',
     value: 'comm-roleplay-badge',
   },
   {
     id: 'comm_tactics',
-    name: 'Tactics Badge (⚔️)',
+    name: 'Tactics Badge',
     unlockedByDefault: false,
     requiredAchievementId: 'comm_tactics',
     value: 'comm-tactics-badge',
   },
   {
     id: 'comm_clutch',
-    name: 'Clutch Badge (🛡️)',
+    name: 'Clutch Badge',
     unlockedByDefault: false,
     requiredAchievementId: 'comm_clutch',
     value: 'comm-clutch-badge',
   },
   {
     id: 'comm_heroic',
-    name: 'Heroic Badge (🌟)',
+    name: 'Heroic Badge',
     unlockedByDefault: false,
     requiredAchievementId: 'comm_heroic',
     value: 'comm-heroic-badge',
   },
   {
     id: 'gm_favor',
-    name: 'GM Favor Badge (👑)',
+    name: 'GM Favor Badge',
     unlockedByDefault: false,
     requiredAchievementId: 'gm_favor',
     value: 'comm-gm-badge',
   },
 ]
+
 
 export const BG_COLOR_OPTIONS: CosmeticOption[] = [
   { id: 'default', name: 'Default Tint', unlockedByDefault: true, value: '' },
@@ -569,6 +570,8 @@ export function resolveCosmeticsStyles(cosmetics?: CharacterCosmetics | null) {
       const starlightPaddingLayer =
         'radial-gradient(ellipse at 80% 50%, rgba(226, 232, 240, 0.16) 0%, rgba(148, 163, 184, 0.08) 50%, transparent 80%), linear-gradient(var(--card), var(--card))'
       cardBgStyle = { '--card-bg': starlightPaddingLayer } as React.CSSProperties
+    } else {
+      cardClassName = cardClassName ? `${cardClassName} bg-slate-950/80` : 'bg-slate-950/80'
     }
   } else if (bgObj?.value === 'gold-bg-tint' || cosmetics.bgColor === 'gold_tint' || cosmetics.bgColor === 'gold-bg-tint') {
     if (isGradientBorder) {
