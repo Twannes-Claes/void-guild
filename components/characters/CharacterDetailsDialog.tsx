@@ -41,6 +41,7 @@ import {
   Crown,
   Shield,
   Users,
+  Heart,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { track } from '@vercel/analytics'
@@ -516,19 +517,44 @@ export default function CharacterDetailsDialog({
                 </div>
 
                 <div className="p-3.5 rounded-lg bg-card/60 border border-border/70 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-purple-500/15 border border-purple-500/30 flex items-center justify-center shrink-0">
-                    <Flame className="h-5 w-5 text-purple-400" />
+                  <div className="h-10 w-10 rounded-full bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 overflow-hidden">
+                    {profile.bestFriend?.avatarUrl ? (
+                      <img
+                        src={profile.bestFriend.avatarUrl}
+                        alt={profile.bestFriend.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Heart className="h-5 w-5 text-rose-400 fill-rose-400/20" />
+                    )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      Session Attendance
+                      Best Friend
                     </div>
-                    <div className="text-sm font-bold text-foreground">
-                      {profile.streaks?.attendanceStreak || 0} sessions
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Total attended: {profile.sessions.length} sessions
-                    </div>
+                    {profile.bestFriend ? (
+                      <div>
+                        <div className="text-sm font-bold text-foreground truncate">
+                          {profile.bestFriend.name}
+                          <span className="text-xs font-normal text-muted-foreground ml-1.5">
+                            (Lvl {profile.bestFriend.lvl}
+                            {profile.bestFriend.class ? ` ${profile.bestFriend.class}` : ''})
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-rose-300/80 font-medium">
+                          {profile.bestFriend.sharedSessionsCount} shared session{profile.bestFriend.sharedSessionsCount !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-sm font-bold text-muted-foreground">
+                          No companions yet
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Play sessions with others to forge bonds
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

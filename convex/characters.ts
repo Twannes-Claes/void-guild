@@ -732,6 +732,60 @@ export const getCharacterProfile = query({
       if (w) worldMap.set(w._id, w.name)
     })
 
+    // Calculate "Best Friend" / Most played with companion:
+    // Count how many locked sessions this character attended together with each other character (excluding GM character)
+    const companionCounts = new Map<string, number>()
+    for (const s of lockedAttendedSessions) {
+      if (!Array.isArray(s.characters)) continue
+      const gmCharId = s.gmCharacter ? s.gmCharacter.toString() : null
+      for (const charId of s.characters) {
+        const charIdStr = charId.toString()
+        // Do not count oneself, and do not count the GM character
+        if (charIdStr === args.characterId || charIdStr === gmCharId) continue
+        companionCounts.set(charIdStr, (companionCounts.get(charIdStr) || 0) + 1)
+      }
+    }
+
+    let bestFriend: {
+      _id: Id<'characters'>
+      name: string
+      lvl: number
+      class?: string
+      ancestry?: string
+      sharedSessionsCount: number
+      avatarUrl?: string
+    } | null = null
+
+    if (companionCounts.size > 0) {
+      let topCharId: string | null = null
+      let topCount = 0
+      for (const [cId, count] of companionCounts.entries()) {
+        if (count > topCount) {
+          topCount = count
+          topCharId = cId
+        }
+      }
+      if (topCharId && topCount > 0) {
+        const friendDoc = await ctx.db.get(topCharId as Id<'characters'>)
+        if (friendDoc) {
+          const friendOwner = await ctx.db
+            .query('users')
+            .withIndex('by_userId', (q) => q.eq('userId', friendDoc.userId))
+            .first()
+
+          bestFriend = {
+            _id: friendDoc._id,
+            name: friendDoc.name,
+            lvl: friendDoc.lvl,
+            class: friendDoc.class,
+            ancestry: friendDoc.ancestry,
+            sharedSessionsCount: topCount,
+            avatarUrl: friendDoc.cosmetics?.avatarUrl || friendOwner?.imageUrl,
+          }
+        }
+      }
+    }
+
     if (lockedAttendedSessions.length > 0) {
       const latest = lockedAttendedSessions[lockedAttendedSessions.length - 1]
       if (latest.world) {
@@ -825,6 +879,7 @@ export const getCharacterProfile = query({
         currentWorldName,
         attendanceStreak,
       },
+      bestFriend,
       sessions: sessionsWithContext,
     }
   },
