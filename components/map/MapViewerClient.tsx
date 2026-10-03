@@ -766,6 +766,15 @@ export default function MapViewerClient() {
   const gridType = currentMap?.gridType || 'none'
   const isExplorationMap = currentMap?.isExplorationMap || false
 
+  // Automatically deactivate ruler tool if no grid is configured on the map
+  useEffect(() => {
+    if (gridType === 'none' && activeTool === 'ruler') {
+      setActiveTool('view')
+      setRulerPoints(null)
+      setIsMeasuring(false)
+    }
+  }, [gridType, activeTool])
+
   const revealedSet = useMemo(() => {
     return new Set(currentMap?.revealedCells || [])
   }, [currentMap?.revealedCells])
@@ -821,7 +830,7 @@ export default function MapViewerClient() {
 
   // Distance Measurement Calculation
   const getRulerDistance = () => {
-    if (!rulerPoints) return null
+    if (!rulerPoints || gridType === 'none') return null
     const dx = rulerPoints.current.x - rulerPoints.start.x
     const dy = rulerPoints.current.y - rulerPoints.start.y
     const pixelDist = Math.hypot(dx, dy)
@@ -1538,25 +1547,27 @@ export default function MapViewerClient() {
           </Button>
 
           {/* RULER MEASURE BUTTON */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`h-9 gap-1.5 bg-slate-950 dark:bg-slate-950 text-slate-100 hover:text-white hover:bg-slate-900 dark:hover:bg-slate-900 border border-slate-700/80 shadow-xl backdrop-blur-md ${
-              activeTool === 'ruler' ? 'text-cyan-400 border-cyan-500/80 bg-slate-900 dark:bg-slate-900 ring-2 ring-cyan-500/60' : ''
-            }`}
-            onClick={() => {
-              if (activeTool === 'ruler') {
-                setActiveTool('view')
-                setRulerPoints(null)
-              } else {
-                setActiveTool('ruler')
-              }
-            }}
-            title="Measure Distance (Ruler)"
-          >
-            <Ruler className="h-4 w-4 text-cyan-400" />
-            <span className="hidden sm:inline font-medium">Ruler</span>
-          </Button>
+          {gridType !== 'none' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-9 gap-1.5 bg-slate-950 dark:bg-slate-950 text-slate-100 hover:text-white hover:bg-slate-900 dark:hover:bg-slate-900 border border-slate-700/80 shadow-xl backdrop-blur-md ${
+                activeTool === 'ruler' ? 'text-cyan-400 border-cyan-500/80 bg-slate-900 dark:bg-slate-900 ring-2 ring-cyan-500/60' : ''
+              }`}
+              onClick={() => {
+                if (activeTool === 'ruler') {
+                  setActiveTool('view')
+                  setRulerPoints(null)
+                } else {
+                  setActiveTool('ruler')
+                }
+              }}
+              title="Measure Distance (Ruler)"
+            >
+              <Ruler className="h-4 w-4 text-cyan-400" />
+              <span className="hidden sm:inline font-medium">Ruler</span>
+            </Button>
+          )}
 
           {/* LAYERS TOGGLE */}
           <Button
@@ -1655,22 +1666,6 @@ export default function MapViewerClient() {
             title="Draw Polygon Area"
           >
             <Plus className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={activeTool === 'ruler' ? 'secondary' : 'ghost'}
-            size="icon"
-            className={`h-9 w-9 ${activeTool === 'ruler' ? 'bg-slate-800 text-cyan-300 ring-1 ring-cyan-500/50' : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-900'}`}
-            onClick={() => {
-              if (activeTool === 'ruler') {
-                setActiveTool('view')
-                setRulerPoints(null)
-              } else {
-                setActiveTool('ruler')
-              }
-            }}
-            title="Measure Distance (Ruler)"
-          >
-            <Ruler className="h-4 w-4" />
           </Button>
           {gridType !== 'none' && (
             <Button

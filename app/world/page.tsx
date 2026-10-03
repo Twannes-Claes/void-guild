@@ -67,9 +67,19 @@ export default function WorldsListPage() {
                 <Card className="hover:bg-muted/50 transition-colors group">
                   <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 gap-2">
                     <Link href={`/world/${encodeURIComponent(world.name)}`} className="flex items-center gap-3 flex-grow min-w-0">
-                      <div className="bg-primary/10 p-2 rounded-full shrink-0">
-                        <Globe className="h-5 w-5 text-primary" />
-                      </div>
+                      {world.emblemUrl ? (
+                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                          <img
+                            src={world.emblemUrl}
+                            alt={world.name}
+                            className="max-h-10 max-w-10 w-auto h-auto object-contain drop-shadow"
+                          />
+                        </div>
+                      ) : (
+                        <div className="bg-primary/10 p-2 rounded-full shrink-0">
+                          <Globe className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <CardTitle className="text-xl group-hover:text-primary transition-colors truncate">
                           {world.name}
