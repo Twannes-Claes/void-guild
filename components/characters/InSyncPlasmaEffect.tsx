@@ -37,15 +37,14 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
     const resize = () => {
       const parent = canvas.parentElement
       if (!parent) return
-      const rect = parent.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
-      width = rect.width
-      height = rect.height
+      width = parent.offsetWidth || canvas.clientWidth || 0
+      height = parent.offsetHeight || canvas.clientHeight || 0
 
       canvas.width = Math.round((width + padding * 2) * dpr)
       canvas.height = Math.round((height + padding * 2) * dpr)
-      canvas.style.width = `${width + padding * 2}px`
-      canvas.style.height = `${height + padding * 2}px`
+      canvas.style.width = `calc(100% + ${padding * 2}px)`
+      canvas.style.height = `calc(100% + ${padding * 2}px)`
       canvas.style.left = `${-padding}px`
       canvas.style.top = `${-padding}px`
 
@@ -172,6 +171,14 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
     const render = (now: number) => {
       animationFrameId = requestAnimationFrame(render)
       if (!isVisible) return
+
+      if (canvas.parentElement) {
+        const curW = canvas.parentElement.offsetWidth
+        const curH = canvas.parentElement.offsetHeight
+        if (curW > 0 && curH > 0 && (Math.abs(curW - width) > 1 || Math.abs(curH - height) > 1)) {
+          resize()
+        }
+      }
 
       const elapsed = (now - startTime) * 0.001
 

@@ -62,13 +62,13 @@ export default function PhantomSmokeEffect({ className }: { className?: string }
         typeof window !== 'undefined' &&
         (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
       const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
-      width = rect.width
-      height = rect.height
+      width = parent.offsetWidth || canvas.clientWidth || rect.width
+      height = parent.offsetHeight || canvas.clientHeight || rect.height
 
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
-      canvas.style.width = `${width}px`
-      canvas.style.height = `${height}px`
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.scale(dpr, dpr)
@@ -102,6 +102,14 @@ export default function PhantomSmokeEffect({ className }: { className?: string }
     const render = (now: number) => {
       animationFrameId = requestAnimationFrame(render)
       if (!isVisible) return
+
+      if (canvas.parentElement) {
+        const curW = canvas.parentElement.offsetWidth
+        const curH = canvas.parentElement.offsetHeight
+        if (curW > 0 && curH > 0 && (Math.abs(curW - width) > 1 || Math.abs(curH - height) > 1)) {
+          resize()
+        }
+      }
 
       const dt = Math.min((now - lastTime) * 0.001, 0.1)
       lastTime = now
@@ -182,7 +190,7 @@ export default function PhantomSmokeEffect({ className }: { className?: string }
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 rounded-[inherit] z-0 overflow-hidden ${className || ''}`}
+      className={`pointer-events-none absolute inset-0 w-full h-full rounded-[inherit] z-0 overflow-hidden ${className || ''}`}
     />
   )
 }

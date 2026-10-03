@@ -230,13 +230,13 @@
 @keyframes page-in {
   from {
     opacity: 0;
-    filter: blur(8px);
-    transform: scale(0.98) translateY(10px);
+    filter: blur(4px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     filter: blur(0);
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 

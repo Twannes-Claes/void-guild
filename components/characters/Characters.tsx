@@ -163,7 +163,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                 </p>
               </div>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-2 w-full">
                 {characters.map((character) => {
                   const cosmetics = resolveCosmeticsStyles(character.cosmetics)
                   const isSpecialBorder =
@@ -184,7 +184,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
                     <li
                       key={character._id}
                       className={cn(
-                        'flex flex-col cursor-pointer p-3 rounded-md transition-all relative overflow-visible',
+                        'w-full flex flex-col cursor-pointer p-3 rounded-md transition-all relative overflow-visible',
                         isSpecialBorder ? 'hover:brightness-110' : 'hover:bg-muted/50 border border-transparent',
                         cosmetics.cardClassName
                       )}
