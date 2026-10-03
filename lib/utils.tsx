@@ -200,7 +200,10 @@ export function getWorldWikiUrl(worldName: string): string {
 }
 
 export function getSessionWikiUrl(date: Date | number | string | null | undefined, worldName: string): string {
-  const dateStr = date ? new Date(date).toISOString().slice(0, 10) : 'tbd'
+  if (!date) {
+    return getWorldWikiUrl(worldName)
+  }
+  const dateStr = new Date(date).toISOString().slice(0, 10)
   const worldSlug = (worldName || 'unknown').toLowerCase().trim().replace(/\s+/g, '-')
   return `https://void.tarragon.be/notes/${dateStr}-${worldSlug}`
 }

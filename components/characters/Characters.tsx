@@ -370,7 +370,7 @@ export default function Characters({ filters }: { filters?: { pf: boolean; dnd: 
             <div className="flex items-center gap-2 mt-4">
               <CreateCharacter />
               <a
-                href="https://void.tarragon.be/_META/_getting_started"
+                href="https://void.tarragon.be/notes/getting-started"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => {

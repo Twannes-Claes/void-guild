@@ -797,11 +797,14 @@ export const closeSessionThread = internalAction({
 });
 
 /**
- * Action to register all Discord slash commands with Discord API.
+ * Action to register Discord slash commands and clean up duplicates.
+ * Discord shows duplicates if commands exist at both Global and Guild levels.
  */
 export const registerSlashCommands = action({
-  args: {},
-  handler: async () => {
+  args: {
+    scope: v.optional(v.union(v.literal("guild"), v.literal("global"))),
+  },
+  handler: async (ctx, args) => {
     const botToken = process.env.DISCORD_BOT_TOKEN;
     const appId = process.env.DISCORD_APPLICATION_ID || "1479506068185944226";
     const guildId = process.env.DISCORD_GUILD_ID || "878674783972261918";
@@ -809,6 +812,8 @@ export const registerSlashCommands = action({
     if (!botToken) {
       throw new Error("DISCORD_BOT_TOKEN is not configured.");
     }
+
+    const scope = args.scope || "guild";
 
     const commands = [
       {
@@ -936,14 +941,12 @@ export const registerSlashCommands = action({
       }
     ];
 
-    const endpoints = [
-      guildId ? `https://discord.com/api/v10/applications/${appId}/guilds/${guildId}/commands` : null,
-      `https://discord.com/api/v10/applications/${appId}/commands`,
-    ].filter(Boolean) as string[];
-
     const results = [];
-    for (const url of endpoints) {
-      const res = await fetch(url, {
+
+    if (scope === "guild") {
+      // 1. Set commands on guild
+      const guildUrl = `https://discord.com/api/v10/applications/${appId}/guilds/${guildId}/commands`;
+      const guildRes = await fetch(guildUrl, {
         method: 'PUT',
         headers: {
           Authorization: `Bot ${botToken}`,
@@ -951,9 +954,43 @@ export const registerSlashCommands = action({
         },
         body: JSON.stringify(commands),
       });
+      results.push({ action: 'set_guild_commands', status: guildRes.status, ok: guildRes.ok, body: await guildRes.text() });
 
-      const body = await res.text();
-      results.push({ url, status: res.status, ok: res.ok, body });
+      // 2. Clear global commands to remove duplicates
+      const globalUrl = `https://discord.com/api/v10/applications/${appId}/commands`;
+      const globalRes = await fetch(globalUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([]),
+      });
+      results.push({ action: 'clear_global_commands', status: globalRes.status, ok: globalRes.ok, body: await globalRes.text() });
+    } else {
+      // 1. Set global commands
+      const globalUrl = `https://discord.com/api/v10/applications/${appId}/commands`;
+      const globalRes = await fetch(globalUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(commands),
+      });
+      results.push({ action: 'set_global_commands', status: globalRes.status, ok: globalRes.ok, body: await globalRes.text() });
+
+      // 2. Clear guild commands to remove duplicates
+      const guildUrl = `https://discord.com/api/v10/applications/${appId}/guilds/${guildId}/commands`;
+      const guildRes = await fetch(guildUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([]),
+      });
+      results.push({ action: 'clear_guild_commands', status: guildRes.status, ok: guildRes.ok, body: await guildRes.text() });
     }
 
     return results;

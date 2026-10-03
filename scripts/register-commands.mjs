@@ -141,7 +141,20 @@ async function registerCommands() {
   });
 
   if (response.ok) {
-    console.log('Successfully registered Discord slash commands!');
+    console.log(`Successfully registered Discord commands (${GUILD_ID ? 'Guild scope' : 'Global scope'})!`);
+    // Clear opposite scope to remove duplicates
+    if (GUILD_ID) {
+      console.log('Clearing old global commands to eliminate duplicates...');
+      await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bot ${BOT_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([]),
+      });
+      console.log('Cleaned up global duplicates.');
+    }
   } else {
     console.error('Error registering command:', await response.text());
   }

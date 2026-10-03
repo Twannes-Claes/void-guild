@@ -5,10 +5,11 @@ import { api } from '@/convex/_generated/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ChevronLeft, Globe, ChevronRight } from 'lucide-react'
+import { ChevronLeft, Globe, ChevronRight, Book } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMemo } from 'react'
 import { UserMetadata } from '@/app/stats/actions'
+import { getWorldWikiUrl } from '@/lib/utils'
 
 export default function WorldsListPage() {
   const worlds = useQuery(api.worlds.listAllWorlds)
@@ -62,26 +63,42 @@ export default function WorldsListPage() {
           worlds.map((world) => {
             const ownerName = userMetadata[world.owner]?.name || `User ${world.owner.slice(-4)}`
             return (
-              <Link key={world._id} href={`/world/${encodeURIComponent(world.name)}`}>
-                <Card className="hover:bg-muted/50 transition-colors cursor-pointer group">
-                  <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 p-2 rounded-full">
+              <div key={world._id} className="relative group">
+                <Card className="hover:bg-muted/50 transition-colors group">
+                  <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 gap-2">
+                    <Link href={`/world/${encodeURIComponent(world.name)}`} className="flex items-center gap-3 flex-grow min-w-0">
+                      <div className="bg-primary/10 p-2 rounded-full shrink-0">
                         <Globe className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                      <div className="min-w-0">
+                        <CardTitle className="text-xl group-hover:text-primary transition-colors truncate">
                           {world.name}
                         </CardTitle>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                           Owned by <span className="font-medium text-foreground">{ownerName}</span>
                         </p>
                       </div>
+                    </Link>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <a
+                        href={getWorldWikiUrl(world.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        title="Open World Wiki"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
+                      >
+                        <Book className="h-4 w-4" />
+                      </a>
+                      <Link href={`/world/${encodeURIComponent(world.name)}`} className="p-1">
+                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors translate-x-0 group-hover:translate-x-1 duration-200" />
+                      </Link>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors translate-x-0 group-hover:translate-x-1 duration-200" />
                   </CardHeader>
                 </Card>
-              </Link>
+              </div>
             )
           })
         )}
