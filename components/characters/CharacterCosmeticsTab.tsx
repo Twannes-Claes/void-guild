@@ -48,6 +48,7 @@ import {
   ACHIEVEMENT_INFO,
   getLockedCosmeticsEquipped,
 } from '@/lib/cosmetics'
+import { optimizeImageForUpload } from '@/lib/imageUtils'
 
 interface CharacterCosmeticsTabProps {
   characterId?: string
@@ -139,31 +140,53 @@ export default function CharacterCosmeticsTab({
       return
     }
 
+    // Quick file type check
     if (!file.type.startsWith('image/')) {
       toast.error('Please select an image file (PNG, JPG, WEBP, etc.)')
       return
     }
 
-    // Max 10MB file check before sending
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image size must be less than 10MB')
-      return
-    }
-
     setIsUploadingAvatar(true)
-    const toastId = toast.loading('Uploading character portrait to Void Wiki...')
+    const toastId = toast.loading('Preparing & uploading portrait to Void Wiki...')
     try {
+      // Optimize & downscale if needed to keep comfortably under serverless limits
+      const optimized = await optimizeImageForUpload(file)
+
+      // Ensure optimized file is under 4.5MB (Vercel payload limit)
+      if (optimized.file.size > 4.5 * 1024 * 1024) {
+        throw new Error('Image is too large to upload (maximum 4.5MB). Please select a smaller or cropped image.')
+      }
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', optimized.file, optimized.filename)
 
       const res = await fetch('/api/upload-avatar', {
         method: 'POST',
         body: formData,
       })
 
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to upload avatar')
+      const contentType = res.headers.get('content-type') || ''
+      let data: any = null
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json()
+        } catch {
+          data = null
+        }
+      }
+
+      if (!res.ok || !data?.success) {
+        if (res.status === 413) {
+          throw new Error('Image file is too large for upload (maximum 4.5MB).')
+        }
+        let fallbackMessage = `Upload failed (Status ${res.status})`
+        if (!data) {
+          const text = await res.text().catch(() => '')
+          if (text) {
+            fallbackMessage = text.length > 120 ? `${text.slice(0, 120)}...` : text
+          }
+        }
+        throw new Error(data?.error || fallbackMessage)
       }
 
       const fullUrl = data.fullUrl || `https://void.tarragon.be${data.url}`
@@ -173,7 +196,7 @@ export default function CharacterCosmeticsTab({
       }))
       toast.success('Character portrait updated successfully!', { id: toastId })
     } catch (err: any) {
-      console.error(err)
+      console.error('Avatar upload error:', err)
       toast.error(err.message || 'Error uploading image', { id: toastId })
     } finally {
       setIsUploadingAvatar(false)

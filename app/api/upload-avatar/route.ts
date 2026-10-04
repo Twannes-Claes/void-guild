@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -22,7 +24,8 @@ export async function POST(req: NextRequest) {
 
     // Forward to void.tarragon.be
     const uploadFormData = new FormData()
-    uploadFormData.append('file', file, file.name)
+    const fileName = file.name || 'avatar.png'
+    uploadFormData.append('file', file, fileName)
 
     const apiKey = process.env.VOID_WIKI_API_KEY
     if (!apiKey) {
@@ -41,11 +44,31 @@ export async function POST(req: NextRequest) {
       body: uploadFormData,
     })
 
+    const contentType = response.headers.get('content-type') || ''
+
     if (!response.ok) {
-      const errData = await response.json().catch(() => ({ error: 'Upload failed' }))
+      let errorMessage = 'Failed to upload image to Void Wiki'
+      if (contentType.includes('application/json')) {
+        const errData = await response.json().catch(() => null)
+        if (errData?.error) errorMessage = errData.error
+      } else {
+        const text = await response.text().catch(() => '')
+        if (text) {
+          errorMessage = `Wiki error (${response.status}): ${text.slice(0, 100).trim()}`
+        }
+      }
       return NextResponse.json(
-        { error: errData.error || 'Failed to upload image to Void Wiki' },
-        { status: response.status }
+        { error: errorMessage },
+        { status: response.status === 413 ? 400 : (response.status >= 400 && response.status < 600 ? response.status : 500) }
+      )
+    }
+
+    if (!contentType.includes('application/json')) {
+      const text = await response.text().catch(() => '')
+      console.error('Unexpected non-JSON response from Void Wiki:', text)
+      return NextResponse.json(
+        { error: 'Invalid response format received from Void Wiki' },
+        { status: 502 }
       )
     }
 
