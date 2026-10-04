@@ -758,10 +758,13 @@ export const getInternalSessionDetails = internalQuery({
       .withIndex('by_worldId', (q) => q.eq('worldId', session.world))
       .collect();
     
-    const worldlessQuests = await ctx.db
-      .query('quests')
-      .withIndex('by_worldId', (q) => q.eq('worldId', undefined))
-      .collect();
+    // Fetch worldless / global quests
+    const allQuests = await ctx.db.query('quests').collect();
+    const worldlessQuests = allQuests.filter((q) => !q.worldId);
+
+    const questMap = new Map<string, typeof quests[0]>();
+    for (const q of quests) questMap.set(q._id, q);
+    for (const q of worldlessQuests) questMap.set(q._id, q);
 
     let selectedQuest = null;
     if (session.questId && !session.isIntro) {
@@ -772,7 +775,26 @@ export const getInternalSessionDetails = internalQuery({
         }
     }
 
-    const availableQuests = [...quests, ...worldlessQuests].filter(q => !q.isHidden && !q.isCompleted && !q.isSuggested);
+    const availableQuests = Array.from(questMap.values()).filter(
+      (q) => !q.isHidden && !q.isCompleted && !q.isSuggested
+    );
+
+    // Sort quests lowest level first based on the session's system (PF vs DnD)
+    const sortedQuests = availableQuests.sort((a, b) => {
+      const getLvl = (q: any) => {
+        if (session.system === 'PF') {
+          return q.levelPF ?? (q.levelDnD === undefined ? q.level : undefined) ?? 999;
+        } else {
+          return q.levelDnD ?? (q.levelPF === undefined ? q.level : undefined) ?? 999;
+        }
+      };
+      const aLvl = getLvl(a);
+      const bLvl = getLvl(b);
+      if (aLvl !== bLvl) {
+        return aLvl - bLvl;
+      }
+      return a.name.localeCompare(b.name);
+    });
 
     return {
       ...session,
@@ -783,7 +805,7 @@ export const getInternalSessionDetails = internalQuery({
       gmDiscordId: gmUser?.discordId || null,
       gmName: gmUser?.name || gmUser?.username || null,
       gmCharacterName: gmCharacter?.name || null,
-      quests: availableQuests,
+      quests: sortedQuests,
       selectedQuest,
     };
   },
