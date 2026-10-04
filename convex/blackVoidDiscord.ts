@@ -2,42 +2,53 @@ import { internalAction, internalMutation, internalQuery } from "./_generated/se
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { FunctionReturnType } from "convex/server";
 import { DISCORD_API_BASE } from "./discordHelpers";
+import { bustChance } from "./deathroll";
 
 const DEFAULT_BV_CHANNEL_ID = "1547741552649048125";
 
 /**
- * Sends a message or embed payload to the #black-void Discord channel.
+ * Calls the Discord REST API with the bot token. Returns the parsed JSON body, or null on failure.
  */
-async function sendDiscordBlackVoidMessage(payload: any) {
+async function discordRequest(path: string, method: "POST" | "PATCH", body: unknown): Promise<{ id: string } | null> {
   const botToken = process.env.DISCORD_BOT_TOKEN;
-  const channelId = process.env.DISCORD_BV_CHANNEL_ID || DEFAULT_BV_CHANNEL_ID;
 
   if (!botToken) {
     console.warn("Discord bot token not configured.");
-    return false;
+    return null;
   }
 
   try {
-    const res = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
-      method: "POST",
+    const res = await fetch(`${DISCORD_API_BASE}${path}`, {
+      method,
       headers: {
         Authorization: `Bot ${botToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error(`Discord API error in #black-void (${res.status}):`, errText);
-      return false;
+      console.error(`Discord API error on ${method} ${path} (${res.status}):`, errText);
+      return null;
     }
-    return true;
+    return await res.json();
   } catch (err) {
-    console.error("Failed to send Discord message to #black-void:", err);
-    return false;
+    console.error(`Failed Discord request ${method} ${path}:`, err);
+    return null;
   }
+}
+
+/**
+ * Sends a message or embed payload to the #black-void Discord channel.
+ * Returns the created message ID, or null if it could not be sent.
+ */
+async function sendDiscordBlackVoidMessage(payload: any): Promise<string | null> {
+  const channelId = process.env.DISCORD_BV_CHANNEL_ID || DEFAULT_BV_CHANNEL_ID;
+  const msg = await discordRequest(`/channels/${channelId}/messages`, "POST", payload);
+  return msg?.id ?? null;
 }
 
 /**
@@ -90,19 +101,187 @@ export const getBetNotificationDetails = internalQuery({
     if (!bet) return null;
 
     const sender = await ctx.db.get(bet.senderCharacterId);
+    const accepter = bet.acceptedByCharacterId ? await ctx.db.get(bet.acceptedByCharacterId) : null;
+    const senderName = sender?.name || "Unknown Character";
+    const accepterName = accepter?.name || "Unknown Character";
+    const nameOf = (id?: Id<"characters">) => (id === bet.senderCharacterId ? senderName : accepterName);
+
     return {
       _id: bet._id,
       senderCharacterId: bet.senderCharacterId,
-      senderName: sender?.name || "Unknown Character",
+      senderName,
       senderLvl: sender?.lvl,
       senderClass: sender?.class,
+      accepterName: accepter ? accepterName : null,
+      accepterLvl: accepter?.lvl,
       wagerAmount: bet.wagerAmount,
       deathrollValue: bet.deathrollValue,
       message: bet.message,
       targetCharacterId: bet.targetCharacterId,
+      status: bet.status,
+      currentRollMax: bet.currentRollMax ?? bet.deathrollValue,
+      currentTurnName: bet.currentTurnCharacterId ? nameOf(bet.currentTurnCharacterId) : null,
+      turnDeadline: bet.turnDeadline,
+      rolls: (bet.rolls || []).map((r) => ({
+        name: nameOf(r.characterId),
+        isSender: r.characterId === bet.senderCharacterId,
+        roll: r.roll,
+        outOf: r.outOf,
+      })),
+      winnerName: bet.winnerCharacterId ? nameOf(bet.winnerCharacterId) : null,
+      loserName: bet.loserCharacterId ? nameOf(bet.loserCharacterId) : null,
+      lossReason: bet.lossReason,
+      discordMessageId: bet.discordMessageId,
+      discordThreadId: bet.discordThreadId,
     };
   },
 });
+
+/**
+ * Stores the Discord invite post and/or play-by-play thread IDs on a bet.
+ */
+export const setBetDiscordIds = internalMutation({
+  args: {
+    betId: v.id("blackVoidBets"),
+    discordMessageId: v.optional(v.string()),
+    discordThreadId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { betId, ...ids } = args;
+    await ctx.db.patch(betId, ids);
+  },
+});
+
+type BetDetails = NonNullable<FunctionReturnType<typeof internal.blackVoidDiscord.getBetNotificationDetails>>;
+
+const BET_COLORS = {
+  open: 0xf59e0b, // Amber
+  live: 0xef4444, // Red
+  won: 0x10b981, // Emerald
+  withdrawn: 0x6b7280, // Grey
+  challenger: 0x8b5cf6, // Purple
+  opponent: 0x06b6d4, // Cyan
+};
+
+function rollPath(details: BetDetails): string {
+  const values = [details.deathrollValue, ...details.rolls.map((r) => r.roll)];
+  // Discord caps descriptions, so very long duels show only the most recent rolls
+  const shown = values.length > 20 ? values.slice(-20) : values;
+  const path = shown.map((v) => v.toLocaleString()).join(" → ");
+  return values.length > 20 ? `… → ${path}` : path;
+}
+
+function discordTime(ms: number): string {
+  return `<t:${Math.floor(ms / 1000)}:R>`;
+}
+
+/**
+ * Builds the #black-void invite embed for a bet's current state, so the original post doubles as a
+ * live scoreboard.
+ */
+function buildBetEmbed(details: BetDetails, betsUrl: string) {
+  const base = {
+    url: betsUrl,
+    timestamp: new Date().toISOString(),
+    footer: { text: "Black Void • Deathroll" },
+  };
+
+  if (details.status === "cancelled") {
+    return {
+      ...base,
+      title: `🚫 Deathroll withdrawn · ${details.wagerAmount} GP`,
+      description: `**${details.senderName}** cancelled this bet.`,
+      color: BET_COLORS.withdrawn,
+    };
+  }
+
+  if (details.status === "completed") {
+    const outcome = details.lossReason === "timeout"
+      ? `**${details.loserName}** ran out of time.`
+      : `**${details.loserName}** rolled a **0**.`;
+    return {
+      ...base,
+      title: `🏆 ${details.winnerName} wins ${details.wagerAmount} GP`,
+      description: `${outcome}\n\nRolls: ${rollPath(details)}`,
+      color: BET_COLORS.won,
+    };
+  }
+
+  if (details.status === "accepted") {
+    const lines = [
+      `**${details.senderName}** vs **${details.accepterName}**`,
+      "",
+      `Current number: **${details.currentRollMax.toLocaleString()}**`,
+    ];
+    if (details.currentTurnName && details.turnDeadline) {
+      lines.push(`Next to roll: **${details.currentTurnName}** (due ${discordTime(details.turnDeadline)})`);
+    }
+    lines.push(`Chance to bust: **${bustChance(details.currentRollMax)}%**`, "", "Follow the rolls in the thread.");
+    return {
+      ...base,
+      title: `🔥 Deathroll · ${details.wagerAmount} GP`,
+      description: lines.join("\n"),
+      color: BET_COLORS.live,
+    };
+  }
+
+  return {
+    ...base,
+    title: `🎲 Deathroll · ${details.wagerAmount} GP`,
+    description: [
+      `**${details.senderName}** challenges anyone to a deathroll.`,
+      ...(details.message ? [`> ${details.message}`] : []),
+      "",
+      `Starting number: **${details.deathrollValue.toLocaleString()}**`,
+      "Players take turns rolling from 0 up to the last number.",
+      "First to roll **0** loses.",
+    ].join("\n"),
+    color: BET_COLORS.open,
+  };
+}
+
+/**
+ * Builds the play-by-play thread embeds for the latest bet event, one card per turn.
+ */
+function buildBetThreadUpdate(details: BetDetails, event: "accepted" | "rolled" | "timeout") {
+  const embeds: Array<{ title?: string; description: string; color: number }> = [];
+  const last = details.rolls[details.rolls.length - 1];
+
+  if (event === "accepted") {
+    embeds.push({
+      description: `⚔️ **${details.accepterName}** accepted. **${details.wagerAmount} GP** is on the line.`,
+      color: BET_COLORS.open,
+    });
+  }
+
+  if (event !== "timeout" && last) {
+    const lines = [`Rolled **${last.roll.toLocaleString()}** out of ${last.outOf.toLocaleString()}.`];
+    if (last.roll === 0) {
+      lines[0] += " 💀 Bust!";
+    } else if (details.status === "accepted" && details.currentTurnName && details.turnDeadline) {
+      lines.push(
+        `Next: **${details.currentTurnName}** rolls from 0 to ${details.currentRollMax.toLocaleString()}` +
+          ` (due ${discordTime(details.turnDeadline)})`
+      );
+    }
+    embeds.push({
+      title: `🎲 Roll ${details.rolls.length} · ${last.name}`,
+      description: lines.join("\n"),
+      color: last.roll === 0 ? BET_COLORS.live : last.isSender ? BET_COLORS.challenger : BET_COLORS.opponent,
+    });
+  }
+
+  if (details.status === "completed") {
+    const outcome = details.lossReason === "timeout" ? `**${details.loserName}** ran out of time.\n` : "";
+    embeds.push({
+      title: `🏆 ${details.winnerName} wins ${details.wagerAmount} GP`,
+      description: `${outcome}Rolls: ${rollPath(details)}`,
+      color: BET_COLORS.won,
+    });
+  }
+
+  return embeds;
+}
 
 /**
  * Marks a listing as having received its 1-hour closing notification.
@@ -258,38 +437,65 @@ export const notifyPublicBetInvite = internalAction({
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://guild.tarragon.be";
     const betsUrl = `${baseUrl}/black-void?tab=bets`;
 
-    const title = `🎲 Open Deathroll Challenge: ${details.wagerAmount} GP!`;
-    const challengerStr = details.senderLvl
-      ? `**${details.senderName}** (Lvl ${details.senderLvl})`
-      : `**${details.senderName}**`;
+    const messageId = await sendDiscordBlackVoidMessage({ embeds: [buildBetEmbed(details, betsUrl)] });
+    if (messageId) {
+      await ctx.runMutation(internal.blackVoidDiscord.setBetDiscordIds, {
+        betId: args.betId,
+        discordMessageId: messageId,
+      });
+    }
+  },
+});
 
-    const fields: Array<{ name: string; value: string; inline?: boolean }> = [
-      { name: "Challenger", value: challengerStr, inline: true },
-      { name: "Wager", value: `💰 **${details.wagerAmount} GP**`, inline: true },
-      { name: "Starting Roll", value: `🎲 **${details.deathrollValue.toLocaleString()}**`, inline: true },
-    ];
+/**
+ * Action to reflect a bet's progress on Discord: refreshes the original invite embed and
+ * posts a play-by-play update in a thread on that invite (created when the bet is accepted).
+ */
+export const notifyBetProgress = internalAction({
+  args: {
+    betId: v.id("blackVoidBets"),
+    event: v.union(v.literal("accepted"), v.literal("rolled"), v.literal("timeout"), v.literal("cancelled")),
+  },
+  handler: async (ctx, args) => {
+    const details = await ctx.runQuery(internal.blackVoidDiscord.getBetNotificationDetails, {
+      betId: args.betId,
+    });
+    // Direct challenges are never posted
+    if (!details?.discordMessageId) return;
 
-    if (details.message) {
-      fields.push({
-        name: "Challenger's Note",
-        value: `> "${details.message}"`,
-        inline: false,
+    const channelId = process.env.DISCORD_BV_CHANNEL_ID || DEFAULT_BV_CHANNEL_ID;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://guild.tarragon.be";
+    const betsUrl = `${baseUrl}/black-void?tab=bets`;
+
+    await discordRequest(`/channels/${channelId}/messages/${details.discordMessageId}`, "PATCH", {
+      embeds: [buildBetEmbed(details, betsUrl)],
+    });
+
+    if (args.event === "cancelled") return;
+
+    let threadId = details.discordThreadId;
+    if (!threadId) {
+      let threadTitle = `🎲 ${details.senderName} vs ${details.accepterName}: ${details.wagerAmount} GP`;
+      if (threadTitle.length > 100) {
+        threadTitle = threadTitle.substring(0, 97) + "...";
+      }
+      // ponytail: two racing events can't both open a thread, the second update is skipped
+      const thread = await discordRequest(
+        `/channels/${channelId}/messages/${details.discordMessageId}/threads`,
+        "POST",
+        { name: threadTitle, auto_archive_duration: 10080 } // 7 days
+      );
+      if (!thread) return;
+      threadId = thread.id;
+      await ctx.runMutation(internal.blackVoidDiscord.setBetDiscordIds, {
+        betId: args.betId,
+        discordThreadId: threadId,
       });
     }
 
-    const embed = {
-      title,
-      description: `${challengerStr} has thrown down an open Deathroll wager in the Black Void! Any adventurer can accept the challenge.`,
-      color: 0xf59e0b, // Amber / Gold
-      url: betsUrl,
-      fields,
-      timestamp: new Date().toISOString(),
-      footer: {
-        text: "Black Void • Deathroll Arena",
-      },
-    };
-
-    await sendDiscordBlackVoidMessage({ embeds: [embed] });
+    await discordRequest(`/channels/${threadId}/messages`, "POST", {
+      embeds: buildBetThreadUpdate(details, args.event),
+    });
   },
 });
 

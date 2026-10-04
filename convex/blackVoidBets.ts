@@ -4,6 +4,7 @@ import { internal } from './_generated/api'
 import { Doc, Id } from './_generated/dataModel'
 import { isAdmin } from './roles'
 import { adjustCharacterMoney } from './moneyHelpers'
+import { ROLL_REVEAL_MS } from './deathroll'
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 const MAX_DEATHROLL_START = 1000000
@@ -287,6 +288,7 @@ export const cancelBetInvitation = mutation({
       status: 'cancelled',
       updatedAt: Date.now(),
     })
+    await ctx.scheduler.runAfter(0, internal.blackVoidDiscord.notifyBetProgress, { betId: args.betId, event: 'cancelled' })
 
     return { success: true }
   },
@@ -386,6 +388,7 @@ export const acceptBetInvitation = mutation({
         lossReason: 'rolled_zero',
         updatedAt: now,
       })
+      await ctx.scheduler.runAfter(ROLL_REVEAL_MS, internal.blackVoidDiscord.notifyBetProgress, { betId: args.betId, event: 'accepted' })
 
       return {
         success: true,
@@ -409,6 +412,7 @@ export const acceptBetInvitation = mutation({
       rolls: [initialRollEntry],
       updatedAt: now,
     })
+    await ctx.scheduler.runAfter(ROLL_REVEAL_MS, internal.blackVoidDiscord.notifyBetProgress, { betId: args.betId, event: 'accepted' })
 
     return {
       success: true,
@@ -451,6 +455,11 @@ export const rollDeathroll = mutation({
     const opponentId =
       bet.senderCharacterId === args.characterId ? bet.acceptedByCharacterId! : bet.senderCharacterId
 
+    const previousRoll = bet.rolls?.[bet.rolls.length - 1]
+    if (previousRoll && now < previousRoll.timestamp + ROLL_REVEAL_MS) {
+      throw new Error('The last roll is still settling. Try again in a moment.')
+    }
+
     // Check if player missed the 24-hour window
     if (bet.turnDeadline && now > bet.turnDeadline) {
       await ctx.db.patch(args.betId, {
@@ -460,6 +469,7 @@ export const rollDeathroll = mutation({
         lossReason: 'timeout',
         updatedAt: now,
       })
+      await ctx.scheduler.runAfter(0, internal.blackVoidDiscord.notifyBetProgress, { betId: args.betId, event: 'timeout' })
       return {
         isGameOver: true,
         isTimedOut: true,
@@ -494,6 +504,7 @@ export const rollDeathroll = mutation({
         lossReason: 'rolled_zero',
         updatedAt: now,
       })
+      await ctx.scheduler.runAfter(ROLL_REVEAL_MS, internal.blackVoidDiscord.notifyBetProgress, { betId: args.betId, event: 'rolled' })
       return { roll, outOf: currentMax, isGameOver: true, winnerId: opponentId, loserId: args.characterId }
     } else {
       // Game continues: new value is sent back to the other better with 24 hours to roll
@@ -506,6 +517,7 @@ export const rollDeathroll = mutation({
         turnDeadline,
         updatedAt: now,
       })
+      await ctx.scheduler.runAfter(ROLL_REVEAL_MS, internal.blackVoidDiscord.notifyBetProgress, { betId: args.betId, event: 'rolled' })
       return { roll, outOf: currentMax, isGameOver: false, nextTurnId: opponentId, turnDeadline }
     }
   },
@@ -543,6 +555,7 @@ export const claimBetTimeout = mutation({
       lossReason: 'timeout',
       updatedAt: now,
     })
+    await ctx.scheduler.runAfter(0, internal.blackVoidDiscord.notifyBetProgress, { betId: args.betId, event: 'timeout' })
 
     return { success: true, winnerId: opponentId, loserId: timedOutCharId }
   },

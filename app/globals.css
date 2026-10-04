@@ -1260,3 +1260,16 @@
   z-index: 10 !important;
   pointer-events: none !important;
 }
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent) transparent;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+
+:root {
+  color-scheme: dark;
+}
