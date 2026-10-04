@@ -1,6 +1,28 @@
-const APP_ID = "1479506068185944226"; // Get this from Discord Portal
-const GUILD_ID = "878674783972261918"; // Optional: Use for instant updates in one server
-const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+import fs from 'fs';
+import path from 'path';
+
+// Auto-read DISCORD_BOT_TOKEN from .env.local if not already in environment
+let botToken = process.env.DISCORD_BOT_TOKEN;
+if (!botToken) {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env.local');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const match = content.match(/^DISCORD_BOT_TOKEN=(.+)$/m);
+      if (match) botToken = match[1].trim();
+    }
+  } catch {}
+}
+
+const APP_ID = process.env.DISCORD_APP_ID || "1479506068185944226";
+// By default, register globally so commands work everywhere without duplicates
+const GUILD_ID = process.env.DISCORD_GUILD_ID || null;
+const BOT_TOKEN = botToken;
+
+if (!BOT_TOKEN) {
+  console.error("Error: DISCORD_BOT_TOKEN is not set in environment or .env.local");
+  process.exit(1);
+}
 
 async function registerCommands() {
   const url = GUILD_ID 
@@ -141,11 +163,12 @@ async function registerCommands() {
   });
 
   if (response.ok) {
-    console.log(`Successfully registered Discord commands (${GUILD_ID ? 'Guild scope' : 'Global scope'})!`);
-    // Clear opposite scope to remove duplicates
+    console.log(`Successfully registered Discord commands (${GUILD_ID ? `Guild scope: ${GUILD_ID}` : 'Global scope'})!`);
+    
+    // Clear opposite scope to ensure zero duplicates
     if (GUILD_ID) {
       console.log('Clearing old global commands to eliminate duplicates...');
-      await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
+      const clearRes = await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bot ${BOT_TOKEN}`,
@@ -153,7 +176,20 @@ async function registerCommands() {
         },
         body: JSON.stringify([]),
       });
-      console.log('Cleaned up global duplicates.');
+      console.log('Global cleanup status:', clearRes.status);
+    } else {
+      // If registering globally, clear any old guild-specific registrations on the primary server
+      const defaultGuildId = "878674783972261918";
+      console.log(`Clearing guild-scoped commands on ${defaultGuildId} to eliminate duplicates...`);
+      const clearRes = await fetch(`https://discord.com/api/v10/applications/${APP_ID}/guilds/${defaultGuildId}/commands`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bot ${BOT_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([]),
+      });
+      console.log('Guild cleanup status:', clearRes.status);
     }
   } else {
     console.error('Error registering command:', await response.text());
