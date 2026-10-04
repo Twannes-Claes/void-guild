@@ -219,6 +219,8 @@ export const syncSessionToDiscord = internalAction({
       footer: { text: isPrivate ? "Void Guild Session Tracker • Private Session" : "Void Guild Session Tracker" }
     };
 
+    let createdThreadId: string | null = null;
+
     // 2. If we have a thread ID, update the first message and thread name
     if (session.discordThreadId) {
       try {
@@ -380,6 +382,7 @@ export const syncSessionToDiscord = internalAction({
 
         if (response.ok) {
           const thread = await response.json();
+          createdThreadId = thread.id;
           // Store the thread ID back in Convex
           await ctx.runMutation(internal.discord.updateSessionThreadId, {
             sessionId: args.sessionId,
@@ -410,6 +413,42 @@ export const syncSessionToDiscord = internalAction({
         }
       } catch (e) {
         console.error("Failed to create Discord thread:", e);
+      }
+    }
+
+    // 4. Automatically add all participating users (Voidmaster, signed-up characters, interested players) to the forum thread
+    const targetThreadId = session.discordThreadId || createdThreadId;
+    if (targetThreadId) {
+      const targetDiscordIds = new Set<string>();
+      if (session.gmDiscordId) {
+        targetDiscordIds.add(session.gmDiscordId);
+      }
+      for (const c of session.attendingCharacters) {
+        if (c.discordId) targetDiscordIds.add(c.discordId);
+      }
+      for (const p of (session.interestedPlayers || [])) {
+        if (p.discordId) targetDiscordIds.add(p.discordId);
+      }
+
+      if (targetDiscordIds.size > 0) {
+        await Promise.all(
+          Array.from(targetDiscordIds).map(async (discordUserId) => {
+            try {
+              const res = await fetch(`${DISCORD_API_BASE}/channels/${targetThreadId}/thread-members/${discordUserId}`, {
+                method: "PUT",
+                headers: {
+                  Authorization: `Bot ${botToken}`,
+                },
+              });
+              if (!res.ok && res.status !== 204) {
+                const text = await res.text().catch(() => "");
+                console.warn(`Could not add user ${discordUserId} to thread ${targetThreadId} (${res.status}):`, text);
+              }
+            } catch (err) {
+              console.warn(`Error adding user ${discordUserId} to thread ${targetThreadId}:`, err);
+            }
+          })
+        );
       }
     }
   },
@@ -492,10 +531,8 @@ export const sendSessionNotification = action({
     }
 
     const unixTimestamp = session.date ? Math.floor(session.date / 1000) : null;
-    let dateInfo = "TBD";
-    if (unixTimestamp) {
-      dateInfo = `<t:${unixTimestamp}:F> (<t:${unixTimestamp}:R>)\n**Session starts at** <t:${unixTimestamp + 1800}:t>`;
-    }
+    const isIntro = Boolean(session.isIntro);
+    const isPrivate = Boolean(session.isPrivate);
 
     const roleId = session.system === 'PF' 
       ? process.env.DISCORD_ROLE_ID_PF 
@@ -503,46 +540,44 @@ export const sendSessionNotification = action({
 
     let levelInfo = (session.level && session.level > 0) 
       ? `Level ${session.level}` 
-      : "Discuss what you're going to do to decide the mission's level";
+      : "Level TBD";
     
-    const isIntro = Boolean(session.isIntro);
     if (isIntro) {
-      levelInfo = `Level ${session.system === 'PF' ? 1 : 3} (Intro Session)`;
+      levelInfo = `Level ${session.system === 'PF' ? 1 : 3} (Intro)`;
     } else if (session.selectedQuest) {
       levelInfo = `Level ${getQuestLevelStr(session.selectedQuest)}`;
     }
 
     const content = (roleId && args.type !== 'cancel') ? `<@&${roleId}>` : undefined;
     let embedTitle = "";
-    let embedDescription = "";
+    let statusText = "";
     let embedColor = 5814783; // Blueish
 
-    const isPrivate = Boolean(session.isPrivate);
+    const typeLabel = isIntro ? "🌱 Intro Session" : "Session";
 
     if (args.type === 'new') {
-      const typeLabel = isIntro ? "🌱 Intro Session" : "Session";
       embedTitle = isPrivate
         ? `🔒 Private ${typeLabel} Alert: ${session.worldName}`
         : `New ${typeLabel} Alert: ${session.worldName}`;
-      embedDescription = session.date 
+      statusText = session.date 
         ? (isPrivate 
-            ? `A new private (unlisted) ${isIntro ? 'intro ' : ''}session for "${session.worldName}" has been scheduled for ${dateInfo}!`
-            : `A new ${isIntro ? 'intro ' : ''}session for "${session.worldName}" has been announced for ${dateInfo}!`)
+            ? `A new private session for **${session.worldName}** has been scheduled!`
+            : `A new session for **${session.worldName}** has been announced!`)
         : (isPrivate
-            ? `A new private (unlisted) ${isIntro ? 'intro ' : ''}session for "${session.worldName}" is now in planning!`
-            : `A new ${isIntro ? 'intro ' : ''}session for "${session.worldName}" is now in the planning phase! Express interest on the website to help pick a date.`);
+            ? `A new private session for **${session.worldName}** is in planning!`
+            : `A new session for **${session.worldName}** is in planning! Express interest on the Guild to help pick a date.`);
     } else if (args.type === 'remind' && session.date) {
       const spotsLeft = session.maxPlayers - session.attendingCharacters.length;
       embedTitle = isPrivate 
         ? `🔒 Private Session Reminder: ${session.worldName}`
         : `Reminder: ${session.worldName}`;
-      embedDescription = isPrivate
-        ? `There are still ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left in this private session! The session starts on ${dateInfo}.`
-        : `There are still ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left! The session starts on ${dateInfo}.`;
       embedColor = 16776960; // Yellow
-    } else if (args.type === 'cancel' && session.date) {
+      statusText = spotsLeft > 0
+        ? `There ${spotsLeft === 1 ? 'is still 1 spot' : `are still ${spotsLeft} spots`} left in this session!`
+        : `This session is full, but you can still express interest or check the roster!`;
+    } else if (args.type === 'cancel') {
       embedTitle = `SESSION CANCELLED: ${session.worldName}`;
-      embedDescription = `The session for "${session.worldName}" on ${dateInfo} has been cancelled and will no longer be happening.`;
+      statusText = `The session for **${session.worldName}** has been cancelled.`;
       embedColor = 15158332; // Red
     }
 
@@ -562,6 +597,13 @@ export const sendSessionNotification = action({
     const interestCount = (session.interestedPlayers || []).length;
     const playersValue = `${session.attendingCharacters.length}/${session.maxPlayers}` + (!isPrivate && interestCount > 0 ? ` (+${interestCount} interested)` : "");
 
+    const systemEmoji = session.system === 'PF' ? '<:Pathfinder:1322734594864320522>' : '<:DnD:1322734981524754473>';
+    const systemName = session.system === 'PF' ? 'PF2e' : 'D&D 5e';
+
+    const timeDisplay = unixTimestamp
+      ? `<t:${unixTimestamp}:f> (<t:${unixTimestamp}:R>) • Starts <t:${unixTimestamp + 1800}:t>`
+      : "In Planning (TBD)";
+
     const { eras, yearZeroExists } = (() => {
       if (!session.worldCalendar) return { eras: [], yearZeroExists: false }
       try {
@@ -577,39 +619,42 @@ export const sendSessionNotification = action({
 
     const inGameDateInfo = formatInGameDate(session.inGameDate, eras, yearZeroExists);
 
+    // Build ultra-minimalist description card
+    const descriptionLines: string[] = [statusText];
+    descriptionLines.push(`📅 ${timeDisplay}`);
+
+    const stats: string[] = [
+      `👑 ${gmDisplay}`,
+      `${systemEmoji} ${systemName}`,
+      `📊 ${levelInfo}`,
+      `👥 ${playersValue}`,
+    ];
+    if (inGameDateInfo && args.type !== 'cancel') {
+      stats.push(`⌛ ${inGameDateInfo}`);
+    }
+    descriptionLines.push(stats.join(' • '));
+
+    if (args.type !== 'cancel') {
+      const links: string[] = [];
+      if (session.discordThreadId) {
+        links.push(`💬 <#${session.discordThreadId}>`);
+      }
+      links.push(`🌐 [View on Guild](${sessionLink})`);
+      if (session.location) {
+        links.push(`📍 [Map](${session.location})`);
+      }
+      if (links.length > 0) {
+        descriptionLines.push(links.join(' • '));
+      }
+    }
+
     const embed: any = {
       title: embedTitle,
-      description: embedDescription,
+      description: descriptionLines.join("\n"),
       color: isPrivate ? 0xd97706 : embedColor,
-      fields: [
-        { name: 'Voidmaster', value: gmDisplay, inline: true },
-        { name: 'System', value: session.system === 'PF' ? '<:Pathfinder:1322734594864320522> Pathfinder 2e' : '<:DnD:1322734981524754473> D&D 5e', inline: true },
-        { name: 'Level', value: levelInfo, inline: true },
-        { name: 'Players', value: playersValue, inline: true },
-        ...(isPrivate ? [{ name: 'Access', value: '🔒 Private (Owner Added Only)', inline: true }] : []),
-        { name: 'Date & Time', value: dateInfo, inline: false },
-      ],
       timestamp: new Date().toISOString(),
       url: (args.type !== 'cancel' && threadLink) ? threadLink : sessionLink,
     };
-
-    if (inGameDateInfo && args.type !== 'cancel') {
-      embed.fields.push({ name: 'In-Game Date', value: inGameDateInfo, inline: false });
-    }
-
-    if (session.location && args.type !== 'cancel') {
-      embed.fields.push({ name: 'Location', value: `[View on Google Maps](${session.location})`, inline: false });
-    }
-
-    if (args.type !== 'cancel') {
-      if (session.discordThreadId) {
-        const threadValue = threadLink 
-          ? `<#${session.discordThreadId}> • [Open Forum Thread](${threadLink})`
-          : `<#${session.discordThreadId}>`;
-        embed.fields.push({ name: 'Discord Discussion', value: threadValue, inline: false });
-      }
-      embed.fields.push({ name: 'Void Guild', value: `[View Session on Website](${sessionLink})`, inline: false });
-    }
 
     // 1. Post cancellation message in the thread if it exists
     if (args.type === 'cancel' && session.discordThreadId) {
@@ -621,7 +666,7 @@ export const sendSessionNotification = action({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ 
-            content: `🛑 **SESSION CANCELLED**\nThe session for "${session.worldName}" scheduled for ${dateInfo} has been cancelled.` 
+            content: `🛑 **SESSION CANCELLED**\nThe session for "${session.worldName}" scheduled for ${timeDisplay} has been cancelled.` 
           }),
         });
       } catch (e) {
