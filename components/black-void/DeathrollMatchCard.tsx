@@ -137,13 +137,24 @@ export default function DeathrollMatchCard({
   const lastRoll = allRolls[allRolls.length - 1]
 
   // Spin the opponent's new roll before showing it (own rolls use the popup)
-  const [settledRollCount, setSettledRollCount] = useState(spinFirstRoll ? allRolls.length - 1 : allRolls.length)
+  const isOpponentSettling =
+    lastRoll &&
+    lastRoll.characterId !== characterId &&
+    lastRoll.timestamp &&
+    now < lastRoll.timestamp + ROLL_REVEAL_MS
+
+  const [settledRollCount, setSettledRollCount] = useState(
+    spinFirstRoll || isOpponentSettling ? allRolls.length - 1 : allRolls.length
+  )
   const settling = settledRollCount !== allRolls.length && lastRoll?.characterId !== characterId
   useEffect(() => {
     if (!settling) return
-    const t = setTimeout(() => setSettledRollCount(allRolls.length), ROLL_REVEAL_MS)
+    const remainingMs = lastRoll?.timestamp
+      ? Math.max(50, lastRoll.timestamp + ROLL_REVEAL_MS - Date.now())
+      : ROLL_REVEAL_MS
+    const t = setTimeout(() => setSettledRollCount(allRolls.length), remainingMs)
     return () => clearTimeout(t)
-  }, [settling, allRolls.length])
+  }, [settling, allRolls.length, lastRoll?.timestamp])
 
   const rollsList = settling ? allRolls.slice(0, -1) : allRolls
   const isMyTurn = match.currentTurnCharacterId === characterId && !settling

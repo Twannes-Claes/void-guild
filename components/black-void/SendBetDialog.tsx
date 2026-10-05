@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Coins, Dices, User, Users, Swords, AlertCircle, Loader2, MessageSquare, Flame } from 'lucide-react'
+import { Coins, Dices, User, Users, Swords, AlertCircle, AlertTriangle, Loader2, MessageSquare, Flame } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -311,6 +311,19 @@ export default function SendBetDialog({
             />
           </div>
 
+          {/* Big Rule / Ban Warning */}
+          <div className="p-3 rounded-lg bg-rose-950/40 border-2 border-rose-500/50 text-rose-200 text-xs flex items-start gap-2.5 shadow-md shadow-rose-950/30">
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5 animate-pulse" />
+            <div className="space-y-1">
+              <strong className="font-bold text-rose-300 block uppercase tracking-wider text-[11px]">
+                Void Arena Code of Conduct
+              </strong>
+              <p className="text-[11px] leading-relaxed text-rose-200/90">
+                It is strictly against the rules to start or accept a bet with money your character does not currently possess. Wagering gold you do not have will result in an immediate and permanent ban from the Void.
+              </p>
+            </div>
+          </div>
+
           {/* Insufficient Funds Warning */}
           {(() => {
             const wager = parseFloat(wagerAmount)
@@ -318,14 +331,14 @@ export default function SendBetDialog({
             const insufficientFunds = hasFunds && !isNaN(wager) && wager > 0 && wager > characterWealth!.totalInGold
             if (!insufficientFunds) return null
             return (
-              <div className="p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-[11px] text-amber-200 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/60 text-[11px] text-rose-200 flex items-start gap-2 animate-pulse">
+                <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Insufficient Funds:</strong> Your character has{' '}
+                  <strong className="text-rose-400 font-bold uppercase">Insufficient Funds Detected:</strong> Your character only possesses{' '}
                   <strong className="text-amber-300 font-mono">{characterWealth!.totalInGold.toLocaleString()} GP</strong>{' '}
-                  but the wager is{' '}
+                  but this wager is for{' '}
                   <strong className="text-amber-300 font-mono">{wager.toLocaleString()} GP</strong>.
-                  Ensure your character has enough gold before the bet settles.
+                  Placing this bet without the required gold is a bannable offense!
                 </span>
               </div>
             )
@@ -350,6 +363,9 @@ export default function SendBetDialog({
                 <strong className="text-rose-400 whitespace-nowrap">24 hours</strong> to roll.
               </li>
               <li>Only 1 open invitation at a time.</li>
+              <li className="text-rose-300 font-semibold">
+                Betting money you do not have is strictly forbidden and results in an immediate ban from the Void.
+              </li>
             </ol>
           </div>
 

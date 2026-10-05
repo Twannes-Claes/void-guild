@@ -106,14 +106,34 @@ export const getBetNotificationDetails = internalQuery({
     const accepterName = accepter?.name || "Unknown Character";
     const nameOf = (id?: Id<"characters">) => (id === bet.senderCharacterId ? senderName : accepterName);
 
+    let senderDiscordId: string | null = null;
+    if (sender?.userId) {
+      const senderUser = await ctx.db
+        .query("users")
+        .withIndex("by_userId", (q) => q.eq("userId", sender.userId))
+        .first();
+      senderDiscordId = senderUser?.discordId || null;
+    }
+
+    let accepterDiscordId: string | null = null;
+    if (accepter?.userId) {
+      const accepterUser = await ctx.db
+        .query("users")
+        .withIndex("by_userId", (q) => q.eq("userId", accepter.userId))
+        .first();
+      accepterDiscordId = accepterUser?.discordId || null;
+    }
+
     return {
       _id: bet._id,
       senderCharacterId: bet.senderCharacterId,
       senderName,
       senderLvl: sender?.lvl,
       senderClass: sender?.class,
+      senderDiscordId,
       accepterName: accepter ? accepterName : null,
       accepterLvl: accepter?.lvl,
+      accepterDiscordId,
       wagerAmount: bet.wagerAmount,
       deathrollValue: bet.deathrollValue,
       message: bet.message,
@@ -249,7 +269,8 @@ function buildBetThreadUpdate(details: BetDetails, event: "accepted" | "rolled" 
 
   if (event === "accepted") {
     embeds.push({
-      description: `⚔️ **${details.accepterName}** accepted. **${details.wagerAmount} GP** is on the line.`,
+      title: `⚔️ ${details.senderName} vs ${details.accepterName}`,
+      description: `**${details.accepterName}** accepted the challenge from **${details.senderName}**! **${details.wagerAmount} GP** is on the line.`,
       color: BET_COLORS.open,
     });
   }
@@ -474,6 +495,7 @@ export const notifyBetProgress = internalAction({
     if (args.event === "cancelled") return;
 
     let threadId = details.discordThreadId;
+    let isNewThread = false;
     if (!threadId) {
       let threadTitle = `🎲 ${details.senderName} vs ${details.accepterName}: ${details.wagerAmount} GP`;
       if (threadTitle.length > 100) {
@@ -487,13 +509,23 @@ export const notifyBetProgress = internalAction({
       );
       if (!thread) return;
       threadId = thread.id;
+      isNewThread = true;
       await ctx.runMutation(internal.blackVoidDiscord.setBetDiscordIds, {
         betId: args.betId,
         discordThreadId: threadId,
       });
     }
 
+    // Ping the two betters only in the very first message of the thread so they are added to it
+    let content: string | undefined = undefined;
+    if (isNewThread) {
+      const senderTag = details.senderDiscordId ? ` (<@${details.senderDiscordId}>)` : "";
+      const accepterTag = details.accepterDiscordId ? ` (<@${details.accepterDiscordId}>)` : "";
+      content = `⚔️ **${details.senderName}**${senderTag} vs **${details.accepterName}**${accepterTag} — Deathroll duel started!`;
+    }
+
     await discordRequest(`/channels/${threadId}/messages`, "POST", {
+      content,
       embeds: buildBetThreadUpdate(details, args.event),
     });
   },

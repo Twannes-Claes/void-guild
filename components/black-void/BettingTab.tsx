@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
@@ -84,27 +84,33 @@ export default function BettingTab({
   const [freshAcceptIds, setFreshAcceptIds] = useState<Set<string>>(new Set())
 
   // Detect opponent accepts and finished bets when new data arrives
-  const [seenBets, setSeenBets] = useState<{
+  const seenBetsRef = useRef<{
     data: typeof bettingData
     characterId: string | null
     states: Map<string, string>
   } | null>(null)
-  if (bettingData && seenBets?.data !== bettingData) {
+
+  useEffect(() => {
+    if (!bettingData) return
+
     const bets = [
       ...bettingData.activeMatches,
       ...bettingData.recentBets.filter((b) => b.status === 'completed'),
     ]
     const states = new Map(bets.map((b) => [b._id as string, `${b.status}:${b.rolls?.length ?? 0}`]))
-    if (!seenBets || seenBets.characterId !== characterId) {
+
+    const prevSeen = seenBetsRef.current
+    if (!prevSeen || prevSeen.characterId !== characterId) {
       setFreshAcceptIds(new Set())
     } else {
+      const newFresh = new Set<string>()
       for (const b of bets) {
-        if (seenBets.states.get(b._id) === states.get(b._id)) continue
+        if (prevSeen.states.get(b._id) === states.get(b._id)) continue
         const rolls = b.rolls || []
         const last = rolls[rolls.length - 1]
         const isTimeout = b.status === 'completed' && b.lossReason === 'timeout'
-        if (!seenBets.states.has(b._id) && rolls.length === 1 && last.characterId !== characterId) {
-          setFreshAcceptIds((ids) => new Set(ids).add(b._id))
+        if (!prevSeen.states.has(b._id) && rolls.length === 1 && last && last.characterId !== characterId) {
+          newFresh.add(b._id)
         }
         if (b.status !== 'completed') continue
         if (!last || (last.characterId === characterId && !isTimeout)) continue
@@ -117,7 +123,7 @@ export default function BettingTab({
           wagerAmount: b.wagerAmount,
           isTimeout,
         }
-        const prev = seenBets.data
+        const prev = prevSeen.data
         if (isTimeout || !prev) {
           setReveal(finishReveal)
           continue
@@ -131,9 +137,16 @@ export default function BettingTab({
         })
         setPendingReveal({ ...finishReveal, skipSpin: true })
       }
+      if (newFresh.size > 0) {
+        setFreshAcceptIds((ids) => {
+          const next = new Set(ids)
+          for (const id of newFresh) next.add(id)
+          return next
+        })
+      }
     }
-    setSeenBets({ data: bettingData, characterId, states })
-  }
+    seenBetsRef.current = { data: bettingData, characterId, states }
+  }, [bettingData, characterId])
 
   if (!characterId || !selectedChar) {
     return (
