@@ -94,7 +94,7 @@ export default function ActiveCharacterSelector({
           <span className="text-purple-400 font-mono">{characters.length} Available</span>
         </div>
 
-        <div className="max-h-[260px] overflow-y-auto space-y-1 pt-1 scrollbar-thin">
+        <div className="max-h-[260px] overflow-y-auto space-y-1 pt-1 custom-scrollbar">
           {characters.map((char: any) => {
             const isSelected = char._id === selectedCharacterId
             const charHasPending = blackVoidNotifications?.characters?.[char._id]?.hasAnyPending

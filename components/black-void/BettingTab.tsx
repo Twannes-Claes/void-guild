@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Id } from '@/convex/_generated/dataModel'
@@ -8,24 +8,23 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Dices,
-  Coins,
   Swords,
   Users,
   Clock,
-  CheckCircle2,
   XCircle,
   AlertCircle,
-  Sparkles,
   Trophy,
   Skull,
   Loader2,
   Plus,
   Flame,
-  Hourglass,
   Timer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import DeathrollMatchCard, { DecoratedBet } from './DeathrollMatchCard'
+import DeathrollResultOverlay, { RollReveal } from './DeathrollResultOverlay'
+import { ROLL_REVEAL_MS, bustChance } from '@/convex/deathroll'
 
 interface BettingTabProps {
   characterId: Id<'characters'> | null
@@ -38,22 +37,6 @@ interface BettingTabProps {
     totalInGold: number
   } | null
   onOpenSendBet: () => void
-}
-
-function formatRemainingTime(timeLeftMs: number): string {
-  if (timeLeftMs <= 0) return 'Expired'
-  const totalSeconds = Math.floor(timeLeftMs / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m left`
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s left`
-  }
-  return `${seconds}s left`
 }
 
 export default function BettingTab({
@@ -84,6 +67,87 @@ export default function BettingTab({
   const rollDeathroll = useMutation(api.blackVoidBets.rollDeathroll)
   const claimBetTimeout = useMutation(api.blackVoidBets.claimBetTimeout)
 
+  const [reveal, setReveal] = useState<RollReveal | null>(null)
+  // Freeze the page during a roll reveal so nothing behind the popup spoils the result
+  const [heldData, setHeldData] = useState<typeof bettingData | null>(null)
+  const [pendingReveal, setPendingReveal] = useState<RollReveal | null>(null)
+  useEffect(() => {
+    if (!pendingReveal) return
+    const t = setTimeout(() => {
+      setReveal(pendingReveal)
+      setPendingReveal(null)
+      setHeldData(null)
+    }, ROLL_REVEAL_MS - 50)
+    return () => clearTimeout(t)
+  }, [pendingReveal])
+
+  const [freshAcceptIds, setFreshAcceptIds] = useState<Set<string>>(new Set())
+
+  // Detect opponent accepts and finished bets when new data arrives
+  const seenBetsRef = useRef<{
+    data: typeof bettingData
+    characterId: string | null
+    states: Map<string, string>
+  } | null>(null)
+
+  useEffect(() => {
+    if (!bettingData) return
+
+    const bets = [
+      ...bettingData.activeMatches,
+      ...bettingData.recentBets.filter((b) => b.status === 'completed'),
+    ]
+    const states = new Map(bets.map((b) => [b._id as string, `${b.status}:${b.rolls?.length ?? 0}`]))
+
+    const prevSeen = seenBetsRef.current
+    if (!prevSeen || prevSeen.characterId !== characterId) {
+      setFreshAcceptIds(new Set())
+    } else {
+      const newFresh = new Set<string>()
+      for (const b of bets) {
+        if (prevSeen.states.get(b._id) === states.get(b._id)) continue
+        const rolls = b.rolls || []
+        const last = rolls[rolls.length - 1]
+        const isTimeout = b.status === 'completed' && b.lossReason === 'timeout'
+        if (!prevSeen.states.has(b._id) && rolls.length === 1 && last && last.characterId !== characterId) {
+          newFresh.add(b._id)
+        }
+        if (b.status !== 'completed') continue
+        if (!last || (last.characterId === characterId && !isTimeout)) continue
+        const finishReveal: RollReveal = {
+          betId: b._id,
+          rollerName: last.characterId === b.senderCharacterId ? b.senderName : (b.acceptedByName ?? ''),
+          rollerIsMe: last.characterId === characterId,
+          outOf: last.outOf,
+          roll: last.roll,
+          wagerAmount: b.wagerAmount,
+          isTimeout,
+        }
+        const prev = prevSeen.data
+        if (isTimeout || !prev) {
+          setReveal(finishReveal)
+          continue
+        }
+        const wasActive = prev.activeMatches.some((m) => m._id === b._id)
+        setHeldData({
+          ...prev,
+          activeMatches: wasActive
+            ? prev.activeMatches.map((m) => (m._id === b._id ? b : m))
+            : [...prev.activeMatches, b],
+        })
+        setPendingReveal({ ...finishReveal, skipSpin: true })
+      }
+      if (newFresh.size > 0) {
+        setFreshAcceptIds((ids) => {
+          const next = new Set(ids)
+          for (const id of newFresh) next.add(id)
+          return next
+        })
+      }
+    }
+    seenBetsRef.current = { data: bettingData, characterId, states }
+  }, [bettingData, characterId])
+
   if (!characterId || !selectedChar) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[360px] p-8 text-center rounded-2xl border border-dashed border-rose-500/30 bg-rose-950/10">
@@ -102,7 +166,7 @@ export default function BettingTab({
     openChallenges = [],
     activeMatches = [],
     recentBets = [],
-  } = bettingData || {}
+  } = heldData ?? bettingData ?? {}
 
   const handleCancelInvitation = async (betId: Id<'blackVoidBets'>) => {
     setActionLoadingBetId(betId)
@@ -128,46 +192,51 @@ export default function BettingTab({
     }
   }
 
-  const handleAcceptInvitation = async (betId: Id<'blackVoidBets'>) => {
-    setActionLoadingBetId(betId)
+  const handleAcceptInvitation = async (bet: DecoratedBet) => {
+    setActionLoadingBetId(bet._id)
+    setHeldData(bettingData)
+    setReveal({
+      betId: bet._id,
+      rollerName: selectedChar.name,
+      rollerIsMe: true,
+      outOf: bet.deathrollValue,
+      nextName: bet.senderName,
+      wagerAmount: bet.wagerAmount,
+    })
     try {
-      const result = await acceptBetInvitation({ betId, characterId })
-      if (result.isGameOver) {
-        if (result.winnerId === characterId) {
-          toast.success(`VICTORY! You won the bet!`)
-        } else {
-          toast.error(`DEFEAT! You rolled a 0 on accept and lost the bet!`)
-        }
-      } else {
-        toast.success(
-          `Bet Accepted! You rolled ${result.roll.toLocaleString()} (0-${result.outOf.toLocaleString()}). Challenger has 24h to roll.`
-        )
-      }
+      const result = await acceptBetInvitation({ betId: bet._id, characterId })
+      setReveal((prev) => (prev?.betId === bet._id ? { ...prev, roll: result.roll } : prev))
     } catch (err: any) {
+      setReveal(null)
+      setHeldData(null)
       toast.error(err?.message || 'Failed to accept invitation.')
     } finally {
       setActionLoadingBetId(null)
     }
   }
 
-  const handleRoll = async (betId: Id<'blackVoidBets'>) => {
-    setRollingBetId(betId)
+  const handleRoll = async (match: DecoratedBet) => {
+    const currentMax = match.currentRollMax !== undefined ? match.currentRollMax : match.deathrollValue
+    setRollingBetId(match._id)
+    setHeldData(bettingData)
+    setReveal({
+      betId: match._id,
+      rollerName: selectedChar.name,
+      rollerIsMe: true,
+      outOf: currentMax,
+      nextName: match.senderCharacterId === characterId ? match.acceptedByName : match.senderName,
+      wagerAmount: match.wagerAmount,
+    })
     try {
-      const result = await rollDeathroll({ betId, characterId })
-      if (result.isGameOver) {
-        if (result.isTimedOut) {
-          toast.error(result.message || '24-hour turn window expired. Opponent wins.')
-        } else if (result.winnerId === characterId) {
-          toast.success(`VICTORY! Opponent rolled a 0! You won the Deathroll!`)
-        } else {
-          toast.error(`DEFEAT! You rolled a 0 and lost the Deathroll!`)
-        }
-      } else if (result.roll !== undefined && result.outOf !== undefined) {
-        toast.info(
-          `You rolled ${result.roll.toLocaleString()} (out of 0-${result.outOf.toLocaleString()})! Sent back to opponent with 24 hours.`
-        )
-      }
+      const result = await rollDeathroll({ betId: match._id, characterId })
+      setReveal((prev) =>
+        prev?.betId === match._id
+          ? { ...prev, roll: result.roll, isTimeout: 'isTimedOut' in result && result.isTimedOut }
+          : prev
+      )
     } catch (err: any) {
+      setReveal(null)
+      setHeldData(null)
       toast.error(err?.message || 'Failed to roll dice.')
     } finally {
       setRollingBetId(null)
@@ -178,7 +247,6 @@ export default function BettingTab({
     setActionLoadingBetId(betId)
     try {
       await claimBetTimeout({ betId, characterId })
-      toast.success('Timeout claimed! Victory awarded because opponent missed the 24-hour window.')
     } catch (err: any) {
       toast.error(err?.message || 'Failed to claim timeout.')
     } finally {
@@ -188,6 +256,19 @@ export default function BettingTab({
 
   return (
     <div className="space-y-6">
+      {reveal && (
+        <DeathrollResultOverlay
+          key={`${reveal.betId}:${reveal.outOf}:${reveal.rollerIsMe}`}
+          reveal={reveal}
+          finishedBet={bettingData?.recentBets.find((b) => b._id === reveal.betId && b.status === 'completed')}
+          characterId={characterId}
+          onClose={() => {
+            setReveal(null)
+            setHeldData(null)
+          }}
+        />
+      )}
+
       {/* Top Banner / Actions */}
       <div className="rounded-xl border border-rose-500/20 bg-gradient-to-r from-rose-950/40 via-card to-rose-950/20 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
         <div className="space-y-1">
@@ -199,9 +280,38 @@ export default function BettingTab({
               Deathroll Betting Arena
             </h2>
           </div>
-          <p className="text-xs text-muted-foreground max-w-xl">
-            Accepting starts the bet immediately by rolling between 0 and the max value. Players then alternate rolling between 0 and the previous result with a <strong className="text-rose-400">24-hour deadline</strong>. Rolling a <strong className="text-rose-400">0</strong> or missing the 24h window forfeits the bet!
-          </p>
+          <ol className="pt-2 text-xs text-muted-foreground space-y-0.5 list-decimal list-inside sm:whitespace-nowrap marker:text-rose-400/70">
+            <li>The player who accepts rolls first, from 0 up to the starting number.</li>
+            <li>Then you take turns, each rolling from 0 up to the last number rolled.</li>
+            <li>
+              Roll a <strong className="text-rose-400">0</strong> or take longer than{' '}
+              <strong className="text-rose-400 whitespace-nowrap">24 hours</strong> on your turn and you lose.
+            </li>
+          </ol>
+          <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] font-mono text-muted-foreground">
+            <span className="mr-0.5">Example:</span>
+            {[
+              { who: 'You', max: 1000, roll: 412 },
+              { who: 'Them', max: 412, roll: 87 },
+              { who: 'You', max: 87, roll: 3 },
+              { who: 'Them', max: 3, roll: 0 },
+            ].map((step, i) => (
+              <span key={i} className="flex items-center gap-1">
+                {i > 0 && <span className="text-muted-foreground/50">→</span>}
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded border whitespace-nowrap',
+                    step.roll === 0 ? 'border-rose-500/50 bg-rose-500/15' : 'border-border/40 bg-muted/20'
+                  )}
+                >
+                  {step.who} 0-<span className="text-amber-300">{step.max}</span>:{' '}
+                  <strong className={step.roll === 0 ? 'text-rose-400' : 'text-amber-300'}>
+                    {step.roll === 0 ? '0 💀' : step.roll}
+                  </strong>
+                </span>
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -241,158 +351,20 @@ export default function BettingTab({
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {activeMatches.map((match) => {
-              const isMyTurn = match.currentTurnCharacterId === characterId
-              const isChallenger = match.senderCharacterId === characterId
-              const opponentName = isChallenger ? match.acceptedByName : match.senderName
-              const currentMax = match.currentRollMax !== undefined ? match.currentRollMax : match.deathrollValue
-              const rollsList = match.rolls || []
-
-              const deadline = match.turnDeadline || (match.updatedAt || match.createdAt) + 24 * 60 * 60 * 1000
-              const timeLeftMs = Math.max(0, deadline - now)
-              const isExpired = timeLeftMs <= 0
-
-              return (
-                <Card
-                  key={match._id}
-                  className={cn(
-                    'border transition-all duration-200 bg-card/95 overflow-hidden',
-                    isMyTurn && !isExpired
-                      ? 'border-amber-500/60 shadow-lg shadow-amber-950/20 ring-1 ring-amber-500/30'
-                      : 'border-border/60'
-                  )}
-                >
-                  <div className="p-4 space-y-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                          <Dices className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-foreground">
-                              {selectedChar.name} vs {opponentName}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground font-mono">
-                            Wager: <span className="text-amber-400 font-bold">{match.wagerAmount} GP</span> • Starting: 0-{match.deathrollValue.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Turn & Timer Status Badge */}
-                      <div className="flex flex-col items-end gap-1">
-                        {isExpired ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" /> Time Expired!
-                          </span>
-                        ) : isMyTurn ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse flex items-center gap-1">
-                            <Sparkles className="h-3 w-3" /> Your Turn
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted/40 text-muted-foreground border border-border/40 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> Opponent&apos;s Turn
-                          </span>
-                        )}
-
-                        <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-                          <Hourglass className="h-3 w-3 text-amber-400/80" />
-                          {formatRemainingTime(timeLeftMs)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Current Roll Range Banner */}
-                    <div className="p-3 rounded-xl bg-background/80 border border-border/40 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
-                          Current Roll Range
-                        </span>
-                        <span className="text-xl font-black font-mono text-rose-400 tracking-tight">
-                          0 &mdash; {currentMax.toLocaleString()}
-                        </span>
-                      </div>
-
-                      {/* Action: Roll Dice or Claim Timeout */}
-                      {isExpired ? (
-                        <Button
-                          onClick={() => handleClaimTimeout(match._id)}
-                          disabled={actionLoadingBetId === match._id}
-                          className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs h-9 px-3 gap-1.5 shadow-md shadow-rose-900/30"
-                        >
-                          {actionLoadingBetId === match._id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trophy className="h-3.5 w-3.5" />
-                          )}
-                          Claim Timeout Win
-                        </Button>
-                      ) : isMyTurn ? (
-                        <Button
-                          onClick={() => handleRoll(match._id)}
-                          disabled={rollingBetId === match._id}
-                          className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs h-9 px-4 gap-1.5 shadow-md shadow-amber-900/30"
-                        >
-                          {rollingBetId === match._id ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Rolling...
-                            </>
-                          ) : (
-                            <>
-                              <Dices className="h-4 w-4" />
-                              Roll (0 - {currentMax.toLocaleString()})
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground italic">
-                          Awaiting roll...
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Roll History Ladder */}
-                    {rollsList.length > 0 && (
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                          Roll History ({rollsList.length})
-                        </span>
-                        <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 rounded-lg bg-muted/10 border border-border/30">
-                          {rollsList.map((r: any, idx: number) => {
-                            const isMe = r.characterId === characterId
-                            const isZero = r.roll === 0
-                            return (
-                              <div
-                                key={idx}
-                                className={cn(
-                                  'px-2 py-0.5 rounded text-[10px] font-mono border flex items-center gap-1',
-                                  isZero
-                                    ? 'border-rose-500/60 bg-rose-500/20 text-rose-300 font-bold'
-                                    : isMe
-                                      ? 'border-purple-500/40 bg-purple-500/10 text-purple-200'
-                                      : 'border-border/40 bg-muted/20 text-muted-foreground'
-                                )}
-                              >
-                                <span>{isMe ? 'You' : opponentName}:</span>
-                                <strong className={isZero ? 'text-rose-400' : 'text-foreground'}>
-                                  {r.roll.toLocaleString()}
-                                </strong>
-                                <span className="text-[9px] opacity-70">
-                                  (0-{r.outOf.toLocaleString()})
-                                </span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              )
-            })}
+            {activeMatches.map((match) => (
+              <DeathrollMatchCard
+                key={match._id}
+                match={match}
+                characterId={characterId}
+                selectedCharName={selectedChar.name}
+                now={now}
+                rolling={rollingBetId === match._id}
+                actionLoading={actionLoadingBetId === match._id}
+                onRoll={() => handleRoll(match)}
+                onClaimTimeout={() => handleClaimTimeout(match._id)}
+                spinFirstRoll={freshAcceptIds.has(match._id)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -499,6 +471,7 @@ export default function BettingTab({
                         </div>
                         <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
                           Wager: <span className="text-amber-400 font-bold">{inv.wagerAmount} GP</span> • Starting: 0-{inv.deathrollValue.toLocaleString()}
+                          {' • '}<span className="text-rose-300">{bustChance(inv.deathrollValue)}% bust on accept</span>
                         </p>
                       </div>
 
@@ -534,7 +507,7 @@ export default function BettingTab({
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => handleAcceptInvitation(inv._id)}
+                        onClick={() => handleAcceptInvitation(inv)}
                         disabled={actionLoadingBetId === inv._id}
                         className="bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs h-8 gap-1.5"
                       >
@@ -588,6 +561,9 @@ export default function BettingTab({
                           <span className="text-[10px] text-muted-foreground font-mono">
                             • 0-{chall.deathrollValue.toLocaleString()}
                           </span>
+                          <span className="text-[10px] text-rose-300 font-mono">
+                            • {bustChance(chall.deathrollValue)}% bust
+                          </span>
                         </div>
                       </div>
 
@@ -613,7 +589,7 @@ export default function BettingTab({
 
                     <Button
                       size="sm"
-                      onClick={() => handleAcceptInvitation(chall._id)}
+                      onClick={() => handleAcceptInvitation(chall)}
                       disabled={actionLoadingBetId === chall._id}
                       className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs h-8 gap-1.5"
                     >
@@ -689,7 +665,11 @@ export default function BettingTab({
                         {isCompleted ? (
                           <>
                             Winner: <strong className="text-amber-300">{bet.winnerName}</strong>
-                            {bet.lossReason === 'timeout' ? ' (by 24h Timeout)' : ' (Rolled a 0)'} • {bet.rolls?.length || 0} rolls
+                            {' • '}
+                            {bet.lossReason === 'timeout'
+                              ? `${bet.loserName} ran out of time`
+                              : `${bet.loserName} rolled a 0`}
+                            {' • '}{bet.rolls?.length || 0} rolls
                           </>
                         ) : (
                           <span className="capitalize">{bet.status}</span>

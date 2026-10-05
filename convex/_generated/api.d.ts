@@ -16,6 +16,7 @@ import type * as blackVoidDiscord from "../blackVoidDiscord.js";
 import type * as characters from "../characters.js";
 import type * as commendations from "../commendations.js";
 import type * as crons from "../crons.js";
+import type * as deathroll from "../deathroll.js";
 import type * as discord from "../discord.js";
 import type * as discordHelpers from "../discordHelpers.js";
 import type * as discordInteractions from "../discordInteractions.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   characters: typeof characters;
   commendations: typeof commendations;
   crons: typeof crons;
+  deathroll: typeof deathroll;
   discord: typeof discord;
   discordHelpers: typeof discordHelpers;
   discordInteractions: typeof discordInteractions;

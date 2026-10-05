@@ -295,6 +295,8 @@ export default defineSchema({
         }))),
         winnerClaimed: v.optional(v.boolean()), // Ledger claim checkmark for winner
         loserClaimed: v.optional(v.boolean()), // Ledger claim checkmark for loser
+        discordMessageId: v.optional(v.string()), // #black-void invite post (public challenges only)
+        discordThreadId: v.optional(v.string()), // Live play-by-play thread on the invite post
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
     }).index('by_senderCharacterId_and_status', ['senderCharacterId', 'status'])

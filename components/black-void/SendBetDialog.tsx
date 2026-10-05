@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Coins, Dices, User, Users, Swords, AlertCircle, Loader2, MessageSquare } from 'lucide-react'
+import { Coins, Dices, User, Users, Swords, AlertCircle, AlertTriangle, Loader2, MessageSquare, Flame } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -58,6 +58,9 @@ export default function SendBetDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const sendBetInvitation = useMutation(api.blackVoidBets.sendBetInvitation)
+
+  const allInAmount = characterWealth ? String(Math.round(characterWealth.totalInGold * 100) / 100) : null
+  const hasPurse = !!allInAmount && Number(allInAmount) > 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -225,6 +228,23 @@ export default function SendBetDialog({
                   {val} GP
                 </button>
               ))}
+              <button
+                type="button"
+                disabled={!hasPurse}
+                onClick={() => allInAmount && setWagerAmount(allInAmount)}
+                title={hasPurse ? undefined : 'No gold on this character sheet yet. Sync it to go all-in.'}
+                className={cn(
+                  'px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-all flex items-center gap-1',
+                  !hasPurse
+                    ? 'border-border/30 bg-muted/10 text-muted-foreground/50 cursor-not-allowed'
+                    : wagerAmount === allInAmount
+                      ? 'border-rose-400/70 bg-rose-500/25 text-rose-200 shadow-[0_0_10px_rgba(244,63,94,0.35)] cursor-pointer'
+                      : 'border-rose-500/40 bg-rose-950/30 text-rose-300 hover:bg-rose-500/20 cursor-pointer'
+                )}
+              >
+                <Flame className="h-3 w-3" />
+                {hasPurse ? `All-in (${Number(allInAmount).toLocaleString()} GP)` : 'All-in (no gold)'}
+              </button>
             </div>
           </div>
 
@@ -291,6 +311,19 @@ export default function SendBetDialog({
             />
           </div>
 
+          {/* Big Rule / Ban Warning */}
+          <div className="p-3 rounded-lg bg-rose-950/40 border-2 border-rose-500/50 text-rose-200 text-xs flex items-start gap-2.5 shadow-md shadow-rose-950/30">
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5 animate-pulse" />
+            <div className="space-y-1">
+              <strong className="font-bold text-rose-300 block uppercase tracking-wider text-[11px]">
+                Void Arena Code of Conduct
+              </strong>
+              <p className="text-[11px] leading-relaxed text-rose-200/90">
+                It is strictly against the rules to start or accept a bet with money your character does not currently possess. Wagering gold you do not have will result in an immediate and permanent ban from the Void.
+              </p>
+            </div>
+          </div>
+
           {/* Insufficient Funds Warning */}
           {(() => {
             const wager = parseFloat(wagerAmount)
@@ -298,25 +331,42 @@ export default function SendBetDialog({
             const insufficientFunds = hasFunds && !isNaN(wager) && wager > 0 && wager > characterWealth!.totalInGold
             if (!insufficientFunds) return null
             return (
-              <div className="p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-[11px] text-amber-200 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/60 text-[11px] text-rose-200 flex items-start gap-2 animate-pulse">
+                <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Insufficient Funds:</strong> Your character has{' '}
+                  <strong className="text-rose-400 font-bold uppercase">Insufficient Funds Detected:</strong> Your character only possesses{' '}
                   <strong className="text-amber-300 font-mono">{characterWealth!.totalInGold.toLocaleString()} GP</strong>{' '}
-                  but the wager is{' '}
+                  but this wager is for{' '}
                   <strong className="text-amber-300 font-mono">{wager.toLocaleString()} GP</strong>.
-                  Ensure your character has enough gold before the bet settles.
+                  Placing this bet without the required gold is a bannable offense!
                 </span>
               </div>
             )
           })()}
 
           {/* Rule Note */}
-          <div className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/20 text-[11px] text-muted-foreground flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
-            <span>
-              <strong>Rule Notice:</strong> Max 1 sent invitation at a time. Upon accepting, the opponent rolls between 0 and {deathrollValue || '1,000'}. Players alternate rolling 0 to the previous roll with a <strong>24-hour deadline</strong> per turn. Rolling a <strong>0</strong> or missing the 24h window loses the bet!
-            </span>
+          <div className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/20 text-[11px] text-muted-foreground space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-rose-300">
+              <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+              Rules
+            </div>
+            <ol className="space-y-0.5 list-decimal list-outside pl-5 marker:text-rose-400/70">
+              <li>
+                The accepter rolls first, from 0 up to{' '}
+                <strong className="text-rose-300 whitespace-nowrap">
+                  {parseInt(deathrollValue, 10) > 0 ? parseInt(deathrollValue, 10).toLocaleString() : 'the start'}
+                </strong>.
+              </li>
+              <li>Then you take turns rolling from 0 up to the last roll.</li>
+              <li>
+                You lose if you roll a <strong className="text-rose-400">0</strong> or wait over{' '}
+                <strong className="text-rose-400 whitespace-nowrap">24 hours</strong> to roll.
+              </li>
+              <li>Only 1 open invitation at a time.</li>
+              <li className="text-rose-300 font-semibold">
+                Betting money you do not have is strictly forbidden and results in an immediate ban from the Void.
+              </li>
+            </ol>
           </div>
 
           <DialogFooter className="pt-2">

@@ -50,6 +50,7 @@ All backend code in `convex/` must strictly adhere to the following platform res
 ## 4. Discord & Third-Party Integrations
 
 * **Channel Targeting**: Use `process.env.DISCORD_CHANNEL_ID` for `#ouroubouros-inn` activity feed / character quotes, and `process.env.DISCORD_FORUM_CHANNEL_ID` for session forum threads.
+* **Black Void Notifications**: Use `process.env.DISCORD_BV_CHANNEL_ID` for `#black-void` auction listings, service inquiries, and Deathroll betting duels. Public deathroll challenges post an invite embed that updates in place as a live scoreboard. When accepted, a play-by-play thread is created; the opening thread message pings the two betters (if their Discord accounts are linked) with character names pitted against each other, automatically adding them to the thread while keeping subsequent roll turns embed-only to prevent mention spam.
 * **Plain Markdown & Embed Suppression**: Quote broadcasts must be formatted in plain markdown using a blockquote callout (`> “quote”\n— **Name** in [World](url)`). Always set `flags: 4` (`SUPPRESS_EMBEDS`) in the Discord API payload to suppress automatic URL link preview cards.
 * **Resilient Execution**: External API calls inside Convex actions should handle errors gracefully and never roll back successful local database mutations.
 

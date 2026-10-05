@@ -263,7 +263,7 @@ export default function ItemListingDialog({
                       <span>Character Inventory</span>
                       <span className="text-purple-400 font-mono">{characterInventory.length} Items</span>
                     </div>
-                    <div className="max-h-[220px] overflow-y-auto space-y-1 pt-1 scrollbar-thin">
+                    <div className="max-h-[220px] overflow-y-auto space-y-1 pt-1 custom-scrollbar">
                       {characterInventory.map((item, idx) => (
                         <button
                           key={idx}

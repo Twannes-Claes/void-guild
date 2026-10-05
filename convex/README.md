@@ -40,6 +40,8 @@ All backend queries, mutations, and actions must comply with Convex system limit
 * **`reputations` (in `schema.ts`)**: Character faction standing indexed by `by_world_character`, `by_world_faction`, `by_world_character_faction`.
 * **`sessions.ts`**: Game sessions, attending characters, effective level evaluation, relationship streaks, initiative tracker.
 * **`blackVoid.ts`**: Economy marketplace, proxy bidding with 2-sig-fig increments, downtime services, financial ledgers, Guildmaster cuts.
+* **`blackVoidBets.ts` & `deathroll.ts`**: Deathroll multiplayer betting arena, PVP turn-based wagers, range decay logic, bust probability calculations, and 24-hour timeout enforcement.
+* **`blackVoidDiscord.ts`**: `#black-void` Discord integration (`DISCORD_BV_CHANNEL_ID`), auction listings, service contact threads, and Deathroll challenge scoreboard posts with live play-by-play threads (pinging linked Discord accounts in the opening thread message).
 * **`quests.ts`**: Dual-system (`PF` / `DnD`) quests, character-issued quests, and Guild sponsorship payback.
 * **`achievements.ts`**: Event-driven achievements, cosmetics unlocks, and character-based world streaks.
 * **`external_api.ts`**: High-performance REST query/mutation resolvers supporting public GETs and key-authenticated mutations.
