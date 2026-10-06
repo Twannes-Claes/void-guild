@@ -179,15 +179,17 @@ export default function WorldStreakBackgroundEffect({
       className={`pointer-events-none absolute inset-0 w-full h-full rounded-[inherit] z-0 overflow-hidden ${className || ''}`}
     >
       {emblemUrl && (
-        <div className="absolute right-0 top-0 bottom-0 w-full flex items-center justify-end pointer-events-none select-none pr-16 sm:pr-24 overflow-hidden">
+        <div
+          className="absolute right-0 top-0 bottom-0 w-full flex items-center justify-end pointer-events-none select-none pr-16 sm:pr-24 overflow-hidden"
+          style={{
+            maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 80%)',
+            WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 80%)',
+          }}
+        >
           <img
             src={emblemUrl}
             alt="World Sigil"
-            className="h-[140%] max-h-[180px] w-auto max-w-[260px] object-contain opacity-40 filter drop-shadow-[0_0_16px_rgba(255,255,255,0.35)]"
-            style={{
-              maskImage: 'radial-gradient(ellipse at center, black 60%, transparent 100%)',
-              WebkitMaskImage: 'radial-gradient(ellipse at center, black 60%, transparent 100%)',
-            }}
+            className="h-[140%] max-h-[180px] w-auto max-w-[260px] object-contain opacity-35"
           />
         </div>
       )}

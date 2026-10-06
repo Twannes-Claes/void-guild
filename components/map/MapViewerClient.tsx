@@ -1430,7 +1430,7 @@ export default function MapViewerClient() {
                 <Input
                   value={newMapDraft.imageUrl}
                   onChange={(e) => setNewMapDraft({ ...newMapDraft, imageUrl: e.target.value })}
-                  placeholder="https://maps.tarragon.be/overworld.webp"
+                  placeholder="https://maps.tarragon.be/overworld.svg"
                 />
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -3113,7 +3113,7 @@ export default function MapViewerClient() {
               <Input
                 value={settingsDraft.imageUrl}
                 onChange={(e) => setSettingsDraft({ ...settingsDraft, imageUrl: e.target.value })}
-                placeholder="https://maps.tarragon.be/kalogeron.webp"
+                placeholder="https://maps.tarragon.be/kalogeron.svg"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
                 If the file was modified on your server at the same URL, click <strong>Reload Image</strong> to force all players and browsers to fetch the updated image.
@@ -3690,7 +3690,7 @@ export default function MapViewerClient() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-muted-foreground">Overlay Image URL (Transparent PNG/WebP)</label>
+                <label className="font-bold text-muted-foreground">Overlay Image URL (SVG / Transparent WebP / PNG)</label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -3708,7 +3708,7 @@ export default function MapViewerClient() {
               <Input
                 value={newLayerDraft.imageUrl}
                 onChange={(e) => setNewLayerDraft({ ...newLayerDraft, imageUrl: e.target.value })}
-                placeholder="https://maps.tarragon.be/borders.webp"
+                placeholder="https://maps.tarragon.be/borders.svg"
               />
             </div>
             <div className="flex items-center justify-between pt-2">
