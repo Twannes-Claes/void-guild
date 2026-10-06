@@ -635,6 +635,15 @@ export const createSession = mutation({
     isPrivate: v.optional(v.boolean()),
     isIntro: v.optional(v.boolean()),
     questId: v.optional(v.id('quests')),
+    inGameDate: v.optional(v.object({
+      year: v.number(),
+      month: v.number(),
+      day: v.number(),
+      era: v.optional(v.string()),
+      endYear: v.optional(v.number()),
+      endMonth: v.optional(v.number()),
+      endDay: v.optional(v.number()),
+    })),
   },
   handler: async (ctx, args) => {
     const isGM = await isGameMaster(ctx)
@@ -656,11 +665,29 @@ export const createSession = mutation({
         throw new Error('Game Master must have a world to create a session.')
     }
 
+    let inGameDate = args.inGameDate
+    if (!inGameDate && gmWorld.calendar) {
+      try {
+        const parsedCal = JSON.parse(gmWorld.calendar)
+        const dyn = parsedCal?.dynamic_data
+        if (dyn && typeof dyn.year === 'number' && typeof dyn.month === 'number' && typeof dyn.day === 'number') {
+          inGameDate = {
+            year: dyn.year,
+            month: dyn.month,
+            day: dyn.day,
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
     const level = args.isIntro ? (args.system === 'PF' ? 1 : 3) : args.level
 
     const sessionId = await ctx.db.insert('sessions', {
       date: args.date,
       world: gmWorld._id,
+      inGameDate,
       level: level,
       maxPlayers: args.maxPlayers,
       locked: false,

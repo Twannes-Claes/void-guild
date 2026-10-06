@@ -174,6 +174,15 @@ export const createSession = mutation({
         isPrivate: v.optional(v.boolean()),
         isIntro: v.optional(v.boolean()),
         worldId: v.optional(v.string()),
+        inGameDate: v.optional(v.object({
+            year: v.number(),
+            month: v.number(),
+            day: v.number(),
+            era: v.optional(v.string()),
+            endYear: v.optional(v.number()),
+            endMonth: v.optional(v.number()),
+            endDay: v.optional(v.number()),
+        })),
     },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx, args.apiKey)
@@ -184,22 +193,45 @@ export const createSession = mutation({
             targetWorldId = ctx.db.normalizeId('worlds', args.worldId)
         }
 
-        if (!targetWorldId) {
-            const world = await ctx.db
+        let targetWorld: any = null
+        if (targetWorldId) {
+            targetWorld = await ctx.db.get(targetWorldId)
+        }
+
+        if (!targetWorld) {
+            targetWorld = await ctx.db
                 .query('worlds')
                 .withIndex('by_owner', (q) => q.eq('owner', user.userId))
                 .first()
 
-            if (!world) throw new Error('You must own a world to create a session')
-            targetWorldId = world._id
+            if (!targetWorld) throw new Error('You must own a world to create a session')
+            targetWorldId = targetWorld._id
+        }
+
+        let inGameDate = args.inGameDate
+        if (!inGameDate && targetWorld?.calendar) {
+            try {
+                const parsedCal = JSON.parse(targetWorld.calendar)
+                const dyn = parsedCal?.dynamic_data
+                if (dyn && typeof dyn.year === 'number' && typeof dyn.month === 'number' && typeof dyn.day === 'number') {
+                    inGameDate = {
+                        year: dyn.year,
+                        month: dyn.month,
+                        day: dyn.day,
+                    }
+                }
+            } catch {
+                // Ignore parse errors
+            }
         }
 
         const { apiKey, worldId, ...sessionData } = args
         const level = args.isIntro ? (args.system === 'PF' ? 1 : 3) : args.level
         return await ctx.db.insert('sessions', {
             ...sessionData,
+            inGameDate,
             level,
-            world: targetWorldId,
+            world: targetWorldId!,
             owner: user.userId,
             characters: [],
             locked: false,
@@ -261,6 +293,15 @@ export const updateSession = mutation({
         planning: v.optional(v.boolean()),
         isPrivate: v.optional(v.boolean()),
         isIntro: v.optional(v.boolean()),
+        inGameDate: v.optional(v.object({
+            year: v.number(),
+            month: v.number(),
+            day: v.number(),
+            era: v.optional(v.string()),
+            endYear: v.optional(v.number()),
+            endMonth: v.optional(v.number()),
+            endDay: v.optional(v.number()),
+        })),
     },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx, args.apiKey)
@@ -281,6 +322,11 @@ export const updateSession = mutation({
             }
         }
         await ctx.db.patch(sId, patch)
+
+        await ctx.scheduler.runAfter(0, internal.discord.syncSessionToDiscord, {
+            sessionId: sId,
+        })
+
         return { success: true }
     },
 })
