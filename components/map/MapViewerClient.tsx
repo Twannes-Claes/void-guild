@@ -98,12 +98,17 @@ function TilePyramidLayer({
     return Math.ceil(Math.log2(maxDim))
   }, [mapWidth, mapHeight, maxZoom])
 
-  // Determine current optimal LOD level z based on display scale
+  // Determine current optimal LOD level z based on display scale and screen DPI
   // scale 1.0 = native resolution (level = maxLevel)
-  // scale 0.5 = level maxLevel - 1
+  // We include a quality bias and account for devicePixelRatio (Retina / high-DPI displays)
+  // so tiles remain razor sharp and don't prematurely downsample into blurry lower mipmaps.
   const targetLevel = useMemo(() => {
-    const computedLevel = maxLevel + Math.log2(Math.max(scale, 0.0001))
-    const clamped = Math.round(computedLevel)
+    const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1
+    // Boost LOD selection for high-DPI screens or zoom transitions:
+    // +0.5 to prefer sharper higher-res tiles rather than dropping to blurry lower-res early
+    const dprBonus = Math.log2(Math.min(dpr, 2))
+    const computedLevel = maxLevel + Math.log2(Math.max(scale, 0.0001)) + dprBonus + 0.35
+    const clamped = Math.floor(computedLevel)
     return Math.max(minZoom, Math.min(maxLevel, clamped))
   }, [maxLevel, scale, minZoom])
 
@@ -207,6 +212,9 @@ function TilePyramidLayer({
             width: `${tile.width}px`,
             height: `${tile.height}px`,
             objectFit: 'fill',
+            imageRendering: 'auto',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
           }}
           onError={(e) => {
             e.currentTarget.style.display = 'none'
@@ -370,6 +378,90 @@ export default function MapViewerClient() {
     }
     setIsProcessorPickerOpen(false)
     toast.success(`Selected "${mapItem.slug}" from Map Processor!`)
+  }
+
+  // Helper to parse processor map info from an entered URL (e.g., if user pastes webp or tile URL)
+  const extractProcessorSlugAndBase = (url: string) => {
+    const trimmed = (url || '').trim()
+    if (!trimmed) return null
+    try {
+      const parsed = new URL(trimmed)
+      const pathname = parsed.pathname
+      // Check for /<slug>.webp, /<slug>.svg, /<slug>_tiles_files/..., /<slug>_tiles.dzi, /<slug>_tiles
+      // Extracts the clean base map slug
+      const match = pathname.match(/^\/?([a-zA-Z0-9_-]+?)(?:_tiles(?:_files.*|\.dzi)?|\.(?:webp|svg|png|jpg|jpeg))?$/i)
+      if (match && match[1]) {
+        let slug = match[1]
+        // In case suffix wasn't fully stripped:
+        slug = slug.replace(/_tiles(_files)?$/, '').replace(/\.(webp|svg|png|jpg|jpeg)$/i, '')
+        if (slug === 'api' || slug.length < 2) return null
+        const baseUrl = `${parsed.protocol}//${parsed.host}`
+        return { slug, baseUrl }
+      }
+    } catch {
+      // Not a valid URL string yet
+    }
+    return null
+  }
+
+  // Auto-fetch tiles and metadata from processor if the entered URL matches a hosted processor map
+  const checkAndFetchProcessorTiles = async (
+    enteredUrl: string,
+    target: 'newMap' | 'mapSettings' | 'layer'
+  ) => {
+    const extracted = extractProcessorSlugAndBase(enteredUrl)
+    if (!extracted) return
+
+    try {
+      const res = await fetch(`${extracted.baseUrl}/api/maps/${encodeURIComponent(extracted.slug)}`)
+      if (!res.ok) return
+      const mapItem = await res.json()
+      if (!mapItem || (!mapItem.tilesUrl && !mapItem.hasTiles)) return
+
+      if (target === 'newMap') {
+        setNewMapDraft((prev) => {
+          // If tileUrl is already set and matches this map's tiles, no need to overwrite
+          if (prev.tileUrl === mapItem.tilesUrl && prev.imageUrl) return prev
+          return {
+            ...prev,
+            name: prev.name || mapItem.slug.replace(/[-_]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+            slug: prev.slug || mapItem.slug,
+            imageUrl: mapItem.imageUrl || prev.imageUrl || '',
+            tileUrl: mapItem.tilesUrl || prev.tileUrl || '',
+          }
+        })
+        toast.success(`Found map tiles for "${mapItem.slug}"!`)
+      } else if (target === 'mapSettings') {
+        setSettingsDraft((prev) => {
+          if (prev.tileUrl === mapItem.tilesUrl && prev.imageUrl) return prev
+          return {
+            ...prev,
+            imageUrl: mapItem.imageUrl || prev.imageUrl || '',
+            tileUrl: mapItem.tilesUrl || prev.tileUrl || '',
+            width: mapItem.width || prev.width,
+            height: mapItem.height || prev.height,
+            tileSize: mapItem.tileSize || prev.tileSize || 256,
+            maxZoom: mapItem.maxZoom !== undefined ? mapItem.maxZoom : prev.maxZoom,
+          }
+        })
+        toast.success(`Found map tiles & dimensions for "${mapItem.slug}"!`)
+      } else if (target === 'layer') {
+        setNewLayerDraft((prev) => {
+          if (prev.tileUrl === mapItem.tilesUrl && prev.imageUrl) return prev
+          return {
+            ...prev,
+            name: prev.name || mapItem.slug.replace(/[-_]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+            imageUrl: mapItem.imageUrl || prev.imageUrl || '',
+            tileUrl: mapItem.tilesUrl || prev.tileUrl || '',
+            tileSize: mapItem.tileSize || prev.tileSize || 256,
+            maxZoom: mapItem.maxZoom !== undefined ? mapItem.maxZoom : prev.maxZoom,
+          }
+        })
+        toast.success(`Found map tiles for layer "${mapItem.slug}"!`)
+      }
+    } catch (err) {
+      console.debug('No processor tiles found for entered URL:', err)
+    }
   }
 
   const handleCopyLink = (text: string, label: string) => {
@@ -1682,7 +1774,11 @@ export default function MapViewerClient() {
                 </div>
                 <Input
                   value={newMapDraft.tileUrl}
-                  onChange={(e) => setNewMapDraft({ ...newMapDraft, tileUrl: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setNewMapDraft({ ...newMapDraft, tileUrl: val })
+                  }}
+                  onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'newMap')}
                   placeholder="https://maps.tarragon.be/slug_tiles_files/{z}/{x}_{y}.webp"
                 />
                 <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -1708,7 +1804,15 @@ export default function MapViewerClient() {
                 </div>
                 <Input
                   value={newMapDraft.imageUrl}
-                  onChange={(e) => setNewMapDraft({ ...newMapDraft, imageUrl: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setNewMapDraft({ ...newMapDraft, imageUrl: val })
+                    // Auto-fetch if pasted or typed
+                    if (val.includes('.webp') || val.includes('_tiles')) {
+                      checkAndFetchProcessorTiles(val, 'newMap')
+                    }
+                  }}
+                  onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'newMap')}
                   placeholder="https://maps.tarragon.be/overworld.webp"
                 />
               </div>
@@ -3330,7 +3434,11 @@ export default function MapViewerClient() {
               </div>
               <Input
                 value={newMapDraft.tileUrl}
-                onChange={(e) => setNewMapDraft({ ...newMapDraft, tileUrl: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setNewMapDraft({ ...newMapDraft, tileUrl: val })
+                }}
+                onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'newMap')}
                 placeholder="https://maps.tarragon.be/slug_tiles_files/{z}/{x}_{y}.webp"
               />
               <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -3356,7 +3464,14 @@ export default function MapViewerClient() {
               </div>
               <Input
                 value={newMapDraft.imageUrl}
-                onChange={(e) => setNewMapDraft({ ...newMapDraft, imageUrl: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setNewMapDraft({ ...newMapDraft, imageUrl: val })
+                  if (val.includes('.webp') || val.includes('_tiles')) {
+                    checkAndFetchProcessorTiles(val, 'newMap')
+                  }
+                }}
+                onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'newMap')}
                 placeholder="https://maps.tarragon.be/overworld.webp"
               />
             </div>
@@ -3460,7 +3575,11 @@ export default function MapViewerClient() {
               </div>
               <Input
                 value={settingsDraft.tileUrl}
-                onChange={(e) => setSettingsDraft({ ...settingsDraft, tileUrl: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSettingsDraft({ ...settingsDraft, tileUrl: val })
+                }}
+                onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'mapSettings')}
                 placeholder="https://maps.tarragon.be/slug_tiles_files/{z}/{x}_{y}.webp"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
@@ -3517,7 +3636,14 @@ export default function MapViewerClient() {
               </div>
               <Input
                 value={settingsDraft.imageUrl}
-                onChange={(e) => setSettingsDraft({ ...settingsDraft, imageUrl: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSettingsDraft({ ...settingsDraft, imageUrl: val })
+                  if (val.includes('.webp') || val.includes('_tiles')) {
+                    checkAndFetchProcessorTiles(val, 'mapSettings')
+                  }
+                }}
+                onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'mapSettings')}
                 placeholder="https://maps.tarragon.be/kalogeron.webp"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
@@ -4110,7 +4236,11 @@ export default function MapViewerClient() {
               </div>
               <Input
                 value={newLayerDraft.tileUrl}
-                onChange={(e) => setNewLayerDraft({ ...newLayerDraft, tileUrl: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setNewLayerDraft({ ...newLayerDraft, tileUrl: val })
+                }}
+                onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'layer')}
                 placeholder="https://maps.tarragon.be/borders_tiles_files/{z}/{x}_{y}.webp"
               />
             </div>
@@ -4133,7 +4263,14 @@ export default function MapViewerClient() {
               </div>
               <Input
                 value={newLayerDraft.imageUrl}
-                onChange={(e) => setNewLayerDraft({ ...newLayerDraft, imageUrl: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setNewLayerDraft({ ...newLayerDraft, imageUrl: val })
+                  if (val.includes('.webp') || val.includes('_tiles')) {
+                    checkAndFetchProcessorTiles(val, 'layer')
+                  }
+                }}
+                onBlur={(e) => checkAndFetchProcessorTiles(e.target.value, 'layer')}
                 placeholder="https://maps.tarragon.be/borders.svg"
               />
             </div>
