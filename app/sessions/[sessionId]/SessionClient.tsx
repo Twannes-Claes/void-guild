@@ -458,8 +458,21 @@ export default function SessionClient() {
     }
   }
 
-  const availableCharacters = (userCharacters ?? []).filter(char => 
-    !session.characters.includes(char._id) && char.system === session.system
+  const availableCharacters = (userCharacters ?? []).filter(char => {
+    if (session.characters.includes(char._id) || char.system !== session.system) {
+      return false
+    }
+    if (typeof session.level === 'number' && session.level > 0) {
+      return Math.abs(char.lvl - session.level) < 5
+    }
+    return true
+  })
+  const hasCharactersOutOfLevelRange = (userCharacters ?? []).some(
+    c => c.system === session.system &&
+      !session.characters.includes(c._id) &&
+      typeof session.level === 'number' &&
+      session.level > 0 &&
+      Math.abs(c.lvl - session.level) >= 5
   )
   const adminAvailableCharacters = allCharacters?.filter(char => 
     !session.characters.includes(char._id) && char.system === session.system
@@ -572,9 +585,13 @@ export default function SessionClient() {
               sessionPlanning={session.planning}
               sessionIsPrivate={session.isPrivate}
               sessionIsIntro={session.isIntro}
+              sessionSystem={session.system}
+              sessionLevel={typeof session.level === 'number' ? session.level : undefined}
+              hasCharactersOutOfLevelRange={hasCharactersOutOfLevelRange}
               isFull={isFull}
               availableCharacters={availableCharacters}
               userCharactersCount={userCharacters?.length ?? 0}
+              matchingSystemCharactersCount={(userCharacters ?? []).filter(c => c.system === session.system).length}
               selectedCharacterId={selectedCharacterId}
               hasUserCharacterInSession={hasUserCharacterInSession}
               userCharactersInSession={userCharactersInSession}

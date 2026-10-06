@@ -20,9 +20,13 @@ interface SessionJoinFormProps {
   sessionPlanning?: boolean
   sessionIsPrivate?: boolean
   sessionIsIntro?: boolean
+  sessionSystem?: 'PF' | 'DnD'
+  sessionLevel?: number
+  hasCharactersOutOfLevelRange?: boolean
   isFull: boolean
   availableCharacters: Doc<'characters'>[]
   userCharactersCount: number
+  matchingSystemCharactersCount?: number
   selectedCharacterId: Id<'characters'> | ''
   hasUserCharacterInSession: boolean
   userCharactersInSession?: Doc<'characters'>[]
@@ -41,9 +45,13 @@ export default function SessionJoinForm({
   sessionPlanning,
   sessionIsPrivate,
   sessionIsIntro,
+  sessionSystem,
+  sessionLevel,
+  hasCharactersOutOfLevelRange,
   isFull,
   availableCharacters,
   userCharactersCount,
+  matchingSystemCharactersCount,
   selectedCharacterId,
   hasUserCharacterInSession,
   userCharactersInSession = [],
@@ -246,11 +254,29 @@ export default function SessionJoinForm({
               <>
                 <p>You don&apos;t have any characters yet.</p>
                 <a href="/" className="text-primary hover:underline font-semibold not-italic">
-                  Go to Home to create one!
+                  Create one on the home page →
+                </a>
+              </>
+            ) : matchingSystemCharactersCount === 0 ? (
+              <>
+                <p>
+                  You don&apos;t have any {sessionSystem === 'PF' ? 'Pathfinder' : sessionSystem === 'DnD' ? 'D&D 5e' : ''} characters eligible to join.
+                </p>
+                <a href="/" className="text-primary hover:underline font-semibold not-italic">
+                  Create one on the home page →
+                </a>
+              </>
+            ) : hasCharactersOutOfLevelRange && typeof sessionLevel === 'number' && sessionLevel > 0 ? (
+              <>
+                <p>
+                  None of your {sessionSystem === 'PF' ? 'Pathfinder' : sessionSystem === 'DnD' ? 'D&D 5e' : ''} characters are within the eligible level range for this Level {sessionLevel} session (Levels {Math.max(1, sessionLevel - 4)} &ndash; {sessionLevel + 4}).
+                </p>
+                <a href="/" className="text-primary hover:underline font-semibold not-italic">
+                  Create one on the home page →
                 </a>
               </>
             ) : (
-              <p>All your characters are already in this session.</p>
+              <p>All your {sessionSystem === 'PF' ? 'Pathfinder' : sessionSystem === 'DnD' ? 'D&D 5e' : ''} characters are already in this session.</p>
             )}
           </div>
         ) : (

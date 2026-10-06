@@ -914,6 +914,17 @@ export const joinSession = mutation({
         throw new Error(`This is a ${session.system} session, but your character is ${character.system}.`)
     }
 
+    const quest = session.questId && !session.isIntro ? await ctx.db.get(session.questId) : null
+    const effectiveLevel = computeEffectiveLevel(session, quest)
+    if (typeof effectiveLevel === 'number' && effectiveLevel > 0) {
+      const levelDiff = Math.abs(character.lvl - effectiveLevel)
+      if (levelDiff >= 5) {
+        throw new Error(
+          `Level difference too high. This is a Level ${effectiveLevel} session, so only characters between Level ${Math.max(1, effectiveLevel - 4)} and Level ${effectiveLevel + 4} can join (your character is Level ${character.lvl}).`
+        )
+      }
+    }
+
     if (session.characters.includes(args.characterId)) {
       return
     }
@@ -974,6 +985,17 @@ export const swapSessionCharacter = mutation({
 
     if (newCharacter.system !== session.system) {
       throw new Error(`This is a ${session.system} session, but your new character is ${newCharacter.system}.`)
+    }
+
+    const quest = session.questId && !session.isIntro ? await ctx.db.get(session.questId) : null
+    const effectiveLevel = computeEffectiveLevel(session, quest)
+    if (typeof effectiveLevel === 'number' && effectiveLevel > 0) {
+      const levelDiff = Math.abs(newCharacter.lvl - effectiveLevel)
+      if (levelDiff >= 5) {
+        throw new Error(
+          `Level difference too high. This is a Level ${effectiveLevel} session, so only characters between Level ${Math.max(1, effectiveLevel - 4)} and Level ${effectiveLevel + 4} can join (your new character is Level ${newCharacter.lvl}).`
+        )
+      }
     }
 
     if (session.characters.includes(args.newCharacterId)) {
@@ -1077,6 +1099,14 @@ export const joinIntroSession = mutation({
 
       if (character.system !== session.system) {
         throw new Error(`This is a ${session.system} session, but your character is ${character.system}.`)
+      }
+
+      const effectiveLevel = session.system === 'PF' ? 1 : 3
+      const levelDiff = Math.abs(character.lvl - effectiveLevel)
+      if (levelDiff >= 5) {
+        throw new Error(
+          `Level difference too high. This is a Level ${effectiveLevel} intro session, so only characters between Level ${Math.max(1, effectiveLevel - 4)} and Level ${effectiveLevel + 4} can join (your character is Level ${character.lvl}).`
+        )
       }
     } else {
       // Find or generate a unique placeholder character name for the user
