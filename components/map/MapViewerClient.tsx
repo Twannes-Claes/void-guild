@@ -53,6 +53,170 @@ export function renderPinIcon(iconName?: string, className = "h-4 w-4 text-white
   return <IconComp className={className} />
 }
 
+interface TilePyramidLayerProps {
+  tileUrl: string
+  mapWidth: number
+  mapHeight: number
+  scale: number
+  position: { x: number; y: number }
+  containerRef: React.RefObject<HTMLDivElement | null>
+  viewportRef: React.RefObject<HTMLDivElement | null>
+  tileSize?: number
+  minZoom?: number
+  maxZoom?: number
+  imageUpdatedAt?: number
+  opacity?: number
+}
+
+function TilePyramidLayer({
+  tileUrl,
+  mapWidth,
+  mapHeight,
+  scale,
+  position,
+  containerRef,
+  viewportRef,
+  tileSize = 256,
+  minZoom = 0,
+  maxZoom,
+  imageUpdatedAt,
+  opacity = 1,
+}: TilePyramidLayerProps) {
+  // Normalize DeepZoom template URL if user pasted a .dzi URL
+  const normalizedTemplate = useMemo(() => {
+    let url = (tileUrl || '').trim()
+    if (url.endsWith('.dzi')) {
+      url = url.replace(/\.dzi$/, '_files/{z}/{x}_{y}.webp')
+    }
+    return url
+  }, [tileUrl])
+
+  // Calculate maximum LOD level in DeepZoom pyramid
+  const maxLevel = useMemo(() => {
+    if (maxZoom !== undefined && maxZoom > 0) return maxZoom
+    const maxDim = Math.max(mapWidth || 2000, mapHeight || 2000)
+    return Math.ceil(Math.log2(maxDim))
+  }, [mapWidth, mapHeight, maxZoom])
+
+  // Determine current optimal LOD level z based on display scale
+  // scale 1.0 = native resolution (level = maxLevel)
+  // scale 0.5 = level maxLevel - 1
+  const targetLevel = useMemo(() => {
+    const computedLevel = maxLevel + Math.log2(Math.max(scale, 0.0001))
+    const clamped = Math.round(computedLevel)
+    return Math.max(minZoom, Math.min(maxLevel, clamped))
+  }, [maxLevel, scale, minZoom])
+
+  // Calculate level dimensions and grid
+  const s = 1 / Math.pow(2, maxLevel - targetLevel)
+  const levelW = Math.ceil(mapWidth * s)
+  const levelH = Math.ceil(mapHeight * s)
+  const tSize = tileSize || 256
+
+  const numCols = Math.ceil(levelW / tSize)
+  const numRows = Math.ceil(levelH / tSize)
+
+  // Compute visible viewport bounds in map coordinate space [0..mapWidth, 0..mapHeight]
+  const visibleTiles = useMemo(() => {
+    let minCol = 0
+    let maxCol = Math.max(0, numCols - 1)
+    let minRow = 0
+    let maxRow = Math.max(0, numRows - 1)
+
+    if (containerRef.current && viewportRef.current) {
+      const vRect = viewportRef.current.getBoundingClientRect()
+      const cRect = containerRef.current.getBoundingClientRect()
+
+      if (vRect.width > 0 && vRect.height > 0 && cRect.width > 0 && cRect.height > 0) {
+        const visLeft = Math.max(0, (vRect.left - cRect.left) / scale)
+        const visRight = Math.min(mapWidth, (vRect.right - cRect.left) / scale)
+        const visTop = Math.max(0, (vRect.top - cRect.top) / scale)
+        const visBottom = Math.min(mapHeight, (vRect.bottom - cRect.top) / scale)
+
+        const lvlLeft = visLeft * s
+        const lvlRight = visRight * s
+        const lvlTop = visTop * s
+        const lvlBottom = visBottom * s
+
+        // 1 tile padding on all sides for smooth preloading during pan
+        minCol = Math.max(0, Math.floor(lvlLeft / tSize) - 1)
+        maxCol = Math.min(numCols - 1, Math.floor(lvlRight / tSize) + 1)
+        minRow = Math.max(0, Math.floor(lvlTop / tSize) - 1)
+        maxRow = Math.min(numRows - 1, Math.floor(lvlBottom / tSize) + 1)
+      }
+    }
+
+    const tiles: { col: number; row: number; left: number; top: number; width: number; height: number; url: string }[] = []
+
+    for (let col = minCol; col <= maxCol; col++) {
+      for (let row = minRow; row <= maxRow; row++) {
+        const xInLvl = col * tSize
+        const yInLvl = row * tSize
+        const wInLvl = Math.min(tSize, levelW - xInLvl)
+        const hInLvl = Math.min(tSize, levelH - yInLvl)
+        if (wInLvl <= 0 || hInLvl <= 0) continue
+
+        const nativeLeft = xInLvl / s
+        const nativeTop = yInLvl / s
+        const nativeW = wInLvl / s
+        const nativeH = hInLvl / s
+
+        let formattedUrl = normalizedTemplate
+          .replace(/\{z\}/g, String(targetLevel))
+          .replace(/\{x\}/g, String(col))
+          .replace(/\{y\}/g, String(row))
+
+        if (imageUpdatedAt) {
+          formattedUrl += (formattedUrl.includes('?') ? '&' : '?') + `t=${imageUpdatedAt}`
+        }
+
+        tiles.push({
+          col,
+          row,
+          left: nativeLeft,
+          top: nativeTop,
+          width: nativeW,
+          height: nativeH,
+          url: formattedUrl,
+        })
+      }
+    }
+
+    return tiles
+  }, [containerRef, viewportRef, mapWidth, mapHeight, scale, position, targetLevel, s, levelW, levelH, tSize, numCols, numRows, normalizedTemplate, imageUpdatedAt])
+
+  if (!normalizedTemplate) return null
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none select-none overflow-hidden"
+      style={{ width: `${mapWidth}px`, height: `${mapHeight}px`, opacity }}
+    >
+      {visibleTiles.map((tile) => (
+        <img
+          key={`${targetLevel}_${tile.col}_${tile.row}`}
+          src={tile.url}
+          alt=""
+          loading="eager"
+          decoding="async"
+          draggable={false}
+          className="absolute select-none pointer-events-none"
+          style={{
+            left: `${tile.left}px`,
+            top: `${tile.top}px`,
+            width: `${tile.width}px`,
+            height: `${tile.height}px`,
+            objectFit: 'fill',
+          }}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export default function MapViewerClient() {
   const params = useParams()
   const router = useRouter()
@@ -151,6 +315,72 @@ export default function MapViewerClient() {
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false)
   const [isLayersMenuOpen, setIsLayersMenuOpen] = useState(false)
 
+  // Map Processor Picker State
+  const [isProcessorPickerOpen, setIsProcessorPickerOpen] = useState(false)
+  const [processorTargetMode, setProcessorTargetMode] = useState<'newMap' | 'mapSettings' | 'layer'>('mapSettings')
+  const [processorMaps, setProcessorMaps] = useState<any[]>([])
+  const [isLoadingProcessorMaps, setIsLoadingProcessorMaps] = useState(false)
+
+  const handleOpenProcessorPicker = async (target: 'newMap' | 'mapSettings' | 'layer') => {
+    setProcessorTargetMode(target)
+    setIsProcessorPickerOpen(true)
+    setIsLoadingProcessorMaps(true)
+    try {
+      const processorUrl = process.env.NEXT_PUBLIC_MAP_PROCESSOR_URL || 'https://maps.tarragon.be'
+      const res = await fetch(`${processorUrl}/api/maps`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setProcessorMaps(data.maps || [])
+    } catch (err: any) {
+      console.warn('Failed to load maps from processor:', err)
+      toast.error('Could not load hosted maps from processor')
+    } finally {
+      setIsLoadingProcessorMaps(false)
+    }
+  }
+
+  const handleSelectProcessorMap = (mapItem: any) => {
+    if (processorTargetMode === 'newMap') {
+      setNewMapDraft((prev) => ({
+        ...prev,
+        name: prev.name || mapItem.slug.replace(/[-_]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        slug: prev.slug || mapItem.slug,
+        imageUrl: mapItem.imageUrl || '',
+        tileUrl: mapItem.tilesUrl || '',
+      }))
+    } else if (processorTargetMode === 'mapSettings') {
+      setSettingsDraft((prev) => ({
+        ...prev,
+        imageUrl: mapItem.imageUrl || prev.imageUrl,
+        tileUrl: mapItem.tilesUrl || '',
+        width: mapItem.width || prev.width,
+        height: mapItem.height || prev.height,
+        tileSize: mapItem.tileSize || 256,
+        maxZoom: mapItem.maxZoom !== undefined ? mapItem.maxZoom : prev.maxZoom,
+      }))
+    } else if (processorTargetMode === 'layer') {
+      setNewLayerDraft((prev) => ({
+        ...prev,
+        name: prev.name || mapItem.slug.replace(/[-_]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        imageUrl: mapItem.imageUrl || '',
+        tileUrl: mapItem.tilesUrl || '',
+        tileSize: mapItem.tileSize || 256,
+        maxZoom: mapItem.maxZoom !== undefined ? mapItem.maxZoom : prev.maxZoom,
+      }))
+    }
+    setIsProcessorPickerOpen(false)
+    toast.success(`Selected "${mapItem.slug}" from Map Processor!`)
+  }
+
+  const handleCopyLink = (text: string, label: string) => {
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`Copied ${label} to clipboard!`)
+    }).catch(() => {
+      toast.error('Failed to copy to clipboard')
+    })
+  }
+
   // Selected item / edit draft states
   const [selectedPin, setSelectedPin] = useState<any>(null)
   const [selectedArea, setSelectedArea] = useState<any>(null)
@@ -218,6 +448,10 @@ export default function MapViewerClient() {
     slug: '',
     isHomeMap: false,
     imageUrl: '',
+    tileUrl: '',
+    tileSize: 256,
+    minZoom: 0,
+    maxZoom: undefined as number | undefined,
     width: 2000,
     height: 2000,
     gridType: 'none' as 'none' | 'hex' | 'hex_flat' | 'square',
@@ -236,6 +470,7 @@ export default function MapViewerClient() {
     slug: '',
     isHomeMap: false,
     imageUrl: '',
+    tileUrl: '',
     hideFromMenu: false,
   })
 
@@ -243,6 +478,9 @@ export default function MapViewerClient() {
   const [newLayerDraft, setNewLayerDraft] = useState({
     name: '',
     imageUrl: '',
+    tileUrl: '',
+    tileSize: 256,
+    maxZoom: undefined as number | undefined,
     defaultEnabled: true,
     allowUserToggle: true,
   })
@@ -266,6 +504,10 @@ export default function MapViewerClient() {
         slug: currentMap.slug,
         isHomeMap: currentMap.isHomeMap || false,
         imageUrl: currentMap.imageUrl || '',
+        tileUrl: currentMap.tileUrl || '',
+        tileSize: currentMap.tileSize || 256,
+        minZoom: currentMap.minZoom || 0,
+        maxZoom: currentMap.maxZoom,
         width: currentMap.width || 2000,
         height: currentMap.height || 2000,
         gridType: currentMap.gridType || 'none',
@@ -1204,7 +1446,8 @@ export default function MapViewerClient() {
         name: newMapDraft.name,
         slug: newMapDraft.slug,
         isHomeMap: newMapDraft.isHomeMap,
-        imageUrl: newMapDraft.imageUrl,
+        imageUrl: newMapDraft.imageUrl || undefined,
+        tileUrl: newMapDraft.tileUrl || undefined,
         hideFromMenu: newMapDraft.hideFromMenu,
       })
       toast.success('Map created!')
@@ -1226,13 +1469,20 @@ export default function MapViewerClient() {
       const gridOffsetValX = Number(settingsDraft.gridOffsetX)
       const gridOffsetValY = Number(settingsDraft.gridOffsetY)
       const gridScaleVal = Number(settingsDraft.gridScale)
+      const tileSizeVal = Number(settingsDraft.tileSize)
+      const minZoomVal = Number(settingsDraft.minZoom)
+      const maxZoomVal = settingsDraft.maxZoom !== undefined ? Number(settingsDraft.maxZoom) : undefined
 
       await updateMapSettingsMutation({
         mapId: currentMap._id,
         name: settingsDraft.name,
         slug: settingsDraft.slug,
         isHomeMap: settingsDraft.isHomeMap,
-        imageUrl: settingsDraft.imageUrl,
+        imageUrl: settingsDraft.imageUrl || undefined,
+        tileUrl: settingsDraft.tileUrl || undefined,
+        tileSize: !isNaN(tileSizeVal) && tileSizeVal > 0 ? tileSizeVal : 256,
+        minZoom: !isNaN(minZoomVal) ? minZoomVal : 0,
+        maxZoom: maxZoomVal !== undefined && !isNaN(maxZoomVal) ? maxZoomVal : undefined,
         width: !isNaN(widthVal) && widthVal > 0 ? widthVal : (currentMap.width || 2000),
         height: !isNaN(heightVal) && heightVal > 0 ? heightVal : (currentMap.height || 2000),
         gridType: settingsDraft.gridType,
@@ -1320,16 +1570,22 @@ export default function MapViewerClient() {
   const handleAddLayer = async () => {
     if (!currentMap || !newLayerDraft.name.trim()) return
     try {
+      const tileSizeVal = Number(newLayerDraft.tileSize)
+      const maxZoomVal = newLayerDraft.maxZoom !== undefined ? Number(newLayerDraft.maxZoom) : undefined
+
       await addLayerMutation({
         mapId: currentMap._id,
         name: newLayerDraft.name,
-        imageUrl: newLayerDraft.imageUrl,
+        imageUrl: newLayerDraft.imageUrl || undefined,
+        tileUrl: newLayerDraft.tileUrl || undefined,
+        tileSize: !isNaN(tileSizeVal) && tileSizeVal > 0 ? tileSizeVal : 256,
+        maxZoom: maxZoomVal !== undefined && !isNaN(maxZoomVal) ? maxZoomVal : undefined,
         defaultEnabled: newLayerDraft.defaultEnabled,
         allowUserToggle: newLayerDraft.allowUserToggle,
       })
       toast.success('Layer added!')
       setIsLayerDialogOpen(false)
-      setNewLayerDraft({ name: '', imageUrl: '', defaultEnabled: true, allowUserToggle: true })
+      setNewLayerDraft({ name: '', imageUrl: '', tileUrl: '', tileSize: 256, maxZoom: undefined, defaultEnabled: true, allowUserToggle: true })
     } catch (err) {
       toast.error('Failed to add layer')
     }
@@ -1412,7 +1668,30 @@ export default function MapViewerClient() {
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-muted-foreground">Background Image URL</label>
+                  <label className="font-bold text-muted-foreground">Tile Pyramid URL Template</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px] gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/40"
+                    onClick={() => handleOpenProcessorPicker('newMap')}
+                  >
+                    <Layers className="h-3 w-3" />
+                    Browse Hosted Maps
+                  </Button>
+                </div>
+                <Input
+                  value={newMapDraft.tileUrl}
+                  onChange={(e) => setNewMapDraft({ ...newMapDraft, tileUrl: e.target.value })}
+                  placeholder="https://maps.tarragon.be/slug_tiles_files/{z}/{x}_{y}.webp"
+                />
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  DeepZoom tile pyramid format. Supports fast multi-resolution streaming.
+                </p>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-muted-foreground">Background Image URL (Fallback / Standalone)</label>
                   <Button
                     type="button"
                     variant="ghost"
@@ -1422,7 +1701,7 @@ export default function MapViewerClient() {
                   >
                     <a href="https://maps.tarragon.be" target="_blank" rel="noopener noreferrer" title="Upload new map image on maps.tarragon.be">
                       <Upload className="h-3 w-3" />
-                      Upload new image
+                      Upload to Processor
                       <ExternalLink className="h-2.5 w-2.5 opacity-60" />
                     </a>
                   </Button>
@@ -1430,7 +1709,7 @@ export default function MapViewerClient() {
                 <Input
                   value={newMapDraft.imageUrl}
                   onChange={(e) => setNewMapDraft({ ...newMapDraft, imageUrl: e.target.value })}
-                  placeholder="https://maps.tarragon.be/overworld.svg"
+                  placeholder="https://maps.tarragon.be/overworld.webp"
                 />
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -2265,7 +2544,7 @@ export default function MapViewerClient() {
           }}
           onClick={handleCanvasClick}
         >
-          {/* BASE MAP BACKGROUND IMAGE */}
+          {/* BASE MAP BACKGROUND IMAGE OR TILE PYRAMID */}
           {currentMap?.imageUrl ? (
             <img
               src={getCacheBustedUrl(currentMap.imageUrl, currentMap.imageUpdatedAt)}
@@ -2274,24 +2553,58 @@ export default function MapViewerClient() {
               draggable={false}
               onLoad={handleImageLoad}
             />
-          ) : (
+          ) : !currentMap?.tileUrl ? (
             <div className="absolute inset-0 w-full h-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-700 font-bold text-2xl">
               No Map Image Set
             </div>
+          ) : null}
+
+          {/* BASE MAP TILE PYRAMID */}
+          {currentMap?.tileUrl && (
+            <TilePyramidLayer
+              tileUrl={currentMap.tileUrl}
+              mapWidth={mapWidth}
+              mapHeight={mapHeight}
+              scale={scale}
+              position={position}
+              containerRef={containerRef}
+              viewportRef={viewportRef}
+              tileSize={currentMap.tileSize}
+              minZoom={currentMap.minZoom}
+              maxZoom={currentMap.maxZoom}
+              imageUpdatedAt={currentMap.imageUpdatedAt}
+            />
           )}
 
           {/* OVERLAY MAP LAYERS */}
           {fullData?.layers.map((layer) => {
             if (!enabledLayers[layer._id]) return null
-            if (!layer.imageUrl) return null
             return (
-              <img
-                key={layer._id}
-                src={getCacheBustedUrl(layer.imageUrl, layer.imageUpdatedAt)}
-                alt={layer.name}
-                className="absolute inset-0 w-full h-full max-w-none object-fill pointer-events-none"
-                draggable={false}
-              />
+              <React.Fragment key={layer._id}>
+                {layer.imageUrl && (
+                  <img
+                    src={getCacheBustedUrl(layer.imageUrl, layer.imageUpdatedAt)}
+                    alt={layer.name}
+                    className="absolute inset-0 w-full h-full max-w-none object-fill pointer-events-none"
+                    draggable={false}
+                  />
+                )}
+                {layer.tileUrl && (
+                  <TilePyramidLayer
+                    tileUrl={layer.tileUrl}
+                    mapWidth={mapWidth}
+                    mapHeight={mapHeight}
+                    scale={scale}
+                    position={position}
+                    containerRef={containerRef}
+                    viewportRef={viewportRef}
+                    tileSize={layer.tileSize}
+                    minZoom={layer.minZoom}
+                    maxZoom={layer.maxZoom}
+                    imageUpdatedAt={layer.imageUpdatedAt}
+                  />
+                )}
+              </React.Fragment>
             )
           })}
 
@@ -3002,11 +3315,49 @@ export default function MapViewerClient() {
               />
             </div>
             <div>
-              <label className="font-bold text-muted-foreground">Background Image URL</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-muted-foreground">Tile Pyramid URL Template</label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/40"
+                  onClick={() => handleOpenProcessorPicker('newMap')}
+                >
+                  <Layers className="h-3 w-3" />
+                  Browse Hosted Maps
+                </Button>
+              </div>
+              <Input
+                value={newMapDraft.tileUrl}
+                onChange={(e) => setNewMapDraft({ ...newMapDraft, tileUrl: e.target.value })}
+                placeholder="https://maps.tarragon.be/slug_tiles_files/{z}/{x}_{y}.webp"
+              />
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                DeepZoom tile pyramid format. Fast LOD zoom.
+              </p>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-muted-foreground">Background Image URL (Fallback / Standalone)</label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] gap-1 text-purple-400 hover:text-purple-300 hover:bg-purple-950/40"
+                  asChild
+                >
+                  <a href="https://maps.tarragon.be" target="_blank" rel="noopener noreferrer" title="Upload new map image on maps.tarragon.be">
+                    <Upload className="h-3 w-3" />
+                    Upload to Processor
+                    <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                  </a>
+                </Button>
+              </div>
               <Input
                 value={newMapDraft.imageUrl}
                 onChange={(e) => setNewMapDraft({ ...newMapDraft, imageUrl: e.target.value })}
-                placeholder="https://..."
+                placeholder="https://maps.tarragon.be/overworld.webp"
               />
             </div>
             <div className="flex items-center justify-between pt-2">
@@ -3077,9 +3428,50 @@ export default function MapViewerClient() {
                 />
               </div>
             </div>
+            {/* TILE PYRAMID URL */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-muted-foreground">Background Image URL</label>
+                <label className="font-bold text-muted-foreground">Tile Pyramid URL Template</label>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px] gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/40"
+                    onClick={() => handleOpenProcessorPicker('mapSettings')}
+                  >
+                    <Layers className="h-3 w-3" />
+                    Browse Hosted Maps
+                  </Button>
+                  {settingsDraft.tileUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] gap-1 text-slate-300 hover:text-white hover:bg-slate-800"
+                      onClick={() => handleCopyLink(settingsDraft.tileUrl, 'Tile Pyramid URL')}
+                      title="Copy Tile URL to clipboard"
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy Tiles URL
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Input
+                value={settingsDraft.tileUrl}
+                onChange={(e) => setSettingsDraft({ ...settingsDraft, tileUrl: e.target.value })}
+                placeholder="https://maps.tarragon.be/slug_tiles_files/{z}/{x}_{y}.webp"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Supports DeepZoom WebP/JPEG tile pyramids for high performance and deep zoom levels.
+              </p>
+            </div>
+
+            {/* BACKGROUND IMAGE URL */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-muted-foreground">Background Image URL (Fallback / Standalone)</label>
                 <div className="flex items-center gap-1.5">
                   <Button
                     type="button"
@@ -3090,10 +3482,23 @@ export default function MapViewerClient() {
                   >
                     <a href="https://maps.tarragon.be" target="_blank" rel="noopener noreferrer" title="Upload new map image on maps.tarragon.be">
                       <Upload className="h-3 w-3" />
-                      Upload new image
+                      Upload to Processor
                       <ExternalLink className="h-2.5 w-2.5 opacity-60" />
                     </a>
                   </Button>
+                  {settingsDraft.imageUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] gap-1 text-slate-300 hover:text-white hover:bg-slate-800"
+                      onClick={() => handleCopyLink(settingsDraft.imageUrl, 'Image URL')}
+                      title="Copy Image URL to clipboard"
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy Image URL
+                    </Button>
+                  )}
                   {currentMap?.imageUrl && (
                     <Button
                       type="button"
@@ -3105,7 +3510,7 @@ export default function MapViewerClient() {
                       title="Force reload latest image from host (bypasses browser HTTP cache)"
                     >
                       <RefreshCw className={`h-3 w-3 ${isRefreshingImage ? 'animate-spin' : ''}`} />
-                      Reload Image (Clear Cache)
+                      Reload
                     </Button>
                   )}
                 </div>
@@ -3113,12 +3518,13 @@ export default function MapViewerClient() {
               <Input
                 value={settingsDraft.imageUrl}
                 onChange={(e) => setSettingsDraft({ ...settingsDraft, imageUrl: e.target.value })}
-                placeholder="https://maps.tarragon.be/kalogeron.svg"
+                placeholder="https://maps.tarragon.be/kalogeron.webp"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
-                If the file was modified on your server at the same URL, click <strong>Reload Image</strong> to force all players and browsers to fetch the updated image.
+                Click <strong>Reload</strong> if the image was updated on the server at the same URL to clear the browser cache.
               </p>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-muted-foreground">Width (px)</label>
@@ -3690,6 +4096,26 @@ export default function MapViewerClient() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-muted-foreground">Tile Pyramid URL Template</label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] gap-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/40"
+                  onClick={() => handleOpenProcessorPicker('layer')}
+                >
+                  <Layers className="h-3 w-3" />
+                  Browse Hosted Maps
+                </Button>
+              </div>
+              <Input
+                value={newLayerDraft.tileUrl}
+                onChange={(e) => setNewLayerDraft({ ...newLayerDraft, tileUrl: e.target.value })}
+                placeholder="https://maps.tarragon.be/borders_tiles_files/{z}/{x}_{y}.webp"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
                 <label className="font-bold text-muted-foreground">Overlay Image URL (SVG / Transparent WebP / PNG)</label>
                 <Button
                   type="button"
@@ -3700,7 +4126,7 @@ export default function MapViewerClient() {
                 >
                   <a href="https://maps.tarragon.be" target="_blank" rel="noopener noreferrer" title="Upload new layer image on maps.tarragon.be">
                     <Upload className="h-3 w-3" />
-                    Upload new image
+                    Upload to Processor
                     <ExternalLink className="h-2.5 w-2.5 opacity-60" />
                   </a>
                 </Button>
@@ -3729,6 +4155,102 @@ export default function MapViewerClient() {
           <DialogFooter>
             <Button size="sm" onClick={handleAddLayer}>Add Layer</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: PROCESSOR MAPS PICKER */}
+      <Dialog open={isProcessorPickerOpen} onOpenChange={setIsProcessorPickerOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-cyan-400" />
+                Hosted Maps on Map Processor
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1 text-purple-400 hover:text-purple-300"
+                asChild
+              >
+                <a href="https://maps.tarragon.be" target="_blank" rel="noopener noreferrer">
+                  <Upload className="h-3.5 w-3.5" />
+                  Open Processor ↗
+                </a>
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 text-xs">
+            <p className="text-muted-foreground">
+              Select any hosted map below to automatically import its image URL, tile pyramid endpoint, and native dimensions.
+            </p>
+
+            {isLoadingProcessorMaps ? (
+              <div className="py-8 text-center text-muted-foreground space-y-2">
+                <RefreshCw className="h-5 w-5 animate-spin mx-auto text-cyan-400" />
+                <p>Loading hosted maps from processor...</p>
+              </div>
+            ) : processorMaps.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground bg-muted/20 border border-border/50 rounded-lg p-4">
+                No maps found on processor.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {processorMaps.map((item) => (
+                  <div
+                    key={item.slug}
+                    className="p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-cyan-500/50 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-foreground">{item.slug}</span>
+                        {item.width && item.height && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                            {item.width}×{item.height}px
+                          </span>
+                        )}
+                        {item.maxZoom !== undefined && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-800/60 text-purple-300">
+                            Zoom 0–{item.maxZoom}
+                          </span>
+                        )}
+                        {item.svgUrl && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/60 text-emerald-300">
+                            SVG
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-mono text-muted-foreground truncate max-w-md">
+                        {item.tilesUrl || item.imageUrl}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {item.tilesUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
+                          onClick={() => handleCopyLink(item.tilesUrl, 'Tile URL')}
+                          title="Copy tile URL"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-semibold"
+                        onClick={() => handleSelectProcessorMap(item)}
+                      >
+                        Use This Map
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

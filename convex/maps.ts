@@ -113,6 +113,10 @@ export const createMap = mutation({
     slug: v.string(),
     isHomeMap: v.optional(v.boolean()),
     imageUrl: v.optional(v.string()),
+    tileUrl: v.optional(v.string()),
+    tileSize: v.optional(v.number()),
+    minZoom: v.optional(v.number()),
+    maxZoom: v.optional(v.number()),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
     gridType: v.optional(v.union(v.literal('none'), v.literal('hex'), v.literal('hex_flat'), v.literal('square'))),
@@ -156,6 +160,10 @@ export const createMap = mutation({
       slug: cleanSlug,
       isHomeMap: args.isHomeMap ?? false,
       imageUrl: args.imageUrl,
+      tileUrl: args.tileUrl,
+      tileSize: args.tileSize,
+      minZoom: args.minZoom,
+      maxZoom: args.maxZoom,
       width: args.width ?? 2000,
       height: args.height ?? 2000,
       gridType: args.gridType ?? 'none',
@@ -180,6 +188,10 @@ export const updateMapSettings = mutation({
     slug: v.optional(v.string()),
     isHomeMap: v.optional(v.boolean()),
     imageUrl: v.optional(v.string()),
+    tileUrl: v.optional(v.string()),
+    tileSize: v.optional(v.number()),
+    minZoom: v.optional(v.number()),
+    maxZoom: v.optional(v.number()),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
     gridType: v.optional(v.union(v.literal('none'), v.literal('hex'), v.literal('hex_flat'), v.literal('square'))),
@@ -224,6 +236,10 @@ export const updateMapSettings = mutation({
     }
     if (args.isHomeMap !== undefined) patches.isHomeMap = args.isHomeMap
     if (args.imageUrl !== undefined) patches.imageUrl = args.imageUrl
+    if (args.tileUrl !== undefined) patches.tileUrl = args.tileUrl
+    if (args.tileSize !== undefined) patches.tileSize = args.tileSize
+    if (args.minZoom !== undefined) patches.minZoom = args.minZoom
+    if (args.maxZoom !== undefined) patches.maxZoom = args.maxZoom
     if (args.width !== undefined) patches.width = args.width
     if (args.height !== undefined) patches.height = args.height
     if (args.gridType !== undefined) patches.gridType = args.gridType
@@ -335,6 +351,10 @@ export const addLayer = mutation({
     mapId: v.id('worldMaps'),
     name: v.string(),
     imageUrl: v.optional(v.string()),
+    tileUrl: v.optional(v.string()),
+    tileSize: v.optional(v.number()),
+    minZoom: v.optional(v.number()),
+    maxZoom: v.optional(v.number()),
     defaultEnabled: v.boolean(),
     allowUserToggle: v.boolean(),
   },
@@ -352,10 +372,49 @@ export const addLayer = mutation({
       mapId: args.mapId,
       name: args.name.trim(),
       imageUrl: args.imageUrl,
+      tileUrl: args.tileUrl,
+      tileSize: args.tileSize,
+      minZoom: args.minZoom,
+      maxZoom: args.maxZoom,
       order: existingLayers.length,
       defaultEnabled: args.defaultEnabled,
       allowUserToggle: args.allowUserToggle,
     })
+  },
+})
+
+export const updateLayer = mutation({
+  args: {
+    layerId: v.id('mapLayers'),
+    name: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    tileUrl: v.optional(v.string()),
+    tileSize: v.optional(v.number()),
+    minZoom: v.optional(v.number()),
+    maxZoom: v.optional(v.number()),
+    defaultEnabled: v.optional(v.boolean()),
+    allowUserToggle: v.optional(v.boolean()),
+    imageUpdatedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const layer = await ctx.db.get(args.layerId)
+    if (!layer) throw new Error('Layer not found')
+    const map = await ctx.db.get(layer.mapId)
+    if (!map) throw new Error('Map not found')
+    await verifyWorldOwner(ctx, map.worldId)
+
+    const patches: any = {}
+    if (args.name !== undefined) patches.name = args.name.trim()
+    if (args.imageUrl !== undefined) patches.imageUrl = args.imageUrl
+    if (args.tileUrl !== undefined) patches.tileUrl = args.tileUrl
+    if (args.tileSize !== undefined) patches.tileSize = args.tileSize
+    if (args.minZoom !== undefined) patches.minZoom = args.minZoom
+    if (args.maxZoom !== undefined) patches.maxZoom = args.maxZoom
+    if (args.defaultEnabled !== undefined) patches.defaultEnabled = args.defaultEnabled
+    if (args.allowUserToggle !== undefined) patches.allowUserToggle = args.allowUserToggle
+    if (args.imageUpdatedAt !== undefined) patches.imageUpdatedAt = args.imageUpdatedAt
+
+    await ctx.db.patch(args.layerId, patches)
   },
 })
 

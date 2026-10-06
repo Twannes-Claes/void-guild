@@ -478,6 +478,10 @@ export default defineSchema({
         slug: v.string(), // Unique identifier for URL parameter e.g. "overworld", "capital-city"
         isHomeMap: v.optional(v.boolean()),
         imageUrl: v.optional(v.string()), // Background map image URL
+        tileUrl: v.optional(v.string()), // Tile pyramid URL template e.g. "https://maps.tarragon.be/slug_tiles_files/{z}/{x}_{y}.webp"
+        tileSize: v.optional(v.number()), // Tile size in px (default 256)
+        minZoom: v.optional(v.number()), // Minimum zoom level for tile pyramid
+        maxZoom: v.optional(v.number()), // Maximum zoom level for tile pyramid
         width: v.optional(v.number()), // Base width in px (default 2000)
         height: v.optional(v.number()), // Base height in px (default 2000)
         // Hex / Square Grid settings
@@ -497,6 +501,10 @@ export default defineSchema({
         mapId: v.id('worldMaps'),
         name: v.string(),
         imageUrl: v.optional(v.string()),
+        tileUrl: v.optional(v.string()),
+        tileSize: v.optional(v.number()),
+        minZoom: v.optional(v.number()),
+        maxZoom: v.optional(v.number()),
         order: v.number(),
         defaultEnabled: v.boolean(),
         allowUserToggle: v.boolean(),
