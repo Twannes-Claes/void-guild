@@ -34,13 +34,16 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
     const padding = 28
     let particles: BeaconParticle[] = []
 
+    const isMobileDevice =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 1024 ||
+        window.matchMedia('(pointer: coarse)').matches ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+
     const resize = () => {
       const parent = canvas.parentElement
       if (!parent) return
-      const isMobile =
-        typeof window !== 'undefined' &&
-        (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches)
-      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
+      const dpr = isMobileDevice ? 1 : Math.min(window.devicePixelRatio || 1, 1.25)
       width = parent.offsetWidth || canvas.clientWidth || 0
       height = parent.offsetHeight || canvas.clientHeight || 0
 
@@ -170,18 +173,18 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
     }
 
     let startTime = performance.now()
+    let lastFrameTime = 0
+    const targetInterval = isMobileDevice ? 1000 / 30 : 1000 / 60
 
     const render = (now: number) => {
       animationFrameId = requestAnimationFrame(render)
       if (!isVisible) return
 
-      if (canvas.parentElement) {
-        const curW = canvas.parentElement.offsetWidth
-        const curH = canvas.parentElement.offsetHeight
-        if (curW > 0 && curH > 0 && (Math.abs(curW - width) > 1 || Math.abs(curH - height) > 1)) {
-          resize()
-        }
+      // Throttle render rate on mobile/tablet to conserve GPU and battery
+      if (isMobileDevice && now - lastFrameTime < targetInterval) {
+        return
       }
+      lastFrameTime = now
 
       const elapsed = (now - startTime) * 0.001
       const totalW = width + padding * 2
@@ -200,22 +203,26 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
       ctx.save()
       ctx.globalCompositeOperation = 'screen'
 
-      // 1. Ambient guiding track along the perimeter
+      // 1. Ambient guiding track along the perimeter using native roundRect
       ctx.beginPath()
-      const trackSegments = 80
-      for (let i = 0; i <= trackSegments; i++) {
-        const pt = getPerimeterPoint(i / trackSegments, width, height, cardRadius)
-        if (i === 0) ctx.moveTo(ox + pt.x, oy + pt.y)
-        else ctx.lineTo(ox + pt.x, oy + pt.y)
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(ox, oy, width, height, cardRadius)
+      } else {
+        const trackSegments = isMobileDevice ? 24 : 48
+        for (let i = 0; i <= trackSegments; i++) {
+          const pt = getPerimeterPoint(i / trackSegments, width, height, cardRadius)
+          if (i === 0) ctx.moveTo(ox + pt.x, oy + pt.y)
+          else ctx.lineTo(ox + pt.x, oy + pt.y)
+        }
+        ctx.closePath()
       }
-      ctx.closePath()
       ctx.strokeStyle = 'rgba(245, 158, 11, 0.18)'
       ctx.lineWidth = 1.2
       ctx.stroke()
 
       // 2. Trailing Radiant Beam Ribbon (spanning ~24% perimeter behind beacon head)
       const trailSpan = 0.24
-      const trailSegments = 32
+      const trailSegments = isMobileDevice ? 12 : 24
       const trailPoints: { x: number; y: number; factor: number }[] = []
 
       for (let i = 0; i <= trailSegments; i++) {
@@ -230,6 +237,9 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
       }
 
       // Draw outer radiant glowing aura of the trail
+      if (!isMobileDevice) {
+        ctx.shadowColor = 'rgba(251, 191, 36, 0.7)'
+      }
       for (let i = 0; i < trailPoints.length - 1; i++) {
         const p1 = trailPoints[i]
         const p2 = trailPoints[i + 1]
@@ -241,12 +251,17 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
         ctx.lineTo(p2.x, p2.y)
         ctx.strokeStyle = `rgba(245, 158, 11, ${alpha})`
         ctx.lineWidth = 3 + f * 9
-        ctx.shadowColor = 'rgba(251, 191, 36, 0.85)'
-        ctx.shadowBlur = 10 + f * 8
+        if (!isMobileDevice) {
+          ctx.shadowBlur = 6 + f * 6
+        }
         ctx.stroke()
       }
 
       // Draw blazing inner core filament of the trail
+      if (!isMobileDevice) {
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)'
+        ctx.shadowBlur = 4
+      }
       for (let i = 0; i < trailPoints.length - 1; i++) {
         const p1 = trailPoints[i]
         const p2 = trailPoints[i + 1]
@@ -258,9 +273,10 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
         ctx.lineTo(p2.x, p2.y)
         ctx.strokeStyle = `rgba(255, 250, 220, ${alpha})`
         ctx.lineWidth = 1 + f * 2.5
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.9)'
-        ctx.shadowBlur = 6
         ctx.stroke()
+      }
+      if (!isMobileDevice) {
+        ctx.shadowBlur = 0
       }
 
       // 3. The Focal Radiant Quest Beacon Head
@@ -306,8 +322,10 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
       const spikeLen = 14 + pulse * 5
       ctx.lineWidth = 1.2
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
-      ctx.shadowColor = 'rgba(254, 240, 138, 1)'
-      ctx.shadowBlur = 8
+      if (!isMobileDevice) {
+        ctx.shadowColor = 'rgba(254, 240, 138, 1)'
+        ctx.shadowBlur = 8
+      }
 
       // Tangent / travel axis spike
       ctx.beginPath()
@@ -340,15 +358,21 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
       ctx.beginPath()
       ctx.arc(hx, hy, 3.2, 0, Math.PI * 2)
       ctx.fillStyle = '#ffffff'
-      ctx.shadowColor = '#ffffff'
-      ctx.shadowBlur = 6
+      if (!isMobileDevice) {
+        ctx.shadowColor = '#ffffff'
+        ctx.shadowBlur = 6
+      }
       ctx.fill()
+      if (!isMobileDevice) {
+        ctx.shadowBlur = 0
+      }
 
       // 4. Trailing Radiant Quest Stardust Motes
-      if (particles.length < 16 && Math.random() < 0.45) {
+      const maxParticles = isMobileDevice ? 6 : 16
+      const spawnChance = isMobileDevice ? 0.2 : 0.45
+      if (particles.length < maxParticles && Math.random() < spawnChance) {
         // Spawn spark slightly behind beacon head
         const spawnPt = getPerimeterPoint(tBeacon - 0.015, width, height, cardRadius)
-        const spreadAngle = (Math.random() - 0.5) * 1.2
         const sparkSpeed = 0.4 + Math.random() * 0.9
         const dirX = -headPt.tx * 0.5 + headPt.nx * (Math.random() - 0.2)
         const dirY = -headPt.ty * 0.5 + headPt.ny * (Math.random() - 0.2)
@@ -360,7 +384,7 @@ export default function QuestBeaconBorderEffect({ className }: QuestBeaconBorder
           vx: (dirX / len) * sparkSpeed,
           vy: (dirY / len) * sparkSpeed,
           life: 0,
-          maxLife: 24 + Math.random() * 26,
+          maxLife: 20 + Math.random() * 20,
           size: 0.9 + Math.random() * 1.5,
           isStar: Math.random() > 0.5,
         })

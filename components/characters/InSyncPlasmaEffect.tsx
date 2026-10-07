@@ -34,10 +34,16 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
     const padding = 28
     let particles: EmberParticle[] = []
 
+    const isMobileDevice =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 1024 ||
+        window.matchMedia('(pointer: coarse)').matches ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+
     const resize = () => {
       const parent = canvas.parentElement
       if (!parent) return
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const dpr = isMobileDevice ? 1 : Math.min(window.devicePixelRatio || 1, 1.25)
       width = parent.offsetWidth || canvas.clientWidth || 0
       height = parent.offsetHeight || canvas.clientHeight || 0
 
@@ -167,18 +173,17 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
     }
 
     let startTime = performance.now()
+    let lastFrameTime = 0
+    const targetInterval = isMobileDevice ? 1000 / 30 : 1000 / 60
 
     const render = (now: number) => {
       animationFrameId = requestAnimationFrame(render)
       if (!isVisible) return
 
-      if (canvas.parentElement) {
-        const curW = canvas.parentElement.offsetWidth
-        const curH = canvas.parentElement.offsetHeight
-        if (curW > 0 && curH > 0 && (Math.abs(curW - width) > 1 || Math.abs(curH - height) > 1)) {
-          resize()
-        }
+      if (isMobileDevice && now - lastFrameTime < targetInterval) {
+        return
       }
+      lastFrameTime = now
 
       const elapsed = (now - startTime) * 0.001
 
@@ -189,7 +194,7 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       }
 
       const cardRadius = 8
-      const segments = 160 // High sample density for perfectly smooth, unclipped rounded corners
+      const segments = isMobileDevice ? 50 : 120
       const ox = padding
       const oy = padding
 
@@ -213,8 +218,10 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       ctx.closePath()
       ctx.strokeStyle = 'rgba(234, 88, 12, 0.6)'
       ctx.lineWidth = 12
-      ctx.shadowColor = 'rgba(234, 88, 12, 0.85)'
-      ctx.shadowBlur = 16
+      if (!isMobileDevice) {
+        ctx.shadowColor = 'rgba(234, 88, 12, 0.85)'
+        ctx.shadowBlur = 14
+      }
       ctx.stroke()
 
       // Layer 2: Radiant blazing orange leaping flame tongues
@@ -234,8 +241,10 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       ctx.closePath()
       ctx.strokeStyle = 'rgba(249, 115, 22, 0.95)'
       ctx.lineWidth = 4.5
-      ctx.shadowColor = 'rgba(251, 146, 60, 0.95)'
-      ctx.shadowBlur = 10
+      if (!isMobileDevice) {
+        ctx.shadowColor = 'rgba(251, 146, 60, 0.95)'
+        ctx.shadowBlur = 8
+      }
       ctx.stroke()
 
       // Layer 3: Intense white-hot and gold core filaments
@@ -254,12 +263,19 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
       ctx.closePath()
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.98)'
       ctx.lineWidth = 1.6
-      ctx.shadowColor = 'rgba(254, 215, 170, 1)'
-      ctx.shadowBlur = 6
+      if (!isMobileDevice) {
+        ctx.shadowColor = 'rgba(254, 215, 170, 1)'
+        ctx.shadowBlur = 5
+      }
       ctx.stroke()
+      if (!isMobileDevice) {
+        ctx.shadowBlur = 0
+      }
 
       // Spawn energetic ember sparks
-      if (particles.length < 22 && Math.random() < 0.5) {
+      const maxParticles = isMobileDevice ? 8 : 22
+      const spawnChance = isMobileDevice ? 0.25 : 0.5
+      if (particles.length < maxParticles && Math.random() < spawnChance) {
         const t = Math.random()
         const pt = getPerimeterPoint(t, width, height, cardRadius)
         const angle = Math.atan2(pt.ny, pt.nx) + (Math.random() - 0.5) * 0.9
@@ -270,7 +286,7 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed - 0.3,
           life: 0,
-          maxLife: 28 + Math.random() * 34,
+          maxLife: 20 + Math.random() * 24,
           size: 1.2 + Math.random() * 2.2,
           hue: 20 + Math.random() * 25,
         })
@@ -292,11 +308,16 @@ export default function InSyncPlasmaEffect({ className }: InSyncPlasmaEffectProp
 
         const alpha = (1 - progress) * 0.9
         ctx.fillStyle = `hsla(${p.hue}, 95%, 55%, ${alpha})`
-        ctx.shadowColor = `hsla(${p.hue}, 100%, 65%, ${alpha})`
-        ctx.shadowBlur = 6
+        if (!isMobileDevice) {
+          ctx.shadowColor = `hsla(${p.hue}, 100%, 65%, ${alpha})`
+          ctx.shadowBlur = 6
+        }
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
         ctx.fill()
+      }
+      if (!isMobileDevice) {
+        ctx.shadowBlur = 0
       }
 
       ctx.restore()
