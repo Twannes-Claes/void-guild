@@ -164,8 +164,11 @@ export const getBettingData = query({
     const record = { wins: 0, losses: 0 }
     for (const b of map.values()) {
       if (b.status !== 'completed') continue
-      if (b.winnerCharacterId === args.characterId) record.wins++
-      else record.losses++
+      if (b.winnerCharacterId === args.characterId) {
+        record.wins++
+      } else if (b.loserCharacterId === args.characterId) {
+        record.losses++
+      }
     }
 
     // 6. Available opponent characters (excluding characters owned by the same user)
