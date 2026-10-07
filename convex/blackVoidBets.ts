@@ -60,6 +60,7 @@ export const getBettingData = query({
         openChallenges: [],
         activeMatches: [],
         recentBets: [],
+        record: { wins: 0, losses: 0 },
         availableOpponents: [],
       }
     }
@@ -72,6 +73,7 @@ export const getBettingData = query({
         openChallenges: [],
         activeMatches: [],
         recentBets: [],
+        record: { wins: 0, losses: 0 },
         availableOpponents: [],
       }
     }
@@ -158,6 +160,17 @@ export const getBettingData = query({
 
     const recentBets = await Promise.all(recentBetsRaw.map((b) => decorateBet(ctx, b)))
 
+    // All-time win/loss record across every completed bet, not just the 20 shown
+    const record = { wins: 0, losses: 0 }
+    for (const b of map.values()) {
+      if (b.status !== 'completed') continue
+      if (b.winnerCharacterId === args.characterId) {
+        record.wins++
+      } else if (b.loserCharacterId === args.characterId) {
+        record.losses++
+      }
+    }
+
     // 6. Available opponent characters (excluding characters owned by the same user)
     const allCharacters = await ctx.db.query('characters').collect()
     const availableOpponents = allCharacters
@@ -176,6 +189,7 @@ export const getBettingData = query({
       openChallenges,
       activeMatches,
       recentBets,
+      record,
       availableOpponents,
     }
   },

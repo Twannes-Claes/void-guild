@@ -166,7 +166,9 @@ export default function BettingTab({
     openChallenges = [],
     activeMatches = [],
     recentBets = [],
+    record = { wins: 0, losses: 0 },
   } = heldData ?? bettingData ?? {}
+  const totalPlayed = record.wins + record.losses
 
   const handleCancelInvitation = async (betId: Id<'blackVoidBets'>) => {
     setActionLoadingBetId(betId)
@@ -611,10 +613,22 @@ export default function BettingTab({
       {/* 3. HISTORY SECTION */}
       {recentBets.length > 0 && (
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Trophy className="h-3.5 w-3.5 text-amber-400" />
-            History ({recentBets.length})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Trophy className="h-3.5 w-3.5 text-amber-400" />
+              History ({recentBets.length})
+            </h3>
+            {totalPlayed > 0 && (
+              <span className="text-[11px] text-muted-foreground font-mono">
+                Win rate{' '}
+                <strong className="text-amber-300">{Math.round((record.wins / totalPlayed) * 100)}%</strong>
+                {' • '}
+                <span className="text-emerald-400">{record.wins}W</span>
+                {' / '}
+                <span className="text-rose-400">{record.losses}L</span>
+              </span>
+            )}
+          </div>
 
           <div className="space-y-2">
             {recentBets.map((bet) => {
